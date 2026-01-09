@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counter Strike - Cat Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #2a1810;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+        }
+
+        #game-container {
+            background: #1a1a2e;
+            border: 4px solid #ff6b35;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+        }
+
+        h1 {
+            text-align: center;
+            color: #ff6b35;
+            margin-bottom: 10px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #ffbe0b;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        #score-board {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #0f3460;
+            border-radius: 4px;
+        }
+
+        .score-item {
+            font-size: 1.2em;
+            color: #00d9ff;
+        }
+
+        #countdown-overlay {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 60px;
+            border: 4px solid #ff6b35;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        #countdown-number {
+            font-size: 6em;
+            color: #ff6b35;
+            font-weight: bold;
+        }
+
+        #zoomies-indicator {
+            display: none;
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 215, 0, 0.95);
+            color: #000;
+            padding: 15px 30px;
+            border: 3px solid #ff6b35;
+            border-radius: 8px;
+            font-size: 1.5em;
+            font-weight: bold;
+            z-index: 5;
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.1); }
+        }
+
+        canvas {
+            display: block;
+            background: #87ceeb;
+            border: 3px solid #333;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #instructions {
+            margin-top: 15px;
+            text-align: center;
+            color: #ffbe0b;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border: 4px solid #ff6b35;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        #game-over h2 {
+            color: #ff6b35;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        #game-over button {
+            background: #ff6b35;
+            color: #fff;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        #game-over button:hover {
+            background: #ff8555;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>🐱 COUNTER STRIKE 🐱</h1>
+        <div class="subtitle">starring NEMO the Tabby</div>
+        <div id="score-board">
+            <div class="score-item">Score: <span id="score">0</span></div>
+            <div class="score-item">High Score: <span id="high-score">0</span></div>
+            <div class="score-item">Time: <span id="timer">30</span>s</div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="instructions">
+            ← → Arrow Keys to Move | SPACE to Swipe | Knock objects off before they disappear!
+        </div>
+    </div>
+
+    <div id="countdown-overlay">
+        <div id="countdown-number">3</div>
+    </div>
+
+    <div id="zoomies-indicator">
+        ⚡ ZOOMIES ACTIVATED! ⚡
+    </div>
+
+    <div id="game-over">
+        <h2>Game Over!</h2>
+        <p style="font-size: 1.5em; margin: 10px 0;">Final Score: <span id="final-score">0</span></p>
+        <p style="font-size: 1.2em; margin: 10px 0; color: #ffbe0b;">High Score: <span id="game-over-high-score">0</span></p>
+        <button onclick="restartGame()">Play Again</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game state
+        let score = 0;
+        let highScore = localStorage.getItem('counterStrikeHighScore') || 0;
+        let timeLeft = 30;
+        let gameRunning = false;
+        let gameStarted = false;
+        let keys = {};
+        let zoomiesActive = false;
+        let zoomiesTimer = 0;
+        let timerInterval = null;
+
+        // Cat properties
+        const cat = {
+            x: 100,
+            y: 250,
+            width: 50,
+            height: 40,
+            speed: 5,
+            swiping: false,
+            swipeTimer: 0
+        };
+
+        // Object types with their properties (bigger and more detailed)
+        const objectTypes = [
+            { name: 'inhaler', color: '#4a90e2', width: 30, height: 50, points: 10 },
+            { name: 'lipstick', color: '#ff69b4', width: 20, height: 45, points: 10 },
+            { name: 'keys', color: '#ffd700', width: 40, height: 25, points: 15 },
+            { name: 'iphone', color: '#1a1a1a', width: 30, height: 55, points: 20 },
+            { name: 'zoomies', color: '#ffd700', width: 35, height: 35, points: 0, isPowerup: true }
+        ];
+
+        // Objects on counter
+        let objects = [];
+        let nextSpawnTime = 0;
+
+        // Counter properties
+        const counter = {
+            x: 0,
+            y: 300,
+            width: canvas.width,
+            height: 80
+        };
+
+        // Spawn a single random object
+        function spawnRandomObject() {
+            // Random chance for powerup (5% chance)
+            let type;
+            if (Math.random() < 0.05) {
+                type = objectTypes[4]; // zoomies powerup
+            } else {
+                type = objectTypes[Math.floor(Math.random() * 4)];
+            }
+
+            const x = 100 + Math.random() * (canvas.width - 200);
+            const obj = {
+                ...type,
+                x: x,
+                y: counter.y - type.height,
+                velocityX: 0,
+                velocityY: 0,
+                onCounter: true,
+                rotation: 0,
+                lifetime: zoomiesActive ? 120 : 90, // Appears for 1.5-2 seconds
+                spawned: true
+            };
+            objects.push(obj);
+        }
+
+        // Activate ZOOMIES powerup
+        function activateZoomies() {
+            zoomiesActive = true;
+            zoomiesTimer = 300; // 5 seconds
+            document.getElementById('zoomies-indicator').style.display = 'block';
+
+            // Spawn lots of objects!
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    if (gameRunning) spawnRandomObject();
+                }, i * 200);
+            }
+        }
+
+        // Draw Nemo the dark brown tabby cat
+        function drawCat() {
+            ctx.save();
+
+            // Cat body - dark brown with stripes
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(cat.x, cat.y, cat.width, cat.height);
+
+            // Dark tabby stripes on body
+            ctx.fillStyle = '#3d2817';
+            ctx.fillRect(cat.x + 8, cat.y + 5, 3, cat.height - 10);
+            ctx.fillRect(cat.x + 18, cat.y + 5, 3, cat.height - 10);
+            ctx.fillRect(cat.x + 28, cat.y + 5, 3, cat.height - 10);
+            ctx.fillRect(cat.x + 38, cat.y + 5, 3, cat.height - 10);
+
+            // Cat head
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(cat.x + 35, cat.y - 15, 25, 25);
+
+            // Tabby stripes on head
+            ctx.fillStyle = '#3d2817';
+            ctx.fillRect(cat.x + 38, cat.y - 12, 2, 8);
+            ctx.fillRect(cat.x + 43, cat.y - 12, 2, 8);
+            ctx.fillRect(cat.x + 48, cat.y - 12, 2, 8);
+            ctx.fillRect(cat.x + 53, cat.y - 12, 2, 8);
+
+            // Ears
+            ctx.fillStyle = '#654321';
+            ctx.beginPath();
+            ctx.moveTo(cat.x + 35, cat.y - 15);
+            ctx.lineTo(cat.x + 38, cat.y - 24);
+            ctx.lineTo(cat.x + 43, cat.y - 15);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(cat.x + 52, cat.y - 15);
+            ctx.lineTo(cat.x + 55, cat.y - 24);
+            ctx.lineTo(cat.x + 60, cat.y - 15);
+            ctx.fill();
+
+            // Inner ear
+            ctx.fillStyle = '#8b6f47';
+            ctx.fillRect(cat.x + 39, cat.y - 18, 2, 4);
+            ctx.fillRect(cat.x + 54, cat.y - 18, 2, 4);
+
+            // Sad eyes (droopy)
+            ctx.fillStyle = '#2d5016';
+            ctx.fillRect(cat.x + 40, cat.y - 8, 4, 5);
+            ctx.fillRect(cat.x + 51, cat.y - 8, 4, 5);
+
+            // Eye highlights for sadness
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(cat.x + 41, cat.y - 7, 1, 1);
+            ctx.fillRect(cat.x + 52, cat.y - 7, 1, 1);
+
+            // Downturned mouth (sad expression)
+            ctx.strokeStyle = '#3d2817';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cat.x + 44, cat.y - 2);
+            ctx.quadraticCurveTo(cat.x + 47, cat.y, cat.x + 51, cat.y - 2);
+            ctx.stroke();
+
+            // Nose
+            ctx.fillStyle = '#8b6f47';
+            ctx.fillRect(cat.x + 46, cat.y - 4, 3, 2);
+
+            // Tail with stripes
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(cat.x, cat.y + 20);
+            ctx.quadraticCurveTo(cat.x - 20, cat.y + 15, cat.x - 25, cat.y + 5);
+            ctx.stroke();
+
+            // Tail stripes
+            ctx.strokeStyle = '#3d2817';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(cat.x - 8 - i * 6, cat.y + 18 - i * 4, 3, 0, Math.PI);
+                ctx.stroke();
+            }
+
+            // Legs
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(cat.x + 8, cat.y + cat.height - 5, 6, 8);
+            ctx.fillRect(cat.x + 22, cat.y + cat.height - 5, 6, 8);
+            ctx.fillRect(cat.x + 36, cat.y + cat.height - 5, 6, 8);
+
+            // Paws
+            ctx.fillStyle = '#8b6f47';
+            ctx.fillRect(cat.x + 8, cat.y + cat.height + 3, 6, 3);
+            ctx.fillRect(cat.x + 22, cat.y + cat.height + 3, 6, 3);
+            ctx.fillRect(cat.x + 36, cat.y + cat.height + 3, 6, 3);
+
+            // Swipe effect
+            if (cat.swiping) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.fillRect(cat.x + cat.width, cat.y + 8, 18, 3);
+                ctx.fillRect(cat.x + cat.width, cat.y + 16, 18, 3);
+                ctx.fillRect(cat.x + cat.width, cat.y + 24, 18, 3);
+            }
+
+            ctx.restore();
+        }
+
+        // Draw counter
+        function drawCounter() {
+            // Counter top
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(counter.x, counter.y, counter.width, 15);
+
+            // Counter front
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(counter.x, counter.y + 15, counter.width, counter.height - 15);
+
+            // Counter details
+            ctx.strokeStyle = '#4a2f1a';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 4; i++) {
+                ctx.strokeRect(counter.x + 20 + i * 200, counter.y + 25, 150, 45);
+            }
+        }
+
+        // Draw object (bigger and more detailed)
+        function drawObject(obj) {
+            ctx.save();
+            ctx.translate(obj.x + obj.width / 2, obj.y + obj.height / 2);
+            ctx.rotate(obj.rotation);
+            ctx.translate(-(obj.x + obj.width / 2), -(obj.y + obj.height / 2));
+
+            // Fade out effect when about to disappear
+            if (obj.onCounter && obj.lifetime < 30) {
+                ctx.globalAlpha = obj.lifetime / 30;
+            }
+
+            if (obj.name === 'inhaler') {
+                // Inhaler body
+                ctx.fillStyle = '#4a90e2';
+                ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+
+                // Cap
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(obj.x + 5, obj.y, obj.width - 10, 12);
+
+                // Mouthpiece
+                ctx.fillStyle = '#ddd';
+                ctx.fillRect(obj.x + 8, obj.y - 5, obj.width - 16, 5);
+
+                // Label
+                ctx.fillStyle = '#2c5f9e';
+                ctx.fillRect(obj.x + 3, obj.y + 18, obj.width - 6, 15);
+
+            } else if (obj.name === 'lipstick') {
+                // Lipstick tube
+                ctx.fillStyle = '#ff69b4';
+                ctx.fillRect(obj.x, obj.y + 10, obj.width, obj.height - 10);
+
+                // Lipstick tip
+                ctx.fillStyle = '#ff1493';
+                ctx.fillRect(obj.x + 2, obj.y, obj.width - 4, 15);
+
+                // Cap detail
+                ctx.fillStyle = '#c71585';
+                ctx.fillRect(obj.x, obj.y + obj.height - 8, obj.width, 3);
+
+            } else if (obj.name === 'keys') {
+                // Key ring
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(obj.x + 8, obj.y + 8, 6, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Key 1
+                ctx.fillStyle = '#daa520';
+                ctx.fillRect(obj.x + 12, obj.y + 5, 15, 4);
+                ctx.fillRect(obj.x + 24, obj.y + 2, 4, 10);
+                ctx.fillRect(obj.x + 24, obj.y + 2, 6, 3);
+                ctx.fillRect(obj.x + 24, obj.y + 9, 6, 3);
+
+                // Key 2
+                ctx.fillRect(obj.x + 12, obj.y + 13, 12, 4);
+                ctx.fillRect(obj.x + 21, obj.y + 10, 4, 10);
+                ctx.fillRect(obj.x + 21, obj.y + 10, 5, 3);
+
+            } else if (obj.name === 'iphone') {
+                // Phone body
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+
+                // Screen
+                ctx.fillStyle = '#4a90e2';
+                ctx.fillRect(obj.x + 2, obj.y + 8, obj.width - 4, obj.height - 16);
+
+                // Notch
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillRect(obj.x + 8, obj.y + 8, obj.width - 16, 4);
+
+                // Camera
+                ctx.fillStyle = '#333';
+                ctx.fillRect(obj.x + 10, obj.y + 9, 3, 3);
+
+                // Home indicator
+                ctx.fillStyle = '#888';
+                ctx.fillRect(obj.x + 9, obj.y + obj.height - 5, obj.width - 18, 2);
+
+            } else if (obj.name === 'zoomies') {
+                // ZOOMIES powerup - lightning bolt
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.moveTo(obj.x + obj.width / 2, obj.y);
+                ctx.lineTo(obj.x + obj.width / 3, obj.y + obj.height / 2);
+                ctx.lineTo(obj.x + obj.width / 2, obj.y + obj.height / 2 - 5);
+                ctx.lineTo(obj.x + obj.width / 2 - 5, obj.y + obj.height);
+                ctx.lineTo(obj.x + obj.width * 2 / 3, obj.y + obj.height / 2);
+                ctx.lineTo(obj.x + obj.width / 2, obj.y + obj.height / 2 + 5);
+                ctx.closePath();
+                ctx.fill();
+
+                // Glow effect
+                ctx.strokeStyle = '#ffed4e';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // Draw floor
+        function drawFloor() {
+            ctx.fillStyle = '#d2691e';
+            ctx.fillRect(0, counter.y + counter.height, canvas.width, canvas.height - counter.y - counter.height);
+
+            // Floor planks
+            ctx.strokeStyle = '#a0522d';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * 80, counter.y + counter.height);
+                ctx.lineTo(i * 80, canvas.height);
+                ctx.stroke();
+            }
+        }
+
+        // Check collision between cat paw and object
+        function checkSwipeCollision(obj) {
+            if (!cat.swiping || !obj.onCounter) return false;
+
+            const swipeArea = {
+                x: cat.x + cat.width,
+                y: cat.y,
+                width: 15,
+                height: cat.height
+            };
+
+            return swipeArea.x < obj.x + obj.width &&
+                   swipeArea.x + swipeArea.width > obj.x &&
+                   swipeArea.y < obj.y + obj.height &&
+                   swipeArea.y + swipeArea.height > obj.y;
+        }
+
+        // Update game state
+        function update() {
+            if (!gameRunning) return;
+
+            // Move cat (faster during zoomies)
+            const speed = zoomiesActive ? cat.speed * 1.5 : cat.speed;
+            if (keys['ArrowLeft'] && cat.x > 0) {
+                cat.x -= speed;
+            }
+            if (keys['ArrowRight'] && cat.x < canvas.width - cat.width) {
+                cat.x += speed;
+            }
+
+            // Swipe timer
+            if (cat.swiping) {
+                cat.swipeTimer--;
+                if (cat.swipeTimer <= 0) {
+                    cat.swiping = false;
+                }
+            }
+
+            // Zoomies timer
+            if (zoomiesActive) {
+                zoomiesTimer--;
+                if (zoomiesTimer <= 0) {
+                    zoomiesActive = false;
+                    document.getElementById('zoomies-indicator').style.display = 'none';
+                }
+            }
+
+            // Spawn new objects at intervals
+            nextSpawnTime--;
+            if (nextSpawnTime <= 0) {
+                spawnRandomObject();
+                nextSpawnTime = zoomiesActive ? 30 : 60; // Spawn faster during zoomies
+            }
+
+            // Update objects
+            objects = objects.filter(obj => {
+                // Decrease lifetime for objects on counter
+                if (obj.onCounter) {
+                    obj.lifetime--;
+                    if (obj.lifetime <= 0) {
+                        return false; // Remove object
+                    }
+                }
+
+                if (cat.swiping && checkSwipeCollision(obj) && obj.onCounter) {
+                    // Check if it's a powerup
+                    if (obj.isPowerup) {
+                        activateZoomies();
+                        return false; // Remove powerup
+                    }
+
+                    // Knock off the counter!
+                    obj.velocityX = 8 + Math.random() * 4;
+                    obj.velocityY = -5 - Math.random() * 3;
+                    obj.onCounter = false;
+                    score += obj.points;
+                    document.getElementById('score').textContent = score;
+
+                    // Update high score
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('counterStrikeHighScore', highScore);
+                        document.getElementById('high-score').textContent = highScore;
+                    }
+                }
+
+                if (!obj.onCounter) {
+                    // Physics for falling objects
+                    obj.x += obj.velocityX;
+                    obj.y += obj.velocityY;
+                    obj.velocityY += 0.5; // gravity
+                    obj.rotation += 0.1;
+
+                    // Remove if it goes off screen
+                    if (obj.y > canvas.height + 50) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+        }
+
+        // Draw everything
+        function draw() {
+            // Background (wall)
+            ctx.fillStyle = '#ffe5cc';
+            ctx.fillRect(0, 0, canvas.width, counter.y);
+
+            drawFloor();
+            drawCounter();
+
+            objects.forEach(drawObject);
+            drawCat();
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Countdown before game starts
+        function startCountdown() {
+            let count = 3;
+            const countdownElement = document.getElementById('countdown-number');
+            const countdownOverlay = document.getElementById('countdown-overlay');
+            countdownOverlay.style.display = 'block';
+
+            const countdownInterval = setInterval(() => {
+                if (count > 0) {
+                    countdownElement.textContent = count;
+                    count--;
+                } else {
+                    countdownElement.textContent = 'GO!';
+                    setTimeout(() => {
+                        countdownOverlay.style.display = 'none';
+                        gameRunning = true;
+                        gameStarted = true;
+                        startTimer();
+                    }, 500);
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+        }
+
+        // Start timer
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (!gameRunning) return;
+
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // End game
+        function endGame() {
+            gameRunning = false;
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('game-over-high-score').textContent = highScore;
+            document.getElementById('game-over').style.display = 'block';
+        }
+
+        // Restart game
+        function restartGame() {
+            score = 0;
+            timeLeft = 30;
+            gameRunning = false;
+            gameStarted = false;
+            zoomiesActive = false;
+            zoomiesTimer = 0;
+            objects = [];
+            nextSpawnTime = 30;
+            document.getElementById('score').textContent = score;
+            document.getElementById('timer').textContent = timeLeft;
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('zoomies-indicator').style.display = 'none';
+            if (timerInterval) clearInterval(timerInterval);
+            startCountdown();
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+
+            if (e.key === ' ' && !cat.swiping && gameRunning) {
+                e.preventDefault();
+                cat.swiping = true;
+                cat.swipeTimer = 10;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Initialize
+        document.getElementById('high-score').textContent = highScore;
+        startCountdown();
+        gameLoop();
+    </script>
+</body>
+</html>

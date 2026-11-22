@@ -68,6 +68,8 @@ button.plate,.plate button{pointer-events:auto}
   padding-block:20px 22px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));
   display:flex;flex-direction:column;gap:14px;box-shadow:0 -10px 30px rgba(0,0,0,.45);animation:rise .34s cubic-bezier(.2,.9,.3,1.05)}
 @keyframes rise{from{transform:translateY(46px);opacity:.3}to{transform:none;opacity:1}}
+#card>*{flex-shrink:0}
+#card.still{animation:none}
 @media (prefers-reduced-motion:reduce){#card{animation:none}#hint,#toast{transition:none}}
 
 .mast{display:flex;align-items:center;gap:12px}
@@ -130,6 +132,60 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-num
 .sc-foot span{flex:1;display:flex;align-items:flex-end;gap:5px;border-bottom:1px solid var(--rule);padding-bottom:2px;min-width:0}
 .sc-foot i{font:400 17px/0.8 var(--hand);color:var(--pencil);letter-spacing:0;text-transform:none;white-space:nowrap}
 
+/* the clubhouse */
+.mast .chip{margin-left:auto}
+.chip{max-width:44%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--rule);border-radius:999px;padding:8px 12px 7px;font:600 13px/1 var(--display);color:var(--club);background:rgba(255,255,255,.5)}
+.strip{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border:1px solid var(--rule);border-radius:6px;background:rgba(255,255,255,.5);box-shadow:inset 0 0 0 2px var(--paper),inset 0 0 0 3px rgba(20,73,58,.22)}
+.strip span{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.strip b{font:italic 700 18px/1.1 var(--display);color:var(--club);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.strip i{font:600 12.5px/1.25 var(--display);font-style:normal;color:var(--ink-2)}
+.strip em{font:400 11.5px/1 var(--caps);font-style:normal;letter-spacing:.12em;text-transform:uppercase;color:var(--cream);background:var(--club);border-radius:4px;padding:8px 10px 7px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font:400 11.5px/1 var(--caps);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+.field input{font:600 19px/1.2 var(--display);color:var(--ink);padding:11px 12px;border:1px solid var(--rule);border-radius:4px;background:#fffdf6;width:100%;box-sizing:border-box;-webkit-user-select:text;user-select:text}
+.field input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.err{color:var(--claret);min-height:1.3em}
+.link{align-self:flex-start;padding:6px 0;font:italic 600 14px/1.2 var(--display);color:var(--club);text-decoration:underline}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--club);border-radius:6px;overflow:hidden}
+.tabs button{padding:11px 4px 9px;font:400 12px/1 var(--caps);letter-spacing:.11em;text-transform:uppercase;color:var(--club)}
+.tabs button+button{border-left:1px solid var(--club)}
+.tabs button[aria-selected="true"]{background:var(--club);color:var(--cream)}
+.lb{list-style:none;margin:0;padding:0;border:1.5px solid var(--rule);background:var(--paper)}
+.lb li{display:flex;align-items:center;gap:8px;padding:6px 10px;min-height:34px}
+.lb li+li{border-top:1px solid rgba(43,90,72,.35)}
+.lb li.me,.st tr.me td{background:rgba(234,217,160,.5)}
+.lb .rk{width:16px;font:800 15px/1 var(--display);color:var(--club)}
+.nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 15px/1.2 var(--display)}
+.lb .hs{display:flex;gap:2px;font:700 20px/1 var(--hand);color:var(--pencil)}
+.lb .hs .mk{width:25px;height:25px}
+.lb .tt{min-width:58px;text-align:right;font:800 17px/1 var(--display);font-variant-numeric:lining-nums tabular-nums}
+.lb .tt small,.stats small{margin-left:6px;font:700 13.5px/1 var(--display);color:var(--claret)}
+.lb .wait{font:italic 600 13px/1 var(--display);color:var(--ink-2)}
+table.st{width:100%;border-collapse:collapse;border:1.5px solid var(--rule);background:var(--paper);font-variant-numeric:lining-nums tabular-nums}
+.st th{background:var(--club);color:var(--cream);font:400 10px/1 var(--caps);letter-spacing:.09em;text-transform:uppercase;padding:7px 4px 6px}
+.st td{border-top:1px solid rgba(43,90,72,.35);padding:8px 4px;text-align:center;font:600 14px/1 var(--display)}
+.st th:first-child,.st td:first-child{text-align:left;padding-left:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st td b{font-weight:800;font-size:16px;color:var(--club)}
+.stats{display:grid;grid-template-columns:1fr;border:1.5px solid var(--rule);background:var(--paper)}
+.stats.four{grid-template-columns:repeat(4,1fr)}
+.stats div{display:flex;flex-direction:column;gap:6px;padding:10px 8px;min-width:0}
+.stats div+div{border-left:1px solid rgba(43,90,72,.35)}
+.stats b{font:800 24px/1 var(--display);color:var(--club);font-variant-numeric:lining-nums}
+.stats span{font:400 10px/1.2 var(--caps);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.rec{list-style:none;margin:0;padding:0;border:1.5px solid var(--rule);background:var(--paper)}
+.rec li{display:flex;align-items:center;gap:9px;padding:5px 10px;min-height:32px;font:600 13.5px/1.2 var(--display)}
+.rec li+li{border-top:1px solid rgba(43,90,72,.35)}
+.rec li>span:first-child{width:44px;color:var(--ink-2)}
+.rec .mk{font:700 19px/1 var(--hand);color:var(--pencil);width:25px;height:25px}
+.rec small{font:italic 600 12px/1 var(--display);color:var(--ink-2)}
+.mono{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;font:800 12px/1 var(--display);font-style:normal;color:var(--club-deep);
+  background:radial-gradient(circle at 35% 30%,var(--gold-hi),var(--gold));box-shadow:inset 0 0 0 1.5px rgba(86,62,10,.5)}
+.tro{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tro div{display:grid;grid-template-columns:auto 1fr;column-gap:9px;row-gap:3px;align-items:center;padding:8px;border:1px solid var(--rule);border-radius:5px;background:var(--paper);opacity:.5;min-width:0}
+.tro div.won{opacity:1;box-shadow:inset 0 0 0 1px var(--gold)}
+.tro .mono{grid-row:span 2}
+.tro b{font:700 13.5px/1.1 var(--display);align-self:end}
+.tro span{font:600 11.5px/1.2 var(--display);color:var(--ink-2);align-self:start}
 #shareText{width:100%;box-sizing:border-box;resize:none;border:1px dashed var(--rule);border-radius:3px;background:rgba(255,255,255,.55);
   color:var(--ink);padding:9px 11px;font:600 15px/1.4 var(--display);-webkit-user-select:text;user-select:text}
 </style>
@@ -596,7 +652,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='bunker'?(c.id==='PW'||c.id==='CH'?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795375362000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795376972000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -778,7 +834,8 @@ function holed(){const b=S.ball,h=cur();b.x=h.pin.x;b.y=h.pin.y;b.vx=b.vy=b.vz=b
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now()});finishHole(S.strokes)}
 function finishHole(score){S.mode='wait';S.round.scores[S.hi]=score;S.strokes=0;const n=S.round.ids.length,last=S.hi>=n-1;
   store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last});
-  if(last&&S.round.type==='daily')bumpStreak();setTimeout(()=>holeCard(score),900)}
+  if(last&&S.round.type==='daily'){bumpStreak();refresh()} // refresh posts the finished card to the clubhouse
+  setTimeout(()=>holeCard(score),900)}
 function bumpStreak(){const m=fetchKey('meta')||{last:0,streak:0};if(m.last===S.day)return;m.streak=m.last===S.day-1?m.streak+1:1;m.last=S.day;store('meta',m)}
 
 // ───────── frame loop
@@ -822,14 +879,268 @@ $('clubPrev').onclick=()=>changeClub(-1);$('clubNext').onclick=()=>changeClub(1)
 $('btnSound').onclick=()=>{S.muted=!S.muted;$('btnSound').setAttribute('aria-pressed',String(!S.muted));store('muted',S.muted);if(!S.muted)sfx.putt()};
 $('btnHelp').onclick=()=>{if(S.mode==='ready')helpCard()};
 $('btnPutt').onclick=()=>{if(S.mode!=='ready'||!S.club.putt)return;S.pmode=S.pmode==='aim'?'stroke':'aim';aimCam();hud()};
+const LocalServer=(()=>{
+// The whole clubhouse server as one portable module. It needs only web-standard Request, Response and crypto,
+// and a key-value store with get, put, del and list(prefix). The hosted site runs it behind /api with a database.
+// The page also carries a copy, backed by browser storage, so a lone player has a working clubhouse offline.
+//
+// Who you are: a random session token, kept in an HttpOnly cookie and stored here only as a hash.
+// There is no way to become a player by typing their name. The only other way in is a passkey that player saved.
+const enc=new TextEncoder();
+const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const unb64u=s=>Uint8Array.from(atob(String(s).replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+const sha256=async d=>new Uint8Array(await crypto.subtle.digest('SHA-256',typeof d==='string'?enc.encode(d):d));
+const hex=u=>[...u].map(b=>b.toString(16).padStart(2,'0')).join('');
+const rand=n=>crypto.getRandomValues(new Uint8Array(n));
+const total=a=>a.reduce((x,y)=>x+y,0);
+const json=(o,status=200,headers={})=>new Response(JSON.stringify(o),{status,headers:{'content-type':'application/json','cache-control':'no-store',...headers}});
+const fail=(error,status=400)=>json({ok:false,error},status);
+const cleanName=(s,max=16)=>String(s==null?'':s).replace(/[\u0000-\u001f\u007f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,max);
+const validDay=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')&&!isNaN(Date.parse(d+'T00:00:00Z'))?d:null;
+const dayNum=d=>Math.round(Date.parse(d+'T00:00:00Z')/864e5);
+const numDay=n=>new Date(n*864e5).toISOString().slice(0,10);
+const CODE='ABCDEFGHJKMNPQRSTUVWXYZ23456789',COOKIE='fl';
+
+// ───────── a player's own numbers, all derived from their rounds (newest first)
+// Handicap: the average of your best few of the last 20 rounds, in strokes over par, scaled from 3 holes to 18.
+function handicap(rs){const d=rs.slice(0,20).map(r=>r.tot-r.par),n=d.length;if(n<3)return null;
+  const use=n<6?1:n<9?2:n<12?3:n<15?4:n<17?5:n<19?6:n<20?7:8;d.sort((a,b)=>a-b);return Math.round(total(d.slice(0,use))/use*6*10)/10}
+function streakOf(rs,day){const set=new Set(rs.map(r=>r.day));let d=dayNum(day),n=0;if(!set.has(day))d--;while(set.has(numDay(d))){n++;d--}return n}
+function maxStreak(rs){const ds=[...new Set(rs.map(r=>dayNum(r.day)))].sort((a,b)=>a-b);let best=0,run=0,prev=null;for(const d of ds){run=prev!==null&&d===prev+1?run+1:1;best=Math.max(best,run);prev=d}return best}
+function personal(rs,day){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{id,n:0,day:d}).n++},sweep={};
+  for(const r of[...rs].reverse()){const rel=r.scores.map((s,i)=>s-r.pars[i]);
+    r.scores.forEach((s,i)=>{if(s===1)add('ace',r.day);else if(rel[i]<=-2)add('eagle',r.day);
+      if(rel[i]<=-1){const c=r.holes[i].slice(0,2),a=sweep[c]=sweep[c]||[];if(!a.includes(r.holes[i]))a.push(r.holes[i])}});
+    if(rel.every(x=>x<=-1))add('hat',r.day);if(rel.every(x=>x<=0))add('clean',r.day);if(r.tot<r.par)add('red',r.day)}
+  const ms=maxStreak(rs);if(ms>=7)tro.week={id:'week',n:1};if(ms>=30)tro.month={id:'month',n:1};
+  for(const c in sweep)if(sweep[c].length>=9)tro['sweep-'+c]={id:'sweep-'+c,n:1};
+  const best=rs.reduce((b,r)=>!b||r.tot-r.par<b.tot-b.par?r:b,null);
+  return{rounds:rs.length,hcp:handicap(rs),best:best&&{tot:best.tot,par:best.par,day:best.day},streak:streakOf(rs,day),trophies:Object.values(tro),sweep}}
+
+// ───────── storage helpers
+const roundsOf=async(store,pid)=>(await store.list('r:'+pid+':')).map(x=>x.v).sort((a,b)=>a.day<b.day?1:-1);
+async function session(req,store){const m=/(?:^|;\s*)fl=([a-f0-9]{64})/.exec(req.headers.get('cookie')||''),tok=m?m[1]:(req.headers.get('x-fl-session')||'');
+  if(!/^[a-f0-9]{64}$/.test(tok))return null;const s=await store.get('s:'+hex(await sha256(tok)));if(!s)return null;
+  const player=await store.get('p:'+s.pid);return player?{pid:s.pid,player}:null}
+async function newSession(store,pid){const tok=hex(rand(32));await store.put('s:'+hex(await sha256(tok)),{pid,t:Date.now()});return tok}
+const cookieFor=(tok,url)=>`${COOKIE}=${tok}; Path=/; Max-Age=34560000; HttpOnly; SameSite=Lax${url.protocol==='https:'?'; Secure':''}`;
+
+// ───────── what a clubhouse shows
+async function clubView(store,club,pid,day){const ms=await store.list('m:'+club.code+':'),members=[];
+  for(const{k,v}of ms){const id=k.split(':')[2];members.push({id,nick:v.nick,rounds:await roundsOf(store,id)})}
+  // a day is won by the lowest score among members, once the day is over and at least two played
+  const byDay={},wins={};for(const m of members)for(const r of m.rounds)if(r.day<day)(byDay[r.day]=byDay[r.day]||[]).push({id:m.id,tot:r.tot});
+  for(const d in byDay){const a=byDay[d];if(a.length<2)continue;const best=Math.min(...a.map(x=>x.tot));for(const x of a)if(x.tot===best)wins[x.id]=(wins[x.id]||0)+1}
+  const today=members.map(m=>{const r=m.rounds.find(x=>x.day===day);return{id:m.id,nick:m.nick,me:m.id===pid,round:r?{holes:r.holes,pars:r.pars,scores:r.scores,tot:r.tot,par:r.par}:null}})
+    .sort((a,b)=>(a.round?a.round.tot-a.round.par:99)-(b.round?b.round.tot-b.round.par:99)||a.nick.localeCompare(b.nick));
+  const standings=members.map(m=>{const p=personal(m.rounds,day);return{id:m.id,nick:m.nick,me:m.id===pid,hcp:p.hcp,rounds:p.rounds,wins:wins[m.id]||0,streak:p.streak,best:p.best}})
+    .sort((a,b)=>(a.hcp==null?999:a.hcp)-(b.hcp==null?999:b.hcp)||b.wins-a.wins||b.rounds-a.rounds||a.nick.localeCompare(b.nick));
+  const holes={},feed=[];let low=null;const all=[];for(const m of members)for(const r of m.rounds)all.push({m,r});
+  all.sort((a,b)=>a.r.day<b.r.day?-1:a.r.day>b.r.day?1:a.r.ts-b.r.ts);
+  for(const{m,r}of all){r.holes.forEach((h,i)=>{const s=r.scores[i];if(!holes[h]||s<holes[h].score)holes[h]={score:s,par:r.pars[i],nick:m.nick,day:r.day};
+      if(s===1)feed.push({id:'ace',nick:m.nick,day:r.day,hole:h});else if(s-r.pars[i]<=-2)feed.push({id:'eagle',nick:m.nick,day:r.day,hole:h})});
+    if(r.scores.every((s,i)=>s<r.pars[i]))feed.push({id:'hat',nick:m.nick,day:r.day});
+    if(!low||r.tot-r.par<low.tot-low.par)low={tot:r.tot,par:r.par,nick:m.nick,day:r.day}}
+  return{code:club.code,name:club.name,founder:club.owner===pid,member:members.some(m=>m.id===pid),count:members.length,today,standings,records:{holes,low,feed:feed.reverse().slice(0,12)}}}
+async function state(store,ses,day,code){const out={me:null,club:null};
+  if(ses){const rs=await roundsOf(store,ses.pid),clubs=[];for(const c of ses.player.clubs||[]){const cl=await store.get('c:'+c);if(cl)clubs.push({code:c,name:cl.name})}
+    out.me={id:ses.pid,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day),today:rs.find(r=>r.day===day)||null}}
+  if(code){const club=await store.get('c:'+String(code).toUpperCase());if(club)out.club=await clubView(store,club,ses&&ses.pid,day)}
+  return out}
+
+// ───────── passkeys (WebAuthn): the server keeps a public key; the phone proves it holds the private one
+function derToRaw(der){let o=der[1]&0x80?2+(der[1]&0x7f):2;const int=()=>{if(der[o++]!==2)throw new Error('der');const len=der[o++];let v=der.slice(o,o+len);o+=len;
+    while(v.length>32&&v[0]===0)v=v.slice(1);const out=new Uint8Array(32);out.set(v,32-v.length);return out};
+  const r=int(),s=int(),raw=new Uint8Array(64);raw.set(r);raw.set(s,32);return raw}
+async function importKey(k){const spki=unb64u(k.spki);
+  if(k.alg===-7)return crypto.subtle.importKey('spki',spki,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+  if(k.alg===-257)return crypto.subtle.importKey('spki',spki,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
+  throw new Error('alg')}
+async function checkClientData(store,cdj,type,origin){let c;try{c=JSON.parse(new TextDecoder().decode(cdj))}catch(e){return null}
+  if(c.type!==type||c.origin!==origin||typeof c.challenge!=='string')return null;
+  const ch=await store.get('ch:'+c.challenge);if(!ch)return null;await store.del('ch:'+c.challenge);return Date.now()-ch.t<3e5?ch:null}
+
+// ───────── the API
+async function handle(req,store,opts={}){const url=new URL(req.url),path=url.pathname.replace(/^\/api/,''),m=req.method,origin=url.protocol+'//'+url.host;
+  try{
+    if(m==='GET'&&path==='/ping')return json({ok:true,v:1});
+    let ses=await session(req,store);
+    if(m==='GET'&&path==='/state'){const day=validDay(url.searchParams.get('day'))||numDay(Math.floor(Date.now()/864e5));return json({ok:true,...await state(store,ses,day,url.searchParams.get('club'))})}
+    if(m!=='POST')return fail('not_found',404);
+    const o=req.headers.get('origin');if(o&&o!==origin&&!opts.local)return fail('bad_origin',403);
+    const b=await req.json().catch(()=>({})),head={},extra={};
+    const signIn=async pid=>{const tok=await newSession(store,pid);head['set-cookie']=cookieFor(tok,url);if(opts.local)extra.session=tok};
+    const done=(o={})=>json({ok:true,...o,...extra},200,head);
+    switch(path){
+      case'/player':{const name=cleanName(b.name);if(name.length<1)return fail('name');
+        if(ses){ses.player.name=name;await store.put('p:'+ses.pid,ses.player)}
+        else{const pid=b64u(rand(9));await store.put('p:'+pid,{id:pid,name,created:Date.now(),clubs:[],keys:[]});await signIn(pid)}
+        return done()}
+      case'/club':{if(!ses)return fail('no_player',401);const name=cleanName(b.name,24),nick=cleanName(b.nick)||ses.player.name;if(name.length<2)return fail('name');
+        if((ses.player.clubs||[]).length>=8)return fail('too_many');
+        let code;do{code=[...rand(6)].map(x=>CODE[x%CODE.length]).join('')}while(await store.get('c:'+code));
+        await store.put('c:'+code,{code,name,owner:ses.pid,created:Date.now()});await store.put('m:'+code+':'+ses.pid,{nick,joined:Date.now()});
+        ses.player.clubs=[...(ses.player.clubs||[]),code];await store.put('p:'+ses.pid,ses.player);return done({code})}
+      case'/join':{if(!ses)return fail('no_player',401);const code=String(b.code||'').toUpperCase(),club=await store.get('c:'+code),nick=cleanName(b.nick)||ses.player.name;if(!club)return fail('no_club',404);
+        const ms=await store.list('m:'+code+':'),mine=ms.find(x=>x.k==='m:'+code+':'+ses.pid);
+        if(!mine&&ms.length>=50)return fail('full');if(ms.some(x=>x!==mine&&x.v.nick.toLowerCase()===nick.toLowerCase()))return fail('taken');
+        await store.put('m:'+code+':'+ses.pid,{nick,joined:mine?mine.v.joined:Date.now()});
+        if(!(ses.player.clubs||[]).includes(code)){if((ses.player.clubs||[]).length>=8)return fail('too_many');ses.player.clubs=[...(ses.player.clubs||[]),code];await store.put('p:'+ses.pid,ses.player)}
+        return done({code})}
+      case'/leave':{if(!ses)return fail('no_player',401);const code=String(b.code||'').toUpperCase();await store.del('m:'+code+':'+ses.pid);
+        ses.player.clubs=(ses.player.clubs||[]).filter(c=>c!==code);await store.put('p:'+ses.pid,ses.player);return done()}
+      case'/round':{if(!ses)return fail('no_player',401);const day=validDay(b.day),h=b.holes,p=b.pars,s=b.scores;
+        if(!day||Math.abs(dayNum(day)-Math.floor(Date.now()/864e5))>1)return fail('day');
+        if(![h,p,s].every(a=>Array.isArray(a)&&a.length===3)||!h.every(x=>/^[a-z]{2}[1-9]$/.test(x))||new Set(h).size!==3)return fail('holes');
+        if(!p.every(x=>x===3||x===4||x===5)||!s.every((x,i)=>Number.isInteger(x)&&x>=1&&x<=p[i]+5))return fail('scores');
+        const key='r:'+ses.pid+':'+day;if(!(await store.get(key)))await store.put(key,{day,holes:h,pars:p,scores:s,tot:total(s),par:total(p),ts:Date.now()}); // the first card of the day stands
+        return done()}
+      case'/passkey/options':{const challenge=b64u(rand(32));await store.put('ch:'+challenge,{pid:ses?ses.pid:null,t:Date.now()});
+        if(b.kind==='create'){if(!ses)return fail('no_player',401);
+          return done({publicKey:{challenge,rp:{name:'Flick Links',id:url.hostname},user:{id:b64u(enc.encode(ses.pid)),name:ses.player.name,displayName:ses.player.name},
+            pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{residentKey:'required',userVerification:'preferred'},attestation:'none',timeout:60000}})}
+        return done({publicKey:{challenge,rpId:url.hostname,userVerification:'preferred',timeout:60000}})}
+      case'/passkey/create':{if(!ses)return fail('no_player',401);const ch=await checkClientData(store,unb64u(b.clientDataJSON),'webauthn.create',origin);
+        if(!ch||ch.pid!==ses.pid)return fail('challenge');const key={id:String(b.id||''),spki:String(b.spki||''),alg:b.alg};
+        if(!/^[\w-]{8,400}$/.test(key.id)||await store.get('k:'+key.id))return fail('key');await importKey(key);
+        ses.player.keys=[...(ses.player.keys||[]),key].slice(-5);await store.put('p:'+ses.pid,ses.player);await store.put('k:'+key.id,{pid:ses.pid});return done()}
+      case'/passkey/login':{const ref=await store.get('k:'+String(b.id||''));if(!ref)return fail('unknown_key',401);const player=await store.get('p:'+ref.pid),key=player&&(player.keys||[]).find(k=>k.id===b.id);if(!key)return fail('unknown_key',401);
+        const cdj=unb64u(b.clientDataJSON),auth=unb64u(b.authenticatorData),sig=unb64u(b.signature);if(!(await checkClientData(store,cdj,'webauthn.get',origin)))return fail('challenge',401);
+        if(hex(auth.slice(0,32))!==hex(await sha256(url.hostname))||!(auth[32]&1))return fail('auth_data',401);
+        const data=new Uint8Array(auth.length+32);data.set(auth);data.set(await sha256(cdj),auth.length);
+        const ok=key.alg===-7?await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},await importKey(key),derToRaw(sig),data):await crypto.subtle.verify('RSASSA-PKCS1-v1_5',await importKey(key),sig,data);
+        if(!ok)return fail('signature',401);await signIn(ref.pid);return done()}
+    }
+    return fail('not_found',404)
+  }catch(e){return fail('server_error',500)}}
+
+// ───────── stores
+// In memory, optionally mirrored somewhere by a save callback (the page mirrors it to browser storage).
+class MemStore{constructor(data,save){this.m=new Map(Object.entries(data||{}));this.save=save||(()=>{})}
+  async get(k){return this.m.has(k)?JSON.parse(this.m.get(k)):null}
+  async put(k,v){this.m.set(k,JSON.stringify(v));this.save(Object.fromEntries(this.m))}
+  async del(k){this.m.delete(k);this.save(Object.fromEntries(this.m))}
+  async list(p){return[...this.m.keys()].filter(k=>k.startsWith(p)).sort().map(k=>({k,v:JSON.parse(this.m.get(k))}))}}
+// A Cloudflare D1 (SQLite) database used as one key-value table.
+class D1Store{constructor(db){this.db=db}
+  async init(){await this.db.prepare('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)').run()}
+  async get(k){const r=await this.db.prepare('SELECT v FROM kv WHERE k=?').bind(k).first();return r?JSON.parse(r.v):null}
+  async put(k,v){await this.db.prepare('INSERT INTO kv (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').bind(k,JSON.stringify(v)).run()}
+  async del(k){await this.db.prepare('DELETE FROM kv WHERE k=?').bind(k).run()}
+  async list(p){const r=await this.db.prepare('SELECT k,v FROM kv WHERE k>=? AND k<? ORDER BY k').bind(p,p+'￿').all();return(r.results||[]).map(x=>({k:x.k,v:JSON.parse(x.v)}))}}
+return{handle,MemStore}})();
+// ───────── the clubhouse
+// The page talks to the clubhouse server over /api when the game is on its own web address.
+// Anywhere else it runs the same server code in the page, on browser storage: a solo clubhouse.
+const TROPHY={ace:['1','Ace','A hole in one'],eagle:['−2','Eagle','Two under on one hole'],hat:['III','Hat Trick','Three birdies in a round'],clean:['✓','Clean Card','A round without a bogey'],
+  red:['−','In the Red','A round under par'],week:['7','Regular','Seven days running'],month:['30','Fixture','Thirty days running']};
+COURSES.forEach(c=>TROPHY['sweep-'+c.id]=[c.code,'Swept '+c.club,'A birdie on all nine']);
+const MSG={name:'Enter a name.',taken:'Someone in this clubhouse already has that name.',full:'This clubhouse is full.',no_club:'That clubhouse no longer exists.',too_many:'You are in the most clubhouses one player can join.'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const hcpStr=h=>h==null?'–':h<0?'+'+(-h).toFixed(1):h.toFixed(1);
+const holeKey=h=>h.course.id+h.n;
+const plural=(n,w)=>n+' '+w+(n===1?'':'s');
+const shortDay=d=>{const[y,m,dd]=d.split('-').map(Number);return new Date(y,m-1,dd).toLocaleDateString(undefined,{month:'short',day:'numeric'})};
+const toB64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const fromB64=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+const C={me:null,club:null,code:fetchKey('club')||'',invite:'',tab:'today'};
+const Net={remote:false,token:fetchKey('tok')||'',mem:null,ready:null,
+  async init(){let alone=false;try{alone=window.top===window.self&&/^https?:$/.test(location.protocol)}catch(e){}
+    if(alone)try{const j=await(await fetch('api/ping',{cache:'no-store'})).json();this.remote=!!(j&&j.ok)}catch(e){}
+    if(!this.remote)this.mem=new LocalServer.MemStore(fetchKey('srv')||{},d=>store('srv',d))},
+  async call(method,path,body){await this.ready;
+    if(this.remote)return(await fetch('api'+path,{method,cache:'no-store',credentials:'same-origin',headers:body?{'content-type':'application/json'}:{},body:body?JSON.stringify(body):undefined})).json();
+    const r=await LocalServer.handle(new Request('https://solo.invalid/api'+path,{method,headers:{'content-type':'application/json','x-fl-session':this.token},body:body?JSON.stringify(body):undefined}),this.mem,{local:true}),j=await r.json();
+    if(j.session){this.token=j.session;store('tok',this.token)}return j}};
+const pickClub=code=>{C.code=code||'';store('club',C.code)};
+// an invite link has done its job once it is answered: drop it from the address so a reload is clean
+const endInvite=()=>{C.invite='';try{if(location.search)history.replaceState(null,'',location.pathname+location.hash)}catch(e){}};
+// post today's finished card once; the server keeps the first card of the day
+async function postToday(){if(!C.me||C.me.today)return false;const d=fetchKey(S.key);if(!d||!d.done||!Array.isArray(d.ids)||d.ids.length!==3||!d.ids.every(i=>ALL[i]))return false;
+  const hs=d.ids.map(HOLE),j=await Net.call('POST','/round',{day:S.key,holes:hs.map(holeKey),pars:hs.map(h=>h.par),scores:d.scores.slice(0,3)});return!!(j&&j.ok)}
+async function refresh(posted){const code=C.invite||C.code;
+  try{const j=await Net.call('GET','/state?day='+S.key+(code?'&club='+encodeURIComponent(code):''));
+    if(j&&j.ok){C.me=j.me;C.club=j.club;
+      if(C.invite&&(!C.club||C.club.member)){if(C.club)pickClub(C.invite);endInvite()}
+      if(!C.invite&&C.code&&(!C.club||!C.club.member)){pickClub(C.me&&C.me.clubs.length?C.me.clubs[0].code:'');C.club=null;if(C.code)return refresh(posted)}
+      if(!C.invite&&!C.code&&C.me&&C.me.clubs.length){pickClub(C.me.clubs[0].code);return refresh(posted)}
+      if(!posted&&await postToday())return refresh(true)}}catch(e){}
+  redraw()}
+
+// ───────── pieces
+function rankOf(list,i){const r=list[i].round;return 1+list.filter(x=>x.round&&x.round.tot-x.round.par<r.tot-r.par).length}
+const tabToday=c=>`<ol class="lb">${c.today.map((m,i)=>{const r=m.round;return`<li class="${m.me?'me':''}"><span class="rk">${r?rankOf(c.today,i):''}</span><span class="nm">${esc(m.nick)}</span>${
+  r?`<span class="hs">${r.scores.map((s,j)=>mk(s,r.pars[j])).join('')}</span><span class="tt">${r.tot}<small>${rel(r.tot-r.par)}</small></span>`:'<span class="wait">yet to play</span>'}</li>`}).join('')}</ol>`;
+const tabStandings=c=>`<table class="st"><tr><th>Member</th><th>Hcp</th><th>Rounds</th><th>Wins</th><th>Streak</th></tr>${c.standings.map(m=>
+  `<tr class="${m.me?'me':''}"><td>${esc(m.nick)}</td><td><b>${hcpStr(m.hcp)}</b></td><td>${m.rounds}</td><td>${m.wins}</td><td>${m.streak}</td></tr>`).join('')}</table>
+<p class="fine">Handicap needs three rounds. A day is won by the lowest card once the day is over.</p>`;
+function tabRecords(c){const rec=c.records,by={};for(const k in rec.holes)(by[k.slice(0,2)]=by[k.slice(0,2)]||[]).push(k);
+  const courses=COURSES.filter(x=>by[x.id]).map(x=>`<p class="eyebrow">${x.club}</p><ul class="rec">${by[x.id].sort().map(k=>{const r=rec.holes[k];
+    return`<li><span>No. ${k.slice(2)}</span>${mk(r.score,r.par)}<span class="nm">${esc(r.nick)}</span><small>${shortDay(r.day)}</small></li>`}).join('')}</ul>`).join('');
+  return(rec.low?`<div class="stats"><div><b>${rec.low.tot} <small>${rel(rec.low.tot-rec.low.par)}</small></b><span>Low round · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No rounds on the board yet. Records appear as members play.</p>')
+    +(rec.feed.length?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')
+    +(courses?'<p class="fine">Best score by a member on each hole played so far.</p>'+courses:'')}
+function clubStrip(){const c=C.club;
+  if(C.invite&&c&&!c.member)return`<button class="strip" data-act="joinform"><span><b>${esc(c.name)}</b><i>You are invited · ${plural(c.count,'member')}</i></span><em>Join</em></button>`;
+  if(c&&c.member){const played=c.today.filter(t=>t.round),lead=played[0];
+    return`<button class="strip" data-act="club"><span><b>${esc(c.name)}</b><i>${lead?esc(lead.nick)+' leads at '+rel(lead.round.tot-lead.round.par)+' · '+played.length+' of '+c.count+' in':'Nobody has played yet today'}</i></span><em>Open</em></button>`}
+  return`<button class="strip" data-act="clubform"><span><b>Start a clubhouse</b><i>Invite friends and keep a daily leaderboard</i></span><em>New</em></button>`}
+const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your card'}</button>`;
+
+// ───────── sheets
+function formCard(kind){const c=C.club,join=kind==='join',club=kind==='club';
+  sheet(`<p class="eyebrow">${join?'Join the clubhouse':club?'A new clubhouse':'Your player'}</p><h2>${join?esc(c.name):club?'Name your clubhouse':'What should we call you?'}</h2>
+<form id="socialForm" data-kind="${kind}" class="field" novalidate>
+${club?'<label for="houseName">Clubhouse name</label><input id="houseName" maxlength="24" autocomplete="off" placeholder="Sunday Skins">':''}
+<label for="nickName">${kind==='name'?'Your name':'Your name in this clubhouse'}</label><input id="nickName" maxlength="16" autocomplete="nickname" value="${esc(C.me?C.me.name:'')}">
+<p class="fine err" id="formErr" role="alert"></p>
+<div class="row"><button class="btn" type="submit">${join?'Join':club?'Open the doors':'Save'}</button><button class="btn ghost" type="button" data-act="title">Back</button></div>
+${!C.me&&Net.remote&&window.PublicKeyCredential?'<button class="link" type="button" data-act="signin">Played before on another phone? Sign in</button>':''}</form>
+<p class="fine">${Net.remote?'This phone will remember you each day. Nobody else can post as you.':'Solo for now: this clubhouse lives on this device. Friends can join once the game is on its own web address.'}</p>`)}
+function clubCard(){const c=C.club;if(!c||!c.member)return titleCard();const t=C.tab,others=(C.me?C.me.clubs:[]).filter(x=>x.code!==c.code);
+  sheet(`<p class="eyebrow">Clubhouse · ${plural(c.count,'member')}${Net.remote?'':' · this device only'}</p><h2>${esc(c.name)}</h2>
+<div class="tabs" role="tablist">${[['today','Today'],['standings','Standings'],['records','Records']].map(([k,l])=>`<button role="tab" aria-selected="${t===k}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
+${t==='today'?tabToday(c):t==='standings'?tabStandings(c):tabRecords(c)}
+<div class="row"><button class="btn" data-act="invite">Invite friends</button><button class="btn ghost" data-act="title">Back</button></div>
+<p class="fine" id="shareNote"></p>${others.length?`<p class="eyebrow">Your other clubhouses</p><div class="row">${others.map(x=>`<button class="btn ghost sm" data-act="pick" data-c="${x.code}">${esc(x.name)}</button>`).join('')}</div>`:''}`,clubCard)}
+function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
+  sheet(`<p class="eyebrow">Your card</p><h2>${esc(m.name)}</h2>
+<div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
+<p class="fine">${st.hcp==null?'Your handicap arrives after three daily rounds. '+plural(Math.max(1,3-st.rounds),'round')+' to go.':'Your handicap is the best of your recent rounds, scaled to eighteen holes. Lower is better.'}</p>
+<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
+  return`<div class="${e?'won':''}"><i class="mono">${mono}</i><b>${name}${e&&e.n>1?' ×'+e.n:''}</b><span>${sw!=null&&!e?sw+' of 9 so far':what}</span></div>`}).join('')}</div>
+<div class="row">${Net.remote&&window.PublicKeyCredential&&!m.passkey?'<button class="btn green" data-act="passkey">Save my player</button>':''}<button class="btn ghost" data-act="rename">Change name</button><button class="btn ghost" data-act="title">Back</button></div>
+<p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey. Sign in on any phone to pick up where you left off.':'Save your player with Face ID or a fingerprint so a new phone cannot cost you your handicap.'}</p>`,meCard)}
+async function savePasskey(){const note=$('shareNote');try{const o=await Net.call('POST','/passkey/options',{kind:'create'});if(!o.ok)throw o;const pk=o.publicKey;pk.challenge=fromB64(pk.challenge);pk.user.id=fromB64(pk.user.id);
+    const cred=await navigator.credentials.create({publicKey:pk}),r=cred.response,j=await Net.call('POST','/passkey/create',{id:cred.id,clientDataJSON:toB64(r.clientDataJSON),spki:toB64(r.getPublicKey()),alg:r.getPublicKeyAlgorithm()});
+    if(!j.ok)throw j;await refresh()}catch(e){if(note)note.textContent=e&&e.name==='NotAllowedError'?'No passkey was saved.':'This device could not save a passkey.'}}
+async function signIn(){const note=$('formErr');try{const o=await Net.call('POST','/passkey/options',{kind:'get'});if(!o.ok)throw o;const pk=o.publicKey;pk.challenge=fromB64(pk.challenge);
+    const a=await navigator.credentials.get({publicKey:pk}),r=a.response,j=await Net.call('POST','/passkey/login',{id:a.id,clientDataJSON:toB64(r.clientDataJSON),authenticatorData:toB64(r.authenticatorData),signature:toB64(r.signature)});
+    if(!j.ok)throw j;await refresh();titleCard()}catch(e){if(note)note.textContent='No saved player was found on this phone.'}}
+async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.textContent='Invites work once the game is on its own web address. For now this clubhouse lives on this device.';return}
+  const url=location.origin+location.pathname+'?c='+c.code,text=`Join ${c.name} on Flick Links. Three holes a day.\n${url}`;
+  if(navigator.share)try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(text);note.textContent='Invite copied. Paste it in the group chat.'}catch(e){note.textContent=url}}
+$('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),btn=f.querySelector('[type=submit]');
+  const cname=kind==="club"?$("houseName").value.trim():"";if(!nick)return say(MSG.name);if(kind==='club'&&cname.length<2)return say('Give the clubhouse a name.');
+  btn.disabled=true;
+  try{if(!C.me||kind==='name'){const j=await Net.call('POST','/player',{name:nick});if(!j.ok)throw j}
+    if(kind==='club'){const j=await Net.call('POST','/club',{name:cname,nick});if(!j.ok)throw j;endInvite();pickClub(j.code)}
+    if(kind==='join'){const j=await Net.call('POST','/join',{code:C.invite||C.code,nick});if(!j.ok)throw j;endInvite();pickClub(j.code)}
+    await refresh();kind==='name'?meCard():(C.tab='today',clubCard())}
+  catch(x){btn.disabled=false;say(MSG[x&&x.error]||'That did not go through. Try again.')}});
 // ───────── clubhouse stationery
 const CREST='<svg viewBox="0 0 54 62" aria-hidden="true"><path d="M4 4h46v30c0 13-10 21-23 25C14 55 4 47 4 34z" fill="#14493a" stroke="#b9933b" stroke-width="2.5"/><path d="M9.500 9.500h35v24.500c0 9.500-7.500 16-17.500 19.500-10-3.500-17.500-10-17.500-19.500z" fill="none" stroke="#e6cf8a" stroke-width=".9"/><path d="M14 42l6-10 6 3 5-8 9 15z" fill="#cfcabb"/><path d="M20 32l6 3 5-8 2 3-6 9z" fill="#8f8a7b"/><path d="M27 13v14" stroke="#f4ecd6" stroke-width="1.6" stroke-linecap="round"/><path d="M27.500 13.500l9 3.200-9 3.200z" fill="#c9283a"/></svg>';
 const HOW=`<div class="how">
 <figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="24" r="9" fill="none" stroke="#e6cf8a" stroke-width="4"/><path d="M48 35v36" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M41 62l7 9 7-9" fill="none" stroke="#f4ecd6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="48" cy="78" r="11" fill="#f4ecd6" opacity=".45"/></svg><figcaption>Pull back to aim. Farther means harder.</figcaption></figure>
 <figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="50" r="26" fill="none" stroke="#0b2a21" stroke-opacity=".55" stroke-width="11"/><path d="M48 76A26 26 0 0 1 26 36" fill="none" stroke="#f4ecd6" stroke-width="7" stroke-linecap="round"/><path d="M48 76A26 26 0 0 0 70 36" fill="none" stroke="#f4ecd6" stroke-width="7" stroke-linecap="round"/><path d="M39 25.600A26 26 0 0 1 57 25.600" fill="none" stroke="#e6cf8a" stroke-width="11"/><path d="M48 62V40M41 47l7-8 7 8" fill="none" stroke="#e6cf8a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>Flick up the moment the ring fills.</figcaption></figure>
 <figure><svg viewBox="0 0 96 96" aria-hidden="true"><path d="M48 84V44" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M48 84C48 56 42 34 24 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><path d="M48 84C48 56 54 34 72 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><text x="17" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">early</text><text x="60" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">late</text></svg><figcaption>Early hooks it. Late slices it.</figcaption></figure></div>`;
-function sheet(html){$('card').innerHTML=html;$('scrim').hidden=false;$('card').scrollTop=0;const b=$('card').querySelector('.btn');if(b)try{b.focus({preventScroll:true})}catch(e){}}
-function closeSheet(){$('scrim').hidden=true;$('card').innerHTML=''}
+// again is the function that redraws this sheet when fresh clubhouse data arrives; a redraw keeps its scroll and skips the entrance
+let redrawFn=null;
+function sheet(html,again){const c=$('card'),same=!!again&&redrawFn===again&&!$('scrim').hidden,top=c.scrollTop;c.classList.toggle('still',same);c.innerHTML=html;$('scrim').hidden=false;c.scrollTop=same?top:0;redrawFn=again||null;
+  if(!same){const b=c.querySelector('input')||c.querySelector('.btn');if(b)try{b.focus({preventScroll:true})}catch(e){}}}
+function closeSheet(){$('scrim').hidden=true;$('card').innerHTML='';redrawFn=null}
+function redraw(){if(redrawFn&&!$('scrim').hidden)redrawFn()}
 const rel=n=>n===0?'E':(n>0?'+':'−')+Math.abs(n);
 function scoreName(s,par){if(s===1)return'Hole in one';const d=s-par;return d<=-3?'Albatross':d===-2?'Eagle':d===-1?'Birdie':d===0?'Par':d===1?'Bogey':d===2?'Double bogey':d===3?'Triple bogey':rel(d)+' on the hole'}
 const emo=(s,par)=>s===1?'🎯':s-par<=-2?'🦅':s-par===-1?'🐦':s===par?'⚪':s-par===1?'🟧':'🟥';
@@ -848,13 +1159,14 @@ const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{w
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
 function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(0,0);setupShot();overviewCam(.2,.3,true);hud();hintOff();
-  sheet(`<div class="mast">${CREST}<h1>Flick Links</h1></div>
+  sheet(`<div class="mast">${CREST}<h1>Flick Links</h1>${meChip()}</div>
 <div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
+${clubStrip()}
 <p class="eyebrow">Practice a front nine</p>
 <div class="row">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>
-${seen?'':HOW}`)}
+${seen?'':HOW}`,titleCard)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>The swing.</b> The dotted line shows where a pure strike lands. A ring at your thumb fills, drains and fills again. Flick through it as it tops out. Early loses distance and hooks. Late loses distance and slices. Longer clubs and bad lies give a smaller window.</p>
 <p class="fine"><b>On the green.</b> The moving streaks run downhill, faster and warmer where it is steep. Drag to place the marker where a flat putt should stop, press Putt, then pull back and flick on the ring. A mistimed putt comes up short or runs long.</p>
@@ -868,17 +1180,17 @@ ${scoreCard(S.round.ids,S.round.scores)}
 function shareText(){const r=S.round,hs=r.ids.map(HOLE),par=sum(hs.map(h=>h.par)),tot=sum(r.scores);
   let t=r.type==='nine'?`⛳ Flick Links · front nine at ${hs[0].course.club}\n`+r.scores.map((s,i)=>emo(s,hs[i].par)).join('')+`\n${tot} strokes (${rel(tot-par)})`
     :`⛳ Flick Links No. ${S.day}\n`+r.scores.map((s,i)=>`${hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
-  let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname}catch(e){}
+  let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname+(Net.remote&&C.code?'?c='+C.code:'')}catch(e){}
   return url?t+'\n'+url:t}
 function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r.scores=sv.scores;
   const hs=r.ids.map(HOLE),d=sum(r.scores)-sum(hs.map(h=>h.par)),m=fetchKey('meta'),nine=r.type==='nine';
   S.mode='done';S.hi=r.ids.length-1;setBall(0,0);setupShot();hud();hintOff();store('seen',1);overviewCam(.16,.24,false);
   sheet(`<p class="eyebrow">${nine?'Practice round · '+hs[0].course.club:dateLine()}</p><h2>${sum(r.scores)} strokes, ${d===0?'even par':d<0?Math.abs(d)+' under':d+' over'}</h2>
 ${scoreCard(r.ids,r.scores)}
-<textarea id="shareText" readonly rows="3" aria-label="Your result, ready to paste">${shareText()}</textarea>
-<div class="row"><button class="btn" data-act="share">Share score</button><button class="btn ghost" data-act="${nine?'again':'title'}">${nine?'Play it again':'Clubhouse'}</button></div>
-${nine?'<button class="btn ghost" data-act="title">Clubhouse</button>':''}
-<p class="fine" id="shareNote">${nine?'Practice rounds do not change today\'s card.':(m&&m.streak>1?`Day streak <b>${m.streak}</b>. `:'')+'New holes in <b id="countdown">--:--:--</b>.'}</p>`);tickClock()}
+<textarea id="shareText" readonly rows="${shareText().split('\n').length}" aria-label="Your result, ready to paste">${shareText()}</textarea>
+<div class="row"><button class="btn" data-act="share">Share score</button><button class="btn ghost" data-act="${nine?'again':'title'}">${nine?'Play it again':'Home'}</button></div>
+${nine?'<button class="btn ghost" data-act="title">Home</button>':C.club&&C.club.member?'<p class="eyebrow">'+esc(C.club.name)+' today</p>'+tabToday(C.club)+'<button class="btn green" data-act="club">Open the clubhouse</button>':clubStrip()}
+<p class="fine" id="shareNote">${nine?'Practice rounds do not change today\'s card.':(m&&m.streak>1?`Day streak <b>${m.streak}</b>. `:'')+'New holes in <b id="countdown">--:--:--</b>.'}</p>`,nine?null:resultsCard);tickClock()}
 async function share(){const ta=$('shareText'),text=ta.value,note=$('shareNote');let top=false;try{top=window.top===window.self}catch(e){}
   if(top&&navigator.share){try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}}
   try{await navigator.clipboard.writeText(text);note.textContent='Copied. Paste it in the group chat.'}
@@ -894,7 +1206,17 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='next'){closeSheet();startHole(S.hi+1)}
   else if(a==='results')resultsCard();
   else if(a==='title')titleCard();
-  else if(a==='share')share()});
+  else if(a==='share')share();
+  else if(a==='me')meCard();
+  else if(a==='club'){C.tab='today';clubCard()}
+  else if(a==='clubform')formCard('club');
+  else if(a==='joinform')formCard('join');
+  else if(a==='rename')formCard('name');
+  else if(a==='tab'){C.tab=b.dataset.t;clubCard()}
+  else if(a==='pick'){pickClub(b.dataset.c);refresh()}
+  else if(a==='invite')invite();
+  else if(a==='passkey')savePasskey();
+  else if(a==='signin')signIn()});
 
 // ───────── flow
 let introT=0;
@@ -919,6 +1241,8 @@ const snap=()=>({type:S.round.type,course:S.round.course,playing:PLAYING.include
 const hot=window.claude&&window.claude.hot;
 try{if(hot&&hot.snapshot)hot.snapshot(snap)}catch(e){}
 if(hot&&hot.ready)hot.ready(start);else start(hot&&hot.data||{});
+try{const q=new URLSearchParams(location.search).get('c');if(q&&/^[A-Za-z0-9]{6}$/.test(q))C.invite=q.toUpperCase()}catch(e){}
+Net.ready=Net.init();Net.ready.then(()=>refresh());
 requestAnimationFrame(frame);
 // On its own web address the page checks for a newer build every 20 seconds and reloads between shots.
 let standalone=false;try{standalone=window.top===window.self&&/^https?:$/.test(location.protocol)}catch(e){}
@@ -926,6 +1250,6 @@ if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==
   try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text(),m=t.match(/BUILD_TS=(\d{10,})/);
     if(m&&+m[1]>BUILD_TS){try{sessionStorage.setItem(KEY+'resume',JSON.stringify(snap()))}catch(e){}location.replace(location.pathname+'?v='+m[1]+location.hash)}}catch(e){}},20000);
 
-if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,courseIds};
+if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,courseIds,C,Net,refresh};
 })();
 </script>

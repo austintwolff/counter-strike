@@ -196,7 +196,8 @@ function holed(){const b=S.ball,h=cur();b.x=h.pin.x;b.y=h.pin.y;b.vx=b.vy=b.vz=b
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now()});finishHole(S.strokes)}
 function finishHole(score){S.mode='wait';S.round.scores[S.hi]=score;S.strokes=0;const n=S.round.ids.length,last=S.hi>=n-1;
   store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last});
-  if(last&&S.round.type==='daily')bumpStreak();setTimeout(()=>holeCard(score),900)}
+  if(last&&S.round.type==='daily'){bumpStreak();refresh()} // refresh posts the finished card to the clubhouse
+  setTimeout(()=>holeCard(score),900)}
 function bumpStreak(){const m=fetchKey('meta')||{last:0,streak:0};if(m.last===S.day)return;m.streak=m.last===S.day-1?m.streak+1:1;m.last=S.day;store('meta',m)}
 
 // ───────── frame loop

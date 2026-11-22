@@ -4,8 +4,12 @@ const HOW=`<div class="how">
 <figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="24" r="9" fill="none" stroke="#e6cf8a" stroke-width="4"/><path d="M48 35v36" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M41 62l7 9 7-9" fill="none" stroke="#f4ecd6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="48" cy="78" r="11" fill="#f4ecd6" opacity=".45"/></svg><figcaption>Pull back to aim. Farther means harder.</figcaption></figure>
 <figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="50" r="26" fill="none" stroke="#0b2a21" stroke-opacity=".55" stroke-width="11"/><path d="M48 76A26 26 0 0 1 26 36" fill="none" stroke="#f4ecd6" stroke-width="7" stroke-linecap="round"/><path d="M48 76A26 26 0 0 0 70 36" fill="none" stroke="#f4ecd6" stroke-width="7" stroke-linecap="round"/><path d="M39 25.600A26 26 0 0 1 57 25.600" fill="none" stroke="#e6cf8a" stroke-width="11"/><path d="M48 62V40M41 47l7-8 7 8" fill="none" stroke="#e6cf8a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>Flick up the moment the ring fills.</figcaption></figure>
 <figure><svg viewBox="0 0 96 96" aria-hidden="true"><path d="M48 84V44" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M48 84C48 56 42 34 24 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><path d="M48 84C48 56 54 34 72 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><text x="17" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">early</text><text x="60" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">late</text></svg><figcaption>Early hooks it. Late slices it.</figcaption></figure></div>`;
-function sheet(html){$('card').innerHTML=html;$('scrim').hidden=false;$('card').scrollTop=0;const b=$('card').querySelector('.btn');if(b)try{b.focus({preventScroll:true})}catch(e){}}
-function closeSheet(){$('scrim').hidden=true;$('card').innerHTML=''}
+// again is the function that redraws this sheet when fresh clubhouse data arrives; a redraw keeps its scroll and skips the entrance
+let redrawFn=null;
+function sheet(html,again){const c=$('card'),same=!!again&&redrawFn===again&&!$('scrim').hidden,top=c.scrollTop;c.classList.toggle('still',same);c.innerHTML=html;$('scrim').hidden=false;c.scrollTop=same?top:0;redrawFn=again||null;
+  if(!same){const b=c.querySelector('input')||c.querySelector('.btn');if(b)try{b.focus({preventScroll:true})}catch(e){}}}
+function closeSheet(){$('scrim').hidden=true;$('card').innerHTML='';redrawFn=null}
+function redraw(){if(redrawFn&&!$('scrim').hidden)redrawFn()}
 const rel=n=>n===0?'E':(n>0?'+':'−')+Math.abs(n);
 function scoreName(s,par){if(s===1)return'Hole in one';const d=s-par;return d<=-3?'Albatross':d===-2?'Eagle':d===-1?'Birdie':d===0?'Par':d===1?'Bogey':d===2?'Double bogey':d===3?'Triple bogey':rel(d)+' on the hole'}
 const emo=(s,par)=>s===1?'🎯':s-par<=-2?'🦅':s-par===-1?'🐦':s===par?'⚪':s-par===1?'🟧':'🟥';
@@ -24,13 +28,14 @@ const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{w
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
 function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(0,0);setupShot();overviewCam(.2,.3,true);hud();hintOff();
-  sheet(`<div class="mast">${CREST}<h1>Flick Links</h1></div>
+  sheet(`<div class="mast">${CREST}<h1>Flick Links</h1>${meChip()}</div>
 <div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
+${clubStrip()}
 <p class="eyebrow">Practice a front nine</p>
 <div class="row">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>
-${seen?'':HOW}`)}
+${seen?'':HOW}`,titleCard)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>The swing.</b> The dotted line shows where a pure strike lands. A ring at your thumb fills, drains and fills again. Flick through it as it tops out. Early loses distance and hooks. Late loses distance and slices. Longer clubs and bad lies give a smaller window.</p>
 <p class="fine"><b>On the green.</b> The moving streaks run downhill, faster and warmer where it is steep. Drag to place the marker where a flat putt should stop, press Putt, then pull back and flick on the ring. A mistimed putt comes up short or runs long.</p>
@@ -44,17 +49,17 @@ ${scoreCard(S.round.ids,S.round.scores)}
 function shareText(){const r=S.round,hs=r.ids.map(HOLE),par=sum(hs.map(h=>h.par)),tot=sum(r.scores);
   let t=r.type==='nine'?`⛳ Flick Links · front nine at ${hs[0].course.club}\n`+r.scores.map((s,i)=>emo(s,hs[i].par)).join('')+`\n${tot} strokes (${rel(tot-par)})`
     :`⛳ Flick Links No. ${S.day}\n`+r.scores.map((s,i)=>`${hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
-  let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname}catch(e){}
+  let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname+(Net.remote&&C.code?'?c='+C.code:'')}catch(e){}
   return url?t+'\n'+url:t}
 function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r.scores=sv.scores;
   const hs=r.ids.map(HOLE),d=sum(r.scores)-sum(hs.map(h=>h.par)),m=fetchKey('meta'),nine=r.type==='nine';
   S.mode='done';S.hi=r.ids.length-1;setBall(0,0);setupShot();hud();hintOff();store('seen',1);overviewCam(.16,.24,false);
   sheet(`<p class="eyebrow">${nine?'Practice round · '+hs[0].course.club:dateLine()}</p><h2>${sum(r.scores)} strokes, ${d===0?'even par':d<0?Math.abs(d)+' under':d+' over'}</h2>
 ${scoreCard(r.ids,r.scores)}
-<textarea id="shareText" readonly rows="3" aria-label="Your result, ready to paste">${shareText()}</textarea>
-<div class="row"><button class="btn" data-act="share">Share score</button><button class="btn ghost" data-act="${nine?'again':'title'}">${nine?'Play it again':'Clubhouse'}</button></div>
-${nine?'<button class="btn ghost" data-act="title">Clubhouse</button>':''}
-<p class="fine" id="shareNote">${nine?'Practice rounds do not change today\'s card.':(m&&m.streak>1?`Day streak <b>${m.streak}</b>. `:'')+'New holes in <b id="countdown">--:--:--</b>.'}</p>`);tickClock()}
+<textarea id="shareText" readonly rows="${shareText().split('\n').length}" aria-label="Your result, ready to paste">${shareText()}</textarea>
+<div class="row"><button class="btn" data-act="share">Share score</button><button class="btn ghost" data-act="${nine?'again':'title'}">${nine?'Play it again':'Home'}</button></div>
+${nine?'<button class="btn ghost" data-act="title">Home</button>':C.club&&C.club.member?'<p class="eyebrow">'+esc(C.club.name)+' today</p>'+tabToday(C.club)+'<button class="btn green" data-act="club">Open the clubhouse</button>':clubStrip()}
+<p class="fine" id="shareNote">${nine?'Practice rounds do not change today\'s card.':(m&&m.streak>1?`Day streak <b>${m.streak}</b>. `:'')+'New holes in <b id="countdown">--:--:--</b>.'}</p>`,nine?null:resultsCard);tickClock()}
 async function share(){const ta=$('shareText'),text=ta.value,note=$('shareNote');let top=false;try{top=window.top===window.self}catch(e){}
   if(top&&navigator.share){try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}}
   try{await navigator.clipboard.writeText(text);note.textContent='Copied. Paste it in the group chat.'}
@@ -70,7 +75,17 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='next'){closeSheet();startHole(S.hi+1)}
   else if(a==='results')resultsCard();
   else if(a==='title')titleCard();
-  else if(a==='share')share()});
+  else if(a==='share')share();
+  else if(a==='me')meCard();
+  else if(a==='club'){C.tab='today';clubCard()}
+  else if(a==='clubform')formCard('club');
+  else if(a==='joinform')formCard('join');
+  else if(a==='rename')formCard('name');
+  else if(a==='tab'){C.tab=b.dataset.t;clubCard()}
+  else if(a==='pick'){pickClub(b.dataset.c);refresh()}
+  else if(a==='invite')invite();
+  else if(a==='passkey')savePasskey();
+  else if(a==='signin')signIn()});
 
 // ───────── flow
 let introT=0;
@@ -95,6 +110,8 @@ const snap=()=>({type:S.round.type,course:S.round.course,playing:PLAYING.include
 const hot=window.claude&&window.claude.hot;
 try{if(hot&&hot.snapshot)hot.snapshot(snap)}catch(e){}
 if(hot&&hot.ready)hot.ready(start);else start(hot&&hot.data||{});
+try{const q=new URLSearchParams(location.search).get('c');if(q&&/^[A-Za-z0-9]{6}$/.test(q))C.invite=q.toUpperCase()}catch(e){}
+Net.ready=Net.init();Net.ready.then(()=>refresh());
 requestAnimationFrame(frame);
 // On its own web address the page checks for a newer build every 20 seconds and reloads between shots.
 let standalone=false;try{standalone=window.top===window.self&&/^https?:$/.test(location.protocol)}catch(e){}
@@ -102,4 +119,4 @@ if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==
   try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text(),m=t.match(/BUILD_TS=(\d{10,})/);
     if(m&&+m[1]>BUILD_TS){try{sessionStorage.setItem(KEY+'resume',JSON.stringify(snap()))}catch(e){}location.replace(location.pathname+'?v='+m[1]+location.hash)}}catch(e){}},20000);
 
-if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,courseIds};
+if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,courseIds,C,Net,refresh};

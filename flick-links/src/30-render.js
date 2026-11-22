@@ -88,9 +88,9 @@ function drawCart(x,y,a){const sv=rotv(SUN.x,SUN.y,-a);ctx.save();ctx.translate(
   ctx.fillStyle='rgba(5,15,10,.35)';rrect(-1.5+sv.x*.6,-.85+sv.y*.6,3,1.7,.4);ctx.fillStyle='#22241f';for(const[wx,wy]of[[-1,-.85],[-1,.85],[1,-.85],[1,.85]])rrect(wx-.28,wy-.14,.56,.28,.1);
   ctx.fillStyle='#efe6cd';rrect(-1.5,-.78,3,1.56,.4);ctx.fillStyle='#5d4a2c';rrect(-1.45,-.5,.5,1,.15);ctx.fillStyle='#c9283a';disc(-1.2,-.25,.14);ctx.fillStyle='#e6cf8a';disc(-1.2,.25,.14);
   ctx.fillStyle='#14493a';rrect(-.75,-.72,1.75,1.44,.3);ctx.fillStyle='rgba(255,255,255,.14)';rrect(-.75,-.72,1.75,.5,.3);ctx.restore()}
-// birds crossing now and then, and specks carried on the wind
+// a small, distant flock across a corner of the widest views only, and specks carried on the wind
 function drawSky(now,h){const z=cam.s,R=hyp(W,H)/z*.62,T=17000,k=Math.floor(now/T),u=(now%T)/T;
-  if(u<.5){const r=mulberry32(k*977+h.n*31),ang=r()*TAU,off=(r()*2-1)*R*.35,t=u*4-1,ca=Math.cos(ang),sa=Math.sin(ang),bx=cam.x-sa*off+ca*t*R*1.2,by=cam.y+ca*off+sa*t*R*1.2,sz=Math.max(.9,5.5/z);
+  if(u<.5&&z<2.6){const r=mulberry32(k*977+h.n*31),ang=r()*TAU,off=(r()<.5?-1:1)*R*(.52+r()*.16),t=u*4-1,ca=Math.cos(ang),sa=Math.sin(ang),bx=cam.x-sa*off+ca*t*R*1.2,by=cam.y+ca*off+sa*t*R*1.2,sz=3.2/z;
     ctx.lineCap='round';ctx.lineJoin='round';for(let i=0;i<3;i++){const x=bx-ca*i*sz*2.4-sa*(i===1?1:i===2?-1:0)*sz*1.6,y=by-sa*i*sz*2.4+ca*(i===1?1:i===2?-1:0)*sz*1.6,fl=Math.sin(now/95+i*1.7)*.55;
       for(const[ox,oy,col,lw]of[[SUN.x*sz*5,SUN.y*sz*5,'rgba(6,18,8,.22)',.34],[0,0,'#f6f1e2',.26]]){ctx.strokeStyle=col;ctx.lineWidth=sz*lw;ctx.beginPath();
         const wing=sgn=>{const wa=ang+sgn*(1.95+fl);return[x+ox+Math.cos(wa)*sz*1.25,y+oy+Math.sin(wa)*sz*1.25]},L=wing(1),Rr=wing(-1);ctx.moveTo(L[0],L[1]);ctx.lineTo(x+ox,y+oy);ctx.lineTo(Rr[0],Rr[1]);ctx.stroke()}}}

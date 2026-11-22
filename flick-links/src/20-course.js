@@ -3,7 +3,7 @@
 // Positions are (s, o): yards from the tee along the routing, and yards right (+) or left (−) of it.
 // th is the look and feel of a course: what lies beyond the rough, ground colours, the mix and density of trees.
 const COURSES=[{id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
- th:{out:'woods',floor:'#33512b',rough:'#4b7735',fair:'#69a547',stripe:1,cedar:.34,pine:0,dens:1,marker:'#e6cf8a',bloom:'bloom',blossom:29,cor:[[0,56],[.5,64],[1,60]]},holes:[
+ th:{out:'woods',floor:'#33512b',rough:'#4b7735',fair:'#69a547',stripe:1,cedar:.34,pine:0,dens:1,marker:'#e6cf8a',bloom:'bloom',blossom:0,cor:[[0,56],[.5,64],[1,60]]},holes:[
  {n:1,name:'Circle C',par:4,yd:423,hcp:7,route:[[0,0],[-10,150],[5,280],[55,410]],
   fair:[[.12,.91,[[0,12],[.35,20],[.62,18],[.85,14],[1,10]]]],green:[15,12.5,15,11],slope:[180,.35],
   bunk:[[246,-27,9,5.5,10],[274,-25,7,5,-15],[402,-19,8,5,70],[436,9,7,4.5,0]],pond:[[366,35,22,15,20]],
@@ -90,7 +90,7 @@ const COURSES=[{id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
 
 // Hancock: Austin's old nine-hole muni. Short, tight, shaded by big pecans and oaks, with Waller Creek wandering through it.
 {id:'hk',code:'HK',club:'Hancock',tee:'Blue',
- th:{out:'woods',floor:'#2f4a28',rough:'#4f7a36',fair:'#6ea14b',stripe:.55,cedar:.1,pine:0,dens:1.2,marker:'#4f86e8',bloom:'bloomPink',blossom:17,cor:[[0,42],[.5,48],[1,46]]},holes:[
+ th:{out:'woods',floor:'#2f4a28',rough:'#4f7a36',fair:'#6ea14b',stripe:.55,cedar:.1,pine:0,dens:1.2,marker:'#4f86e8',bloom:'bloomPink',blossom:0,cor:[[0,42],[.5,48],[1,46]]},holes:[
  {n:1,name:'Since 1899',par:3,yd:152,hcp:15,route:[[0,0],[3,80],[0,152]],
   fair:[],pad:[[88,0,14,10,0]],green:[11,11,0,201],slope:[190,.45],
   creek:[{w:6,p:[[98,-62],[108,-27],[118,0],[124,27],[122,62]]}],bunk:[[152,-17,6,5,0],[169,8,6,4,30]],oak:[[60,-30,9],[70,32,8]],bridge:[[119,4,0,13]]},

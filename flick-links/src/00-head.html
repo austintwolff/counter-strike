@@ -1,0 +1,166 @@
+<title>Flick Links</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Marcellus+SC&family=Playfair+Display:ital,wght@0,600;0,800;1,700&display=swap">
+<style>
+/* Layout: a full-bleed aerial of the hole on one canvas. Brass-ruled green plaques sit on the screen edges,
+   and every menu is a sheet of clubhouse card stock that rises from the bottom, where the thumb already is. */
+:root{
+  --club:#14493a; --club-deep:#0b2a21; --club-hi:#1f6450; --cream:#f4ecd6; --paper:#f8f2e0; --paper-2:#efe6cb;
+  --ink:#1c2620; --ink-2:#56604f; --gold:#b9933b; --gold-hi:#e6cf8a; --claret:#7b1e2b; --claret-deep:#561420;
+  --pencil:#33373a; --rule:#2b5a48; --tee-gold:#ead9a0; --white:#ffffff;
+  --display:'Playfair Display','Hoefler Text','Baskerville','Georgia',serif;
+  --caps:'Copperplate','Copperplate Gothic Light','Marcellus SC','Georgia',serif;
+  --hand:'Kalam','Bradley Hand','Comic Sans MS',cursive;
+  color-scheme:light;
+}
+html{height:100%;box-sizing:border-box;background:var(--club-deep)}
+body{height:100%;background:var(--club-deep);color:var(--ink);font-family:var(--display);font-size:14px;overflow:hidden;
+  overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#app{position:relative;height:100%;overflow:hidden;touch-action:none}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;-webkit-touch-callout:none;cursor:crosshair}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
+
+.hud{position:absolute;left:0;right:0;display:flex;justify-content:space-between;gap:8px;pointer-events:none;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hud.top{top:10px;align-items:flex-start}
+.hud.bottom{bottom:12px;align-items:flex-end}
+.plate{pointer-events:auto;color:var(--cream);background:linear-gradient(180deg,var(--club-hi),var(--club) 45%,var(--club-deep));
+  border:1px solid var(--gold);border-radius:9px;box-shadow:inset 0 0 0 2px rgba(11,42,33,.55),inset 0 1px 0 3px rgba(230,207,138,.12),0 4px 10px rgba(0,0,0,.4)}
+.lbl{font:400 11px/1 var(--caps);letter-spacing:.11em;text-transform:uppercase;color:var(--gold-hi)}
+.num{font:800 30px/0.9 var(--display);font-variant-numeric:lining-nums tabular-nums}
+
+.holeinfo{display:flex;flex-direction:column;gap:5px;padding:9px 13px 10px;max-width:56vw}
+.holeinfo b{font:italic 700 19px/1.05 var(--display)}
+.stack{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pin{display:flex;align-items:baseline;gap:6px;padding:8px 13px 9px}
+.wind{display:flex;align-items:center;gap:6px;padding:5px 12px 5px 7px}
+.wind .num{font-size:20px}
+.wind svg{width:24px;height:24px;display:block}
+.wind svg path{fill:var(--gold-hi)}
+
+.club{display:flex;align-items:center;gap:2px;padding:5px}
+.club button{width:40px;height:44px;border-radius:7px;font:800 24px/1 var(--display);color:var(--gold-hi)}
+.club button:active{background:rgba(230,207,138,.18)}
+.club button:disabled{opacity:.3}
+.clubtxt{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px}
+.clubtxt b{font:800 19px/1 var(--display)}
+.lie{padding:8px 12px 7px}
+.round{width:40px;height:40px;border-radius:50%;font:800 17px/1 var(--display);display:grid;place-items:center}
+.round[aria-pressed="false"]{color:rgba(244,236,214,.45);text-decoration:line-through}
+.tools{display:flex;gap:6px}
+
+#hint,#toast{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;text-align:center;transition:opacity .25s}
+#hint{bottom:88px;white-space:nowrap;font:italic 700 16px/1.2 var(--display);color:var(--cream);text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 12px rgba(0,0,0,.55)}
+#toast{top:118px;width:max-content;max-width:calc(100% - 32px);background:var(--paper);color:var(--ink);padding:10px 18px 9px;border-radius:4px;
+  font:italic 700 17px/1.2 var(--display);opacity:0;box-shadow:inset 0 0 0 1px var(--gold),0 6px 16px rgba(0,0,0,.4)}
+#toast.on{opacity:1}
+#toast small{display:block;margin-top:5px;font:400 11px/1 var(--caps);letter-spacing:.11em;text-transform:uppercase;color:var(--ink-2)}
+
+#scrim{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;background:rgba(6,22,17,.42)}
+#card{width:min(100%,480px);max-height:92%;overflow-y:auto;box-sizing:border-box;color:var(--ink);
+  background:repeating-linear-gradient(93deg,rgba(120,100,50,.035) 0 1px,transparent 1px 4px),linear-gradient(180deg,var(--paper),var(--paper-2));
+  border-radius:10px 10px 0 0;border-top:1px solid var(--gold);
+  padding-block:20px 22px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:14px;box-shadow:0 -10px 30px rgba(0,0,0,.45);animation:rise .34s cubic-bezier(.2,.9,.3,1.05)}
+@keyframes rise{from{transform:translateY(46px);opacity:.3}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){#card{animation:none}#hint,#toast{transition:none}}
+
+.mast{display:flex;align-items:center;gap:12px}
+.mast svg{width:54px;height:62px;flex:none}
+.mast h1{margin:0;font:italic 700 36px/0.95 var(--display);letter-spacing:-.01em;color:var(--club)}
+.mast p{margin:5px 0 0;font:400 11.5px/1.25 var(--caps);letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2)}
+.eyebrow{margin:0;font:400 11.5px/1.3 var(--caps);letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2)}
+h2{margin:0;font:italic 700 31px/1.02 var(--display);color:var(--club);text-wrap:balance}
+p{margin:0;line-height:1.45}
+.sub{font:600 15px/1.4 var(--display);color:var(--ink)}
+.fine{font:600 12.5px/1.45 var(--display);color:var(--ink-2)}
+.fine b{color:var(--ink);font-variant-numeric:tabular-nums}
+.flourish{height:9px;background:linear-gradient(var(--gold),var(--gold)) center/100% 1px no-repeat;position:relative}
+.flourish::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:7px;background:var(--gold);transform:translate(-50%,-50%) rotate(45deg);box-shadow:0 0 0 4px var(--paper)}
+
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.how figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+.how svg{width:100%;height:auto;border-radius:4px;display:block;background:linear-gradient(160deg,#6aa84a,#4c8a3a);box-shadow:inset 0 0 0 1px var(--club)}
+.how figcaption{font:600 12.5px/1.3 var(--display)}
+
+.btn{min-height:52px;border-radius:6px;padding:2px 18px 0;font:400 15px/1.1 var(--caps);letter-spacing:.12em;text-transform:uppercase;color:var(--cream);
+  background:linear-gradient(180deg,#93283a,var(--claret));border:1px solid var(--gold);box-shadow:inset 0 0 0 2px rgba(86,20,32,.6),0 3px 0 var(--claret-deep)}
+.btn:active{transform:translateY(2px);box-shadow:inset 0 0 0 2px rgba(86,20,32,.6),0 1px 0 var(--claret-deep)}
+.btn.green{background:linear-gradient(180deg,var(--club-hi),var(--club));box-shadow:inset 0 0 0 2px rgba(11,42,33,.6),0 3px 0 var(--club-deep)}
+.btn.ghost{background:transparent;color:var(--club);border:1px solid var(--club);box-shadow:inset 0 0 0 2px var(--paper),inset 0 0 0 3px rgba(20,73,58,.35)}
+.btn.ghost:active{transform:none;background:rgba(20,73,58,.08)}
+.btn small{display:block;margin-top:4px;font:italic 600 12px/1 var(--display);letter-spacing:0;text-transform:none;opacity:.85}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row .btn{flex:1 1 150px}
+
+/* the scorecard: printed stock, pencil marks */
+.card-sc{border:1.5px solid var(--rule);background:var(--paper);box-shadow:0 2px 0 rgba(43,90,72,.18)}
+.sc-head{display:flex;align-items:center;gap:9px;background:var(--club);color:var(--cream);padding:7px 10px}
+.sc-head svg{width:22px;height:25px;flex:none}
+.sc-head b{font:400 13px/1.15 var(--caps);letter-spacing:.14em;text-transform:uppercase}
+.sc-head span{margin-left:auto;font:italic 600 12.5px/1 var(--display);color:var(--gold-hi);white-space:nowrap}
+table.sc{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-numeric:lining-nums tabular-nums}
+.sc th,.sc td{border:1px solid var(--rule);padding:5px 0 4px;text-align:center;font:600 13px/1 var(--display);overflow:hidden}
+.sc th{width:48px;font:400 9.5px/1 var(--caps);letter-spacing:.09em;text-transform:uppercase;color:var(--rule);text-align:left;padding-left:6px}
+.sc.wide th{width:74px}
+.sc tr.h td,.sc tr.h th{background:var(--club);color:var(--cream);border-color:var(--club-hi);font:400 12px/1 var(--caps);padding-block:6px 5px}
+.sc tr.g td,.sc tr.g th{background:var(--tee-gold)}
+.sc tr.p td{font-weight:800;font-size:14px}
+.sc tr.k td{font:italic 600 11.5px/1 var(--display);color:var(--ink-2)}
+.sc tr.s td{height:38px;padding:0;font:700 23px/1 var(--hand);color:var(--pencil)}
+.sc tr.s th{color:var(--ink)}
+.sc td.out{border-left:3px double var(--rule);width:44px;font-weight:800}
+.sc.wide td.out{width:74px}
+.mk{display:inline-grid;place-items:center;width:27px;height:27px;padding-top:3px;box-sizing:border-box}
+.mk.birdie,.mk.eagle{border:1.6px solid var(--pencil);border-radius:52% 48% 50% 50%/48% 52% 47% 53%;transform:rotate(-4deg)}
+.mk.eagle{box-shadow:0 0 0 2px var(--paper),0 0 0 3.4px var(--pencil)}
+.mk.bogey,.mk.dbl{border:1.6px solid var(--pencil);border-radius:2px 4px 3px 5px;transform:rotate(2deg)}
+.mk.dbl{box-shadow:0 0 0 2px var(--paper),0 0 0 3.4px var(--pencil)}
+.sc-foot{display:flex;gap:14px;padding:8px 10px 7px;font:400 9.5px/1 var(--caps);letter-spacing:.1em;text-transform:uppercase;color:var(--rule)}
+.sc-foot span{flex:1;display:flex;align-items:flex-end;gap:5px;border-bottom:1px solid var(--rule);padding-bottom:2px;min-width:0}
+.sc-foot i{font:400 17px/0.8 var(--hand);color:var(--pencil);letter-spacing:0;text-transform:none;white-space:nowrap}
+
+#shareText{width:100%;box-sizing:border-box;resize:none;border:1px dashed var(--rule);border-radius:3px;background:rgba(255,255,255,.55);
+  color:var(--ink);padding:9px 11px;font:600 15px/1.4 var(--display);-webkit-user-select:text;user-select:text}
+</style>
+
+<div id="app">
+  <canvas id="c" aria-label="Aerial view of the golf hole. Pull back to aim, then flick forward to swing."></canvas>
+
+  <div class="hud top">
+    <div class="plate holeinfo">
+      <span class="lbl" id="hHole">Hole 1</span>
+      <b id="hName">First Tee</b>
+      <span class="lbl" id="hPar">Par 4 · 356 yd</span>
+      <span class="lbl" id="hStroke">Shot 1</span>
+    </div>
+    <div class="stack">
+      <div class="plate pin"><span class="num" id="hDist">356</span><span class="lbl" id="hUnit">yd to pin</span></div>
+      <div class="plate wind" title="Wind">
+        <svg id="windArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l6 9h-4v11h-4V11H6z"/></svg>
+        <span class="num" id="hWind">0</span><span class="lbl">mph</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="hint">Pull back to aim, then flick forward</div>
+
+  <div class="hud bottom">
+    <div class="plate club">
+      <button id="clubPrev" aria-label="Shorter club">‹</button>
+      <div class="clubtxt"><b id="clubName">Driver</b><span class="lbl" id="clubMax">up to 240 yd</span></div>
+      <button id="clubNext" aria-label="Longer club">›</button>
+    </div>
+    <div class="stack">
+      <span class="plate lie lbl" id="hLie">Tee</span>
+      <div class="tools">
+        <button class="plate round" id="btnSound" aria-label="Sound" aria-pressed="true">♪</button>
+        <button class="plate round" id="btnHelp" aria-label="How to swing">?</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scrim" hidden><div id="card" role="dialog" aria-modal="true" aria-label="Flick Links"></div></div>
+</div>

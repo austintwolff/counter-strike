@@ -23,7 +23,7 @@ function titleCard(){const ids=dailyIds(S.key),d=fetchKey(S.key),n=fetchKey(S.ke
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(0,0);setupShot();overviewCam(.2,.3,true);hud();hintOff();
   const dGo=d&&!d.done&&(d.hi>0||d.strokes>0),nGo=n&&!n.done&&(n.hi>0||n.strokes>0);
   sheet(`<div class="mast">${CREST}<div><h1>Flick Links</h1><p>at ${COURSE.club} · ${COURSE.place}</p></div></div>
-<div class="flourish"></div><p class="eyebrow">${dateLine()}</p>
+<div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
 ${scoreCard(ids,d&&d.scores?d.scores:[],"Today's three")}
 <div class="row"><button class="btn" data-act="daily">Today's three<small>${d&&d.done?'See your card':dGo?'Resume at No. '+S.holes[ids[d.hi]].n:'One try. Same holes for everyone.'}</small></button>
 <button class="btn green" data-act="nine">Front nine<small>${n&&n.done?'See your card':nGo?'Resume at No. '+(n.hi+1):'Practice all nine holes'}</small></button></div>
@@ -54,7 +54,8 @@ async function share(){const ta=$('shareText'),text=ta.value,note=$('shareNote')
   if(top&&navigator.share){try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}}
   try{await navigator.clipboard.writeText(text);note.textContent='Copied. Paste it in the group chat.'}
   catch(e){ta.focus();ta.select();note.textContent='Press and hold the score above to copy it.'}}
-function tickClock(){const e=$('countdown');if(!e)return;const n=new Date(),next=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1),s=Math.max(0,Math.floor((next-n)/1000));
+function buildAge(){const m=Math.floor((Date.now()-BUILD_TS)/6e4);return'Updated '+(m<1?'just now':m<60?m+' min ago':m<1440?Math.floor(m/60)+' hr ago':Math.floor(m/1440)+' d ago')}
+function tickClock(){const a=$('buildAge');if(a)a.textContent=buildAge();const e=$('countdown');if(!e)return;const n=new Date(),next=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1),s=Math.max(0,Math.floor((next-n)/1000));
   e.textContent=pad(Math.floor(s/3600))+':'+pad(Math.floor(s/60)%60)+':'+pad(s%60)}
 setInterval(()=>{tickClock();if(S.key&&todayKey()!==S.key&&(S.mode==='done'||S.mode==='title'))initDay()},1000);
 $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;ac();
@@ -78,5 +79,21 @@ function begin(type){const ids=type==='nine'?COURSE.holes.map((_,i)=>i):dailyIds
   if(sv&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length){S.round.scores=sv.scores.slice(0,sv.hi);startHole(sv.hi,sv)}else startHole(0)}
 function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=COURSE.holes.map(d=>buildHole(d,S.key));S.muted=!!fetchKey('muted');
   $('btnSound').setAttribute('aria-pressed',String(!S.muted));titleCard()}
-resize();initDay();resize();requestAnimationFrame(frame);
+// ───────── boot, and staying current while a round is open
+// A new build can arrive mid-round: the round is saved after every stroke, so it resumes where it stood.
+const PLAYING=['intro','ready','aim','flight','wait'];
+function start(d){resize();initDay();resize();let r=d&&d.playing?d:null;
+  try{const s=JSON.parse(sessionStorage.getItem(KEY+'resume')||'null');sessionStorage.removeItem(KEY+'resume');if(s&&s.playing)r=s}catch(e){}
+  if(r&&(r.type==='daily'||r.type==='nine')){begin(r.type);if(PLAYING.includes(S.mode))toast('Updated to the latest build','Carrying on where you were',2200)}}
+const snap=()=>({type:S.round.type,playing:PLAYING.includes(S.mode)});
+const hot=window.claude&&window.claude.hot;
+try{if(hot&&hot.snapshot)hot.snapshot(snap)}catch(e){}
+if(hot&&hot.ready)hot.ready(start);else start(hot&&hot.data||{});
+requestAnimationFrame(frame);
+// On its own web address the page checks for a newer build every 20 seconds and reloads between shots.
+let standalone=false;try{standalone=window.top===window.self&&/^https?:$/.test(location.protocol)}catch(e){}
+if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==='flight')return;
+  try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text(),m=t.match(/BUILD_TS=(\d{10,})/);
+    if(m&&+m[1]>BUILD_TS){try{sessionStorage.setItem(KEY+'resume',JSON.stringify(snap()))}catch(e){}location.replace(location.pathname+'?v='+m[1]+location.hash)}}catch(e){}},20000);
+
 if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSE};

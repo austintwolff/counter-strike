@@ -7,7 +7,7 @@ cat src/00-head.html
 printf "\n<script>\n(()=>{'use strict';\n"
 cat src/10-core.js src/20-course.js src/30-render.js src/40-game.js src/50-ui.js
 printf "})();\n</script>\n"
-} > game.html
+} | sed "s/__BUILD_TS__/$(date +%s)000/" > game.html
 {
 cat <<'HEAD'
 <!doctype html>

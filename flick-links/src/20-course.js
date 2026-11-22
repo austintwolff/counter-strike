@@ -54,6 +54,13 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
   // trees. Mapped single trees stand where they really are and stop a low ball. Woods are filled with the course's native mix.
   const pick=()=>{let u=rng();for(const[k,w]of th.mix)if((u-=w)<0)return k;return th.mix[0][0]},tree=(x,y,kind,r,solid)=>({x,y,kind,r:r*TREES[kind].size,v:Math.floor(rng()*4),solid,h:r*1.15+3});
   g.solid=m.trees.filter(([x,y])=>nearHoles({x,y})).map(([x,y,sp])=>{const k=(SPECIES.find(([re])=>re.test(sp))||[0,pick()])[1];return tree(x,y,wet({x,y},9)&&k!=='pecan'?'cypress':k,lerp(6,9.5,rng()),true)});
+  // The way off the tee stays open. A tee shot is still climbing for its first fifty yards, so a tree standing there cannot be cleared:
+  // none is kept on the tee or along that stretch of the line of play, and nothing leafy is scattered over it either.
+  // "The line" is both the way the hole runs and the straight line the camera first aims down, which differ on a dogleg.
+  const T0=R.pts[0],E=R.pts[R.pts.length-1],A=hyp(E.x-T0.x,E.y-T0.y)<=285?E:rAt(R,Math.min(R.len,250)),AL=hyp(A.x-T0.x,A.y-T0.y)||1,ux=(A.x-T0.x)/AL,uy=(A.y-T0.y)/AL;
+  const inWay=(p,r,len,half)=>{const vx=p.x-T0.x,vy=p.y-T0.y;if(hyp(vx,vy)>len+half+r)return false;const al=vx*ux+vy*uy;
+    return(al>-half-r&&al<len&&Math.abs(vx*uy-vy*ux)<half+r)||(rProj(R,p)<len&&distLine(R.pts,p)<half+r)};
+  g.solid=g.solid.filter(t=>!inWay(t,t.r*.85,55,12));
   // One pass over the ground near the holes, a tree-sized step at a time. Each spot is asked the cheapest questions first.
   //   mapped woods      filled with the course's native mix
   //   past the fence    leafy yards
@@ -65,7 +72,7 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
   const inWood=p=>any(g.woods,p,0),inB=p=>!g.boundary||inSh(g.boundary,p),clear=(p,r)=>!any(g.fair,p,r)&&!any(g.green,p,r+4)&&!any(g.tee,p,r+2)&&!any(g.bunker,p,r)&&!any(g.building,p,r*.5);
   const paths=g.paths.map(w=>({...w,w:5}));
   for(let x=x0-NEAR;x<x1+NEAR;x+=10.5)for(let y=y0-NEAR;y<y1+NEAR;y+=10.5){const p={x:x+rng()*10.5,y:y+rng()*10.5},r=lerp(4.6,9.5,rng()*rng()+.1),u=rng();
-    if(!nearHoles(p))continue;
+    if(!nearHoles(p)||inWay(p,r*.6,50,8))continue;
     if(inWood(p)){if(u<.14||wet(p,r*.5)||!clear(p,r*.45))continue}
     else{if(wet(p,r*.5)||lineNear(g.roads,p,r*.4)||lineNear(paths,p,r*.2)||any(g.dry,p,2))continue;
       if(!inB(p)){if(u>.3||any(g.building,p,r*.35))continue}

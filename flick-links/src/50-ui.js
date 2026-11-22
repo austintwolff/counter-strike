@@ -91,7 +91,7 @@ let introT=0;
 function startHole(i,sv){closeSheet();S.hi=i;S.marks=[];S.shot=null;const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
   overviewCam(.5,.76,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,h.course.club,1800);
-  if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
+  hintOff();if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
 function begin(type,course){const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';
   S.round={type,course:nine?course:null,ids:[],scores:[]};const sv=fetchKey(saveKey());S.round.ids=nine?courseIds(course):todaysIds(sv);const ids=S.round.ids;

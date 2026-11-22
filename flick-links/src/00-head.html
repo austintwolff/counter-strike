@@ -34,7 +34,8 @@ button.plate,.plate button{pointer-events:auto}
 .holeinfo{display:flex;flex-direction:column;gap:4px;padding:8px 12px 8px;max-width:58vw}
 .holeinfo b{font:italic 700 17px/1.05 var(--display)}
 .stack{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-.pin{display:flex;align-items:baseline;gap:6px;padding:8px 13px 9px}
+.pin{display:grid;grid-template-columns:auto auto;justify-content:end;align-items:baseline;column-gap:6px;row-gap:5px;padding:8px 13px 9px}
+.pin .last{grid-column:1/-1;justify-self:end;color:var(--cream);opacity:.85;font-size:10px}
 .wind{display:flex;align-items:center;gap:6px;padding:5px 12px 5px 7px}
 .wind .num{font-size:20px}
 .wind svg{width:24px;height:24px;display:block}
@@ -212,7 +213,7 @@ table.st{width:100%;border-collapse:collapse;border:1.5px solid var(--rule);back
       <span class="lbl" id="hStroke">Shot 1</span>
     </div>
     <div class="stack">
-      <div class="plate pin"><span class="num" id="hDist">356</span><span class="lbl" id="hUnit">yd to pin</span></div>
+      <div class="plate pin"><span class="num" id="hDist">356</span><span class="lbl" id="hUnit">yd to pin</span><span class="lbl last" id="hLast" hidden></span></div>
       <div class="plate wind" title="Wind">
         <svg id="windArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l6 9h-4v11h-4V11H6z"/></svg>
         <span class="num" id="hWind">0</span><span class="lbl">mph</span>

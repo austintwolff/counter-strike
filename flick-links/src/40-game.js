@@ -71,7 +71,7 @@ function reachOf(c){return c.putt?markDist():c.carry*lieMult(S.lie,c)*(1+c.roll)
 function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
   const t=d<=285?h.pin:rAt(h.route,Math.min(h.total,rProj(h.route,b)+250));
   const view=S.club.putt?clamp(Math.max(d,markDist())*1.3,7,70):clamp(Math.min(d*1.18,reachOf(S.club)*1.15),7,430);
-  camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.6/view;if(d>.4)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
+  camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.6/view;if(d>.02)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
 function updateCam(dt){
   if(S.mode==='flight'&&!S.ball.putt&&camT.s<5){camT.x=S.ball.x;camT.y=S.ball.y;camT.ay=.6}
   const k=1-Math.exp(-dt*(S.mode==='flight'?7:4.2));
@@ -157,7 +157,7 @@ cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 // p is power 0..1, aim a world direction, dev the flick's angle off the pull line,
 // te the timing error in ms (early is negative) and tf how full the ring was (1 at the top)
 function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)tf=1;
-  p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};if(!onRange())S.strokes++;S.hintShots++;save();
+  p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};S.shot=null;$('hLast').hidden=true;if(!onRange())S.strokes++;S.hintShots++;save();
   const onTime=Math.abs(te)<=timingWindow(),ts=Math.sign(te),shank=!onTime&&tf<SHANK,q=onTime?0:clamp((1-tf)/(1-SHANK),0,1);
   const ad=Math.abs(dev),kf=ad<=DEAD?0:Math.sign(dev)*clamp((ad-DEAD)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-DEAD),pure=onTime&&kf===0;
   b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
@@ -204,14 +204,15 @@ function stepBall(dt){const b=S.ball,h=cur();
 // Where to drop after water: a couple of yards back from the point of entry, on the line toward where the shot was played.
 function dropSpot(){const h=cur(),d=S.ball.dry,p=S.prev,L=hyp(p.x-d.x,p.y-d.y);if(L<4)return p;const ux=(p.x-d.x)/L,uy=(p.y-d.y)/L;
   for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker')return q}return p}
-function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';b.gone=true;
+const shotLen=()=>({d:hyp(S.ball.x-S.prev.x,S.ball.y-S.prev.y),ft:S.club.putt});
+function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';S.shot=back?null:shotLen();b.gone=true;
   if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water.':'Out of play.'),900)}
   S.strokes++;
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});
   if(water){sfx.splash();burst(b.x,b.y,'#d8f4f0',22,9,9)}else sfx.bad();
   toast(water?'In the water':kind==='ob'?'Out of bounds':'Lost in the trees',(water&&!back?'Drop':'Replay')+' · +1',1900);hud();
   setTimeout(()=>{setBall(spot.x,spot.y);afterShot()},1500)}
-function atRest(){const l=lieAt(cur(),S.ball);if(!onRange()&&(l==='woods'||l==='ob'))return hazard(l);afterShot()} // on the range a wild one is just fetched back
+function atRest(){const l=lieAt(cur(),S.ball);if(!onRange()&&(l==='woods'||l==='ob'))return hazard(l);S.shot=shotLen();afterShot()} // on the range a wild one is just fetched back
 function afterShot(){if(onRange())return rangeAfter(false);if(S.strokes>=maxScore()){toast('Picked up','Max '+maxScore(),1600);return finishHole(maxScore())}
   setupShot();
   S.mode='ready';aimCam();hud();save()}
@@ -243,6 +244,7 @@ function resize(){const r=cv.getBoundingClientRect();W=Math.max(1,r.width);H=Mat
 addEventListener('resize',resize);
 
 // ───────── plaques
+function hudLast(){const e=$('hLast'),t=S.shot;e.hidden=!t;if(t)e.textContent='Last '+(t.ft?Math.max(1,Math.round(t.d*3))+' ft':Math.round(t.d)+' yd')}
 function hudDist(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y),ft=d<20&&lieAt(h,b)==='green';
   $('hDist').textContent=ft?Math.max(1,Math.round(d*3)):Math.round(d);$('hUnit').textContent=ft?'ft to pin':'yd to pin'}
 function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textContent=c.name;
@@ -251,7 +253,7 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n);
-  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudClub();
+  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
   // on the green the line under the course is the caddie's read; the first few putts name the controls instead. The range has its own card.

@@ -42,18 +42,18 @@ const tabToday=c=>`<ol class="lb">${c.today.map((m,i)=>{const r=m.round;return`<
   r?`<span class="hs">${r.scores.map((s,j)=>mk(s,r.pars[j])).join('')}</span><span class="tt">${r.tot}<small>${rel(r.tot-r.par)}</small></span>`:'<span class="wait">yet to play</span>'}</li>`}).join('')}</ol>`;
 const tabStandings=c=>`<table class="st"><tr><th>Member</th><th>Hcp</th><th>Rounds</th><th>Wins</th><th>Streak</th></tr>${c.standings.map(m=>
   `<tr class="${m.me?'me':''}"><td>${esc(m.nick)}</td><td><b>${hcpStr(m.hcp)}</b></td><td>${m.rounds}</td><td>${m.wins}</td><td>${m.streak}</td></tr>`).join('')}</table>
-<p class="fine">Handicap needs three rounds. A day is won by the lowest card once the day is over.</p>`;
+<p class="fine">Handicap after three rounds.</p>`;
 function tabRecords(c){const rec=c.records,by={};for(const k in rec.holes)(by[k.slice(0,2)]=by[k.slice(0,2)]||[]).push(k);
   const courses=COURSES.filter(x=>by[x.id]).map(x=>`<p class="eyebrow">${x.club}</p><ul class="rec">${by[x.id].sort().map(k=>{const r=rec.holes[k];
     return`<li><span>No. ${k.slice(2)}</span>${mk(r.score,r.par)}<span class="nm">${esc(r.nick)}</span><small>${shortDay(r.day)}</small></li>`}).join('')}</ul>`).join('');
-  return(rec.low?`<div class="stats"><div><b>${rec.low.tot} <small>${rel(rec.low.tot-rec.low.par)}</small></b><span>Low round · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No rounds on the board yet. Records appear as members play.</p>')
+  return(rec.low?`<div class="stats"><div><b>${rec.low.tot} <small>${rel(rec.low.tot-rec.low.par)}</small></b><span>Low round · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No rounds yet.</p>')
     +(rec.feed.length?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')
-    +(courses?'<p class="fine">Best score by a member on each hole played so far.</p>'+courses:'')}
+    +courses}
 function clubStrip(){const c=C.club;
   if(C.invite&&c&&!c.member)return`<button class="strip" data-act="joinform"><span><b>${esc(c.name)}</b><i>You are invited · ${plural(c.count,'member')}</i></span><em>Join</em></button>`;
   if(c&&c.member){const played=c.today.filter(t=>t.round),lead=played[0];
     return`<button class="strip" data-act="club"><span><b>${esc(c.name)}</b><i>${lead?esc(lead.nick)+' leads at '+rel(lead.round.tot-lead.round.par)+' · '+played.length+' of '+c.count+' in':'Nobody has played yet today'}</i></span><em>Open</em></button>`}
-  return`<button class="strip" data-act="clubform"><span><b>Start a clubhouse</b><i>Invite friends and keep a daily leaderboard</i></span><em>New</em></button>`}
+  return`<button class="strip" data-act="clubform"><span><b>Start a clubhouse</b><i>A daily leaderboard with friends</i></span><em>New</em></button>`}
 const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your card'}</button>`;
 
 // ───────── sheets
@@ -65,7 +65,7 @@ ${club?'<label for="houseName">Clubhouse name</label><input id="houseName" maxle
 <p class="fine err" id="formErr" role="alert"></p>
 <div class="row"><button class="btn" type="submit">${join?'Join':club?'Open the doors':'Save'}</button><button class="btn ghost" type="button" data-act="title">Back</button></div>
 ${!C.me&&Net.remote&&window.PublicKeyCredential?'<button class="link" type="button" data-act="signin">Played before on another phone? Sign in</button>':''}</form>
-<p class="fine">${Net.remote?(C.me?'':'Your phone will ask to save a passkey. That is your account: no password, and nobody else can post as you.'):'Solo for now: this clubhouse lives on this device. Friends can join once the game is on its own web address.'}</p>`)}
+<p class="fine">${Net.remote?(C.me?'':'Your phone will ask to save a passkey. That is your account.'):'On this device only for now.'}</p>`)}
 function clubCard(){const c=C.club;if(!c||!c.member)return titleCard();const t=C.tab,others=(C.me?C.me.clubs:[]).filter(x=>x.code!==c.code);
   sheet(`<p class="eyebrow">Clubhouse · ${plural(c.count,'member')}${Net.remote?'':' · this device only'}</p><h2>${esc(c.name)}</h2>
 <div class="tabs" role="tablist">${[['today','Today'],['standings','Standings'],['records','Records']].map(([k,l])=>`<button role="tab" aria-selected="${t===k}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
@@ -75,25 +75,25 @@ ${t==='today'?tabToday(c):t==='standings'?tabStandings(c):tabRecords(c)}
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
   sheet(`<p class="eyebrow">Your card</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
-<p class="fine">${st.hcp==null?'Your handicap arrives after three daily rounds. '+plural(Math.max(1,3-st.rounds),'round')+' to go.':'Your handicap is the best of your recent rounds, scaled to eighteen holes. Lower is better.'}</p>
+<p class="fine">${st.hcp==null?'Handicap in '+plural(Math.max(1,3-st.rounds),'round')+'.':''}</p>
 <p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
   return`<div class="${e?'won':''}"><i class="mono">${mono}</i><b>${name}${e&&e.n>1?' ×'+e.n:''}</b><span>${sw!=null&&!e?sw+' of 9 so far':what}</span></div>`}).join('')}</div>
 ${saveStrip()}<div class="row"><button class="btn ghost" data-act="rename">Change name</button><button class="btn ghost" data-act="title">Back</button></div>
-<p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey. Sign in on any phone to pick up where you left off.':canSave()?'':'This browser cannot save a passkey. Open the game in Safari or Chrome to save your player.'}</p>`,meCard)}
+<p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey.':canSave()?'':'Open in Safari or Chrome to save your player.'}</p>`,meCard)}
 const canSave=()=>Net.remote&&!!window.PublicKeyCredential;
 // only ask unprompted on a phone or laptop that has Face ID, a fingerprint reader or a screen lock to back the passkey
 const canPrompt=async()=>{try{return canSave()&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()}catch(e){return false}};
-const saveStrip=()=>C.me&&!C.me.passkey&&canSave()?'<button class="strip warn" data-act="passkey"><span><b>Save your player</b><i>One tap. Keeps your handicap if you change phones.</i></span><em>Save</em></button><p class="fine err" id="saveNote"></p>':'';
+const saveStrip=()=>C.me&&!C.me.passkey&&canSave()?'<button class="strip warn" data-act="passkey"><span><b>Save your player</b><i>Keeps your handicap if you change phones</i></span><em>Save</em></button><p class="fine err" id="saveNote"></p>':'';
 async function savePasskey(){const note=$('saveNote')||$('shareNote');try{const o=await Net.call('POST','/passkey/options',{kind:'create'});if(!o.ok)throw o;const pk=o.publicKey;pk.challenge=fromB64(pk.challenge);pk.user.id=fromB64(pk.user.id);
     const cred=await navigator.credentials.create({publicKey:pk}),r=cred.response,j=await Net.call('POST','/passkey/create',{id:cred.id,clientDataJSON:toB64(r.clientDataJSON),spki:toB64(r.getPublicKey()),alg:r.getPublicKeyAlgorithm()});
     if(!j.ok)throw j;await refresh()}catch(e){if(note)note.textContent=e&&e.name==='NotAllowedError'?'No passkey was saved.':'This device could not save a passkey.'}}
 async function signIn(){const note=$('formErr');try{const o=await Net.call('POST','/passkey/options',{kind:'get'});if(!o.ok)throw o;const pk=o.publicKey;pk.challenge=fromB64(pk.challenge);
     const a=await navigator.credentials.get({publicKey:pk}),r=a.response,j=await Net.call('POST','/passkey/login',{id:a.id,clientDataJSON:toB64(r.clientDataJSON),authenticatorData:toB64(r.authenticatorData),signature:toB64(r.signature)});
     if(!j.ok)throw j;await refresh();titleCard()}catch(e){if(note)note.textContent='No saved player was found on this phone.'}}
-async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.textContent='Invites work once the game is on its own web address. For now this clubhouse lives on this device.';return}
+async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.textContent='Invites need the hosted site. This clubhouse is on this device only.';return}
   const url=location.origin+location.pathname+'?c='+c.code,text=`Join ${c.name} on Flick Links. Three holes a day.\n${url}`;
   if(navigator.share)try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}
-  try{await navigator.clipboard.writeText(text);note.textContent='Invite copied. Paste it in the group chat.'}catch(e){note.textContent=url}}
+  try{await navigator.clipboard.writeText(text);note.textContent='Invite copied.'}catch(e){note.textContent=url}}
 $('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),btn=f.querySelector('[type=submit]');
   const cname=kind==="club"?$("houseName").value.trim():"";if(!nick)return say(MSG.name);if(kind==='club'&&cname.length<2)return say('Give the clubhouse a name.');
   btn.disabled=true;

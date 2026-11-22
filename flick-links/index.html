@@ -243,7 +243,7 @@ table.st{width:100%;border-collapse:collapse;border:1.5px solid var(--rule);back
     <div class="row"><button class="btn sm ghost" id="coachSkip">Skip</button><button class="btn sm" id="coachNext" disabled>Putting</button></div>
   </div>
   <div id="toast" role="status" aria-live="polite"></div>
-  <div id="hint">Pull back to aim, flick up as the ring fills</div>
+  <div id="hint"></div>
 
   <div class="hud bottom">
     <div class="plate club">
@@ -569,7 +569,6 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   ctx.save();ctx.clip(g.path);ctx.drawImage(h.relief.c,h.relief.x,h.relief.y,h.relief.s,h.relief.s);ctx.restore();
   texFill(g.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,h.axis+.5);texFill(g.path,'grain',.3*tG,.05);
   ctx.strokeStyle='rgba(20,60,20,.3)';ctx.lineWidth=.3;ctx.stroke(g.path);
-  const cr=Math.max(.13,3.2/z);ctx.fillStyle='rgba(255,255,255,.85)';disc(h.pin.x,h.pin.y,cr*1.28);ctx.fillStyle='#07120b';disc(h.pin.x+cr*.08,h.pin.y+cr*.1,cr);
   if(G.cart&&vis(G.cart))drawCart(G.cart.x,G.cart.y,G.cart.a);
   // roofs: a shadow, the footprint, then two slopes either side of the ridge, the one facing the sun lighter
   for(const s of G.building)if(seen(s)){const sv=rotv(SUN.x,SUN.y,-s.ax),lit=sv.y>0?-1:1,Rr=s.R+2;ctx.save();ctx.translate(SUN.x*2.6,SUN.y*2.6);ctx.fillStyle='rgba(5,15,10,.4)';ctx.fill(s.path);ctx.restore();
@@ -611,6 +610,8 @@ function drawLive(h,now){const G=h.geo,z=cam.s;ctx.lineJoin='round';ctx.lineCap=
     ctx.strokeStyle='rgba(234,255,251,.38)';ctx.lineWidth=sz*.14;ctx.beginPath();ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,sz*1.1);ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,-sz*1.1);ctx.stroke();
     ctx.fillStyle='rgba(3,20,24,.3)';ctx.beginPath();ctx.ellipse(sz*.12,sz*.16,sz,sz*.6,0,0,TAU);ctx.fill();ctx.fillStyle='#f4efe2';ctx.beginPath();ctx.ellipse(0,0,sz,sz*.58,0,0,TAU);ctx.fill();
     ctx.fillStyle='#d9d1bd';ctx.beginPath();ctx.ellipse(-sz*.25,0,sz*.55,sz*.36,0,0,TAU);ctx.fill();ctx.fillStyle='#2f5d3a';disc(sz*.85,0,sz*.36);ctx.fillStyle='#e9a23b';ctx.beginPath();ctx.ellipse(sz*1.25,0,sz*.2,sz*.12,0,0,TAU);ctx.fill();ctx.restore()}
+  // the cup keeps its size on screen, so it is drawn here and not into a kept picture that may be magnified
+  const cr=Math.max(.13,3.2/z);ctx.fillStyle='rgba(255,255,255,.85)';disc(h.pin.x,h.pin.y,cr*1.28);ctx.fillStyle='#07120b';disc(h.pin.x+cr*.08,h.pin.y+cr*.1,cr);
   if(z>6)drawFlow(h,now);
   for(const f of S.fx)if(f.type==='ring'){const a=(now-f.t0)/900;if(a<1){ctx.strokeStyle=f.water?'#d8f4f0':K.cream;ctx.globalAlpha=1-a;ctx.lineWidth=2/z;
     for(const m of[1,.55]){ctx.beginPath();ctx.arc(f.x,f.y,(4+a*26)*m/z,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
@@ -621,21 +622,26 @@ function drawLive(h,now){const G=h.geo,z=cam.s;ctx.lineJoin='round';ctx.lineCap=
 // ───────── the scene cache
 // Redrawing the whole course every frame is far too much for a phone. So the scenery is kept in two pictures:
 //   far  — the whole hole, drawn once when the hole starts, used while the camera is moving
+//   mid  — the green and its surrounds, sharp enough for putting, laid over the far picture when the camera moves up close
 //   near — exactly what is on screen, drawn crisp each time the camera comes to rest, used while it stays there
 // Aiming, the swing ring and putting all happen with the camera at rest, so those frames cost one picture plus the ball.
-const SC={far:null,farHole:null,box:null,near:null,key:''};
+const SC={far:null,farHole:null,box:null,mid:null,midHole:null,mbox:null,near:null,key:''};
 function camOn(){ctx.translate(W/2,H*cam.ay);ctx.rotate(cam.r);ctx.scale(cam.s,cam.s);ctx.translate(-cam.x,-cam.y)}
 function viewRect(){const R=hyp(W,H)/cam.s;return[cam.x-R,cam.y-R,2*R,2*R]}
 function onCanvas(c,fn){const main=ctx;ctx=c.getContext('2d');try{fn()}finally{ctx=main}}
 function ensureFar(h){if(SC.farHole===h)return;const[x0,y0,bw,bh]=h.geo.box,k=Math.min(2.4,Math.sqrt((Q>1?4.2e6:2.6e6)/(bw*bh)));SC.far=SC.far||document.createElement('canvas');SC.far.width=Math.ceil(bw*k);SC.far.height=Math.ceil(bh*k);
   onCanvas(SC.far,()=>{ctx.setTransform(k,0,0,k,-x0*k,-y0*k);VR=[x0,y0,bw,bh];RZ=k*.6;drawStatic(h)});SC.farHole=h;SC.box=[x0,y0,bw,bh]}
+function ensureMid(h){if(SC.midHole===h)return;const g=h.green,R=g.R+34,x0=g.x-R,y0=g.y-R,k=Math.min(14,Math.sqrt(Q>1?2.2e6:1.2e6)/(2*R));SC.mid=SC.mid||document.createElement('canvas');SC.mid.width=SC.mid.height=Math.ceil(2*R*k);
+  onCanvas(SC.mid,()=>{ctx.setTransform(k,0,0,k,-x0*k,-y0*k);VR=[x0,y0,2*R,2*R];RZ=k;drawStatic(h)});SC.midHole=h;SC.mbox=[x0,y0,2*R,2*R]}
 function ensureNear(h){const key=[h.course.id,h.n,cam.x,cam.y,cam.s,cam.r,cam.ay,W,H,DPR,Q].join();if(SC.key===key)return;SC.near=SC.near||document.createElement('canvas');
   if(SC.near.width!==cv.width||SC.near.height!==cv.height){SC.near.width=cv.width;SC.near.height=cv.height}
   onCanvas(SC.near,()=>{ctx.setTransform(DPR,0,0,DPR,0,0);ctx.save();camOn();VR=viewRect();RZ=cam.s;drawStatic(h);ctx.restore();drawLight();drawVignette()});SC.key=key}
 const camAtRest=()=>cam.x===camT.x&&cam.y===camT.y&&cam.s===camT.s&&cam.r===camT.r&&cam.ay===camT.ay;
 function drawScene(now){const h=cur();
   if(camAtRest()){ensureNear(h);ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(SC.near,0,0);ctx.setTransform(DPR,0,0,DPR,0,0)}
-  else{ensureFar(h);ctx.fillStyle=h.mist;ctx.fillRect(0,0,W,H);ctx.save();camOn();ctx.drawImage(SC.far,SC.box[0],SC.box[1],SC.box[2],SC.box[3]);ctx.restore();drawVignette()}
+  else{ensureFar(h);ctx.fillStyle=h.mist;ctx.fillRect(0,0,W,H);ctx.save();camOn();ctx.drawImage(SC.far,SC.box[0],SC.box[1],SC.box[2],SC.box[3]);
+    if(cam.s>4.5){const g=h.green,R=hyp(W,H)/cam.s/2;if(hyp(cam.x-g.x,cam.y-g.y)<R+g.R+34){ensureMid(h);ctx.drawImage(SC.mid,SC.mbox[0],SC.mbox[1],SC.mbox[2],SC.mbox[3])}}
+    ctx.restore();drawVignette()}
   ctx.save();camOn();VR=viewRect();drawLive(h,now);ctx.restore()}
 const seen2=seen;
 // Bridges. Timber: an arched plank deck between stone footings, with posts and handrails, and piers under a long span.
@@ -789,7 +795,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795387132000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795388817000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -922,7 +928,7 @@ function onUp(e){const g=S.g;if(!g||e.pointerId!==g.id)return;
   if(g.drag){endGesture();aimCam();hud();return}
   if(g.phase==='aim'&&g.fast>0)toSwing(g);
   if(g.phase==='swing'){const prog=(g.x-g.top.x)*g.aim.x+(g.y-g.top.y)*g.aim.y;if(prog>=g.pull*.35)return commit(g.x,g.y)}
-  const strong=g.power>.3;endGesture();if(S.club.putt)hud();else if(strong)hintOn('Flick forward through the ring to swing')}
+  const strong=g.power>.3;endGesture();if(S.club.putt)hud();else if(strong&&!onRange())hintOn('Flick up to swing')}
 cv.addEventListener('pointerup',onUp);cv.addEventListener('pointercancel',e=>{if(S.g&&e.pointerId===S.g.id)endGesture()});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
@@ -978,15 +984,15 @@ function stepBall(dt){const b=S.ball,h=cur();
 function dropSpot(){const h=cur(),d=S.ball.dry,p=S.prev,L=hyp(p.x-d.x,p.y-d.y);if(L<4)return p;const ux=(p.x-d.x)/L,uy=(p.y-d.y)/L;
   for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker')return q}return p}
 function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';b.gone=true;
-  if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water. No penalty on the range.':'Out of play. No penalty on the range.'),900)}
+  if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water.':'Out of play.'),900)}
   S.strokes++;
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});
   if(water){sfx.splash();burst(b.x,b.y,'#d8f4f0',22,9,9)}else sfx.bad();
-  toast(water?'In the water':kind==='ob'?'Out of bounds':'Lost in the trees',(water&&!back?'Drop at the edge':'Replay the shot')+' · one stroke penalty',1900);hud();
+  toast(water?'In the water':kind==='ob'?'Out of bounds':'Lost in the trees',(water&&!back?'Drop':'Replay')+' · +1',1900);hud();
   setTimeout(()=>{setBall(spot.x,spot.y);afterShot()},1500)}
 function atRest(){const l=lieAt(cur(),S.ball);if(!onRange()&&(l==='woods'||l==='ob'))return hazard(l);afterShot()} // on the range a wild one is just fetched back
-function afterShot(){if(onRange())return rangeAfter(false);if(S.strokes>=maxScore()){toast('Picked up','The most a hole can cost is '+maxScore(),1600);return finishHole(maxScore())}
-  const was=S.lie;setupShot();if(S.lie!==was&&(S.lie==='green'||S.lie==='bunker'))toast(S.lie==='green'?'On the green':'In the bunker','',1100);
+function afterShot(){if(onRange())return rangeAfter(false);if(S.strokes>=maxScore()){toast('Picked up','Max '+maxScore(),1600);return finishHole(maxScore())}
+  setupShot();
   S.mode='ready';aimCam();hud();save()}
 function holed(){const b=S.ball,h=cur();b.x=h.pin.x;b.y=h.pin.y;b.vx=b.vy=b.vz=b.z=0;b.air=false;b.gone=true;sfx.cup();burst(b.x,b.y,K.gold,26,5,11);burst(b.x,b.y,'#fff8e0',12,3,8);
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now()});finishHole(S.strokes)}
@@ -1027,8 +1033,8 @@ function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready
   $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
-  // on the green the line under the course is the caddie's read; the first few putts explain the controls instead
-  if(c.putt&&ready)hintOn((fetchKey('putts')||0)<4||onRange()?(S.pmode==='aim'?'Drag to place the marker, then press Putt':'Pull back, flick up as the ring fills'):readText());else if(c.putt)hintOff()}
+  // on the green the line under the course is the caddie's read; the first few putts name the controls instead. The range has its own card.
+  if(onRange())hintOff();else if(c.putt&&ready)hintOn((fetchKey('putts')||0)<4?(S.pmode==='aim'?'Drag the marker, then press Putt':'Pull back, flick on gold'):readText());else if(c.putt)hintOff()}
 let toastT=0;function toast(s,sub,ms){if(typeof sub==='number'){ms=sub;sub=''}const t=$('toast');t.textContent=s;if(sub){const e=document.createElement('small');e.textContent=sub;t.appendChild(e)}
   t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms||1400)}
 function hintOn(s){const e=$('hint');e.textContent=s;e.style.opacity=1}
@@ -1231,18 +1237,18 @@ const tabToday=c=>`<ol class="lb">${c.today.map((m,i)=>{const r=m.round;return`<
   r?`<span class="hs">${r.scores.map((s,j)=>mk(s,r.pars[j])).join('')}</span><span class="tt">${r.tot}<small>${rel(r.tot-r.par)}</small></span>`:'<span class="wait">yet to play</span>'}</li>`}).join('')}</ol>`;
 const tabStandings=c=>`<table class="st"><tr><th>Member</th><th>Hcp</th><th>Rounds</th><th>Wins</th><th>Streak</th></tr>${c.standings.map(m=>
   `<tr class="${m.me?'me':''}"><td>${esc(m.nick)}</td><td><b>${hcpStr(m.hcp)}</b></td><td>${m.rounds}</td><td>${m.wins}</td><td>${m.streak}</td></tr>`).join('')}</table>
-<p class="fine">Handicap needs three rounds. A day is won by the lowest card once the day is over.</p>`;
+<p class="fine">Handicap after three rounds.</p>`;
 function tabRecords(c){const rec=c.records,by={};for(const k in rec.holes)(by[k.slice(0,2)]=by[k.slice(0,2)]||[]).push(k);
   const courses=COURSES.filter(x=>by[x.id]).map(x=>`<p class="eyebrow">${x.club}</p><ul class="rec">${by[x.id].sort().map(k=>{const r=rec.holes[k];
     return`<li><span>No. ${k.slice(2)}</span>${mk(r.score,r.par)}<span class="nm">${esc(r.nick)}</span><small>${shortDay(r.day)}</small></li>`}).join('')}</ul>`).join('');
-  return(rec.low?`<div class="stats"><div><b>${rec.low.tot} <small>${rel(rec.low.tot-rec.low.par)}</small></b><span>Low round · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No rounds on the board yet. Records appear as members play.</p>')
+  return(rec.low?`<div class="stats"><div><b>${rec.low.tot} <small>${rel(rec.low.tot-rec.low.par)}</small></b><span>Low round · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No rounds yet.</p>')
     +(rec.feed.length?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')
-    +(courses?'<p class="fine">Best score by a member on each hole played so far.</p>'+courses:'')}
+    +courses}
 function clubStrip(){const c=C.club;
   if(C.invite&&c&&!c.member)return`<button class="strip" data-act="joinform"><span><b>${esc(c.name)}</b><i>You are invited · ${plural(c.count,'member')}</i></span><em>Join</em></button>`;
   if(c&&c.member){const played=c.today.filter(t=>t.round),lead=played[0];
     return`<button class="strip" data-act="club"><span><b>${esc(c.name)}</b><i>${lead?esc(lead.nick)+' leads at '+rel(lead.round.tot-lead.round.par)+' · '+played.length+' of '+c.count+' in':'Nobody has played yet today'}</i></span><em>Open</em></button>`}
-  return`<button class="strip" data-act="clubform"><span><b>Start a clubhouse</b><i>Invite friends and keep a daily leaderboard</i></span><em>New</em></button>`}
+  return`<button class="strip" data-act="clubform"><span><b>Start a clubhouse</b><i>A daily leaderboard with friends</i></span><em>New</em></button>`}
 const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your card'}</button>`;
 
 // ───────── sheets
@@ -1254,7 +1260,7 @@ ${club?'<label for="houseName">Clubhouse name</label><input id="houseName" maxle
 <p class="fine err" id="formErr" role="alert"></p>
 <div class="row"><button class="btn" type="submit">${join?'Join':club?'Open the doors':'Save'}</button><button class="btn ghost" type="button" data-act="title">Back</button></div>
 ${!C.me&&Net.remote&&window.PublicKeyCredential?'<button class="link" type="button" data-act="signin">Played before on another phone? Sign in</button>':''}</form>
-<p class="fine">${Net.remote?(C.me?'':'Your phone will ask to save a passkey. That is your account: no password, and nobody else can post as you.'):'Solo for now: this clubhouse lives on this device. Friends can join once the game is on its own web address.'}</p>`)}
+<p class="fine">${Net.remote?(C.me?'':'Your phone will ask to save a passkey. That is your account.'):'On this device only for now.'}</p>`)}
 function clubCard(){const c=C.club;if(!c||!c.member)return titleCard();const t=C.tab,others=(C.me?C.me.clubs:[]).filter(x=>x.code!==c.code);
   sheet(`<p class="eyebrow">Clubhouse · ${plural(c.count,'member')}${Net.remote?'':' · this device only'}</p><h2>${esc(c.name)}</h2>
 <div class="tabs" role="tablist">${[['today','Today'],['standings','Standings'],['records','Records']].map(([k,l])=>`<button role="tab" aria-selected="${t===k}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
@@ -1264,25 +1270,25 @@ ${t==='today'?tabToday(c):t==='standings'?tabStandings(c):tabRecords(c)}
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
   sheet(`<p class="eyebrow">Your card</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
-<p class="fine">${st.hcp==null?'Your handicap arrives after three daily rounds. '+plural(Math.max(1,3-st.rounds),'round')+' to go.':'Your handicap is the best of your recent rounds, scaled to eighteen holes. Lower is better.'}</p>
+<p class="fine">${st.hcp==null?'Handicap in '+plural(Math.max(1,3-st.rounds),'round')+'.':''}</p>
 <p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
   return`<div class="${e?'won':''}"><i class="mono">${mono}</i><b>${name}${e&&e.n>1?' ×'+e.n:''}</b><span>${sw!=null&&!e?sw+' of 9 so far':what}</span></div>`}).join('')}</div>
 ${saveStrip()}<div class="row"><button class="btn ghost" data-act="rename">Change name</button><button class="btn ghost" data-act="title">Back</button></div>
-<p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey. Sign in on any phone to pick up where you left off.':canSave()?'':'This browser cannot save a passkey. Open the game in Safari or Chrome to save your player.'}</p>`,meCard)}
+<p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey.':canSave()?'':'Open in Safari or Chrome to save your player.'}</p>`,meCard)}
 const canSave=()=>Net.remote&&!!window.PublicKeyCredential;
 // only ask unprompted on a phone or laptop that has Face ID, a fingerprint reader or a screen lock to back the passkey
 const canPrompt=async()=>{try{return canSave()&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()}catch(e){return false}};
-const saveStrip=()=>C.me&&!C.me.passkey&&canSave()?'<button class="strip warn" data-act="passkey"><span><b>Save your player</b><i>One tap. Keeps your handicap if you change phones.</i></span><em>Save</em></button><p class="fine err" id="saveNote"></p>':'';
+const saveStrip=()=>C.me&&!C.me.passkey&&canSave()?'<button class="strip warn" data-act="passkey"><span><b>Save your player</b><i>Keeps your handicap if you change phones</i></span><em>Save</em></button><p class="fine err" id="saveNote"></p>':'';
 async function savePasskey(){const note=$('saveNote')||$('shareNote');try{const o=await Net.call('POST','/passkey/options',{kind:'create'});if(!o.ok)throw o;const pk=o.publicKey;pk.challenge=fromB64(pk.challenge);pk.user.id=fromB64(pk.user.id);
     const cred=await navigator.credentials.create({publicKey:pk}),r=cred.response,j=await Net.call('POST','/passkey/create',{id:cred.id,clientDataJSON:toB64(r.clientDataJSON),spki:toB64(r.getPublicKey()),alg:r.getPublicKeyAlgorithm()});
     if(!j.ok)throw j;await refresh()}catch(e){if(note)note.textContent=e&&e.name==='NotAllowedError'?'No passkey was saved.':'This device could not save a passkey.'}}
 async function signIn(){const note=$('formErr');try{const o=await Net.call('POST','/passkey/options',{kind:'get'});if(!o.ok)throw o;const pk=o.publicKey;pk.challenge=fromB64(pk.challenge);
     const a=await navigator.credentials.get({publicKey:pk}),r=a.response,j=await Net.call('POST','/passkey/login',{id:a.id,clientDataJSON:toB64(r.clientDataJSON),authenticatorData:toB64(r.authenticatorData),signature:toB64(r.signature)});
     if(!j.ok)throw j;await refresh();titleCard()}catch(e){if(note)note.textContent='No saved player was found on this phone.'}}
-async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.textContent='Invites work once the game is on its own web address. For now this clubhouse lives on this device.';return}
+async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.textContent='Invites need the hosted site. This clubhouse is on this device only.';return}
   const url=location.origin+location.pathname+'?c='+c.code,text=`Join ${c.name} on Flick Links. Three holes a day.\n${url}`;
   if(navigator.share)try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}
-  try{await navigator.clipboard.writeText(text);note.textContent='Invite copied. Paste it in the group chat.'}catch(e){note.textContent=url}}
+  try{await navigator.clipboard.writeText(text);note.textContent='Invite copied.'}catch(e){note.textContent=url}}
 $('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),btn=f.querySelector('[type=submit]');
   const cname=kind==="club"?$("houseName").value.trim():"";if(!nick)return say(MSG.name);if(kind==='club'&&cname.length<2)return say('Give the clubhouse a name.');
   btn.disabled=true;
@@ -1329,17 +1335,14 @@ ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
 ${saveStrip()}${clubStrip()}
 <p class="eyebrow">Practice a front nine</p>
-<div class="row">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>
-${seen?'':HOW}`,titleCard)}
+<div class="row">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>`,titleCard)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
-<p class="fine"><b>The swing.</b> The dotted line shows where a clean strike lands. A ring at your thumb fills slowly, then faster, and starts over. Flick through it as it tops out. A pure driver is a bomb and a pure iron lands on the line. A little early draws it, a little late fades it, and both cost some distance. Flick while the ring is still in the red at the bottom and you shank it. Longer clubs and bad lies give a smaller window.</p>
-<p class="fine"><b>On the green.</b> The lines run down the slope at the pace a ball drifts there: still on flat ground, quick where it is steep. The caddie's line gives the rise to the cup and how far a straight putt would miss. Drag the marker to where a flat putt should stop, press Putt, then flick on the ring. Mistimed putts come up short or run long.</p>
-<p class="fine"><b>Trouble.</b> Water is a hazard: drop at the edge where the ball went in, one stroke. Thick woods and anything off the property cost a stroke and a replay. A tree knocks a low ball down. Native grass takes 40% off the shot, a dry creek bed 30%.</p>
-<p class="fine">The courses are drawn from real map data. © OpenStreetMap contributors.</p>
+<p class="fine"><b>Putting.</b> Drag the marker to where a flat putt should stop. Press Putt, then flick on gold. The streaks run downhill.</p>
+<p class="fine"><b>Trouble.</b> Water: drop at the edge, +1. Out of bounds or lost: replay, +1.</p>
+<p class="fine">© OpenStreetMap contributors.</p>
 <div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button></div>`)}
 function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:HOLE(S.round.ids[S.hi+1]);
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
-<p class="sub">${score===1?'One swing. Frame the card.':score+' strokes'+(score>=maxScore()?', the most a hole can cost.':'.')}</p>
 ${scoreCard(S.round.ids,S.round.scores)}
 <button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
 function shareText(){const r=S.round,hs=r.ids.map(HOLE),par=sum(hs.map(h=>h.par)),tot=sum(r.scores);
@@ -1355,11 +1358,11 @@ ${scoreCard(r.ids,r.scores)}
 <textarea id="shareText" readonly rows="${shareText().split('\n').length}" aria-label="Your result, ready to paste">${shareText()}</textarea>
 <div class="row"><button class="btn" data-act="share">Share score</button><button class="btn ghost" data-act="${nine?'again':'title'}">${nine?'Play it again':'Home'}</button></div>
 ${nine?'':saveStrip()}${nine?'<button class="btn ghost" data-act="title">Home</button>':C.club&&C.club.member?'<p class="eyebrow">'+esc(C.club.name)+' today</p>'+tabToday(C.club)+'<button class="btn green" data-act="club">Open the clubhouse</button>':clubStrip()}
-<p class="fine" id="shareNote">${nine?'Practice rounds do not change today\'s card.':(m&&m.streak>1?`Day streak <b>${m.streak}</b>. `:'')+'New holes in <b id="countdown">--:--:--</b>.'}</p>`,nine?null:resultsCard);tickClock()}
+<p class="fine" id="shareNote">${nine?'':(m&&m.streak>1?`Day streak <b>${m.streak}</b>. `:'')+'New holes in <b id="countdown">--:--:--</b>.'}</p>`,nine?null:resultsCard);tickClock()}
 async function share(){const ta=$('shareText'),text=ta.value,note=$('shareNote');let top=false;try{top=window.top===window.self}catch(e){}
   if(top&&navigator.share){try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}}
-  try{await navigator.clipboard.writeText(text);note.textContent='Copied. Paste it in the group chat.'}
-  catch(e){ta.focus();ta.select();note.textContent='Press and hold the score above to copy it.'}}
+  try{await navigator.clipboard.writeText(text);note.textContent='Copied.'}
+  catch(e){ta.focus();ta.select();note.textContent='Press and hold the score to copy.'}}
 function buildAge(){const m=Math.floor((Date.now()-BUILD_TS)/6e4);return'Updated '+(m<1?'just now':m<60?m+' min ago':m<1440?Math.floor(m/60)+' hr ago':Math.floor(m/1440)+' d ago')}
 function tickClock(){const a=$('buildAge');if(a)a.textContent=buildAge();const e=$('countdown');if(!e)return;const n=new Date(),next=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1),s=Math.max(0,Math.floor((next-n)/1000));
   e.textContent=pad(Math.floor(s/3600))+':'+pad(Math.floor(s/60)%60)+':'+pad(s%60)}
@@ -1388,8 +1391,8 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
 let introT=0;
 function startHole(i,sv){closeSheet();S.hi=i;S.marks=[];const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
-  overviewCam(.5,.76,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,`${h.course.club} · Par ${h.par} · ${h.yards} yards`,2000);
-  if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up as the ring fills');
+  overviewCam(.5,.76,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,h.course.club,1800);
+  if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
 function begin(type,course){const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';
   S.round={type,course:nine?course:null,ids:[],scores:[]};const sv=fetchKey(saveKey());S.round.ids=nine?courseIds(course):todaysIds(sv);const ids=S.round.ids;
@@ -1404,23 +1407,23 @@ function coach(step,title,text,next,ready){$('coachStep').textContent='Driving r
 function rangeSpot(){const h=cur();if(S.tut.step==='swing')return h.tee;const dx=h.tee.x-h.pin.x,dy=h.tee.y-h.pin.y,d=hyp(dx,dy);for(const k of[7,5.5,4,3]){const p={x:h.pin.x+dx/d*k,y:h.pin.y+dy/d*k};if(inSh(h.green,p,-1))return p}return{x:h.green.x,y:h.green.y}}
 function rangeSet(){const p=rangeSpot();setBall(p.x,p.y);S.strokes=0;setupShot();S.mode='ready';aimCam();hud()}
 function startRange(){closeSheet();S.round={type:'range',ids:[RANGE_HOLE()],scores:[],course:null};S.hi=0;S.marks=[];S.tut={step:'swing',good:false};const h=cur();h.wind.x=h.wind.y=0;h.wind.sp=0;
-  rangeSet();overviewCam(.5,.76,true);aimCam();coach('1 of 2','The swing','Touch anywhere and pull back to aim. A ring fills at your thumb. Flick up through it as it reaches the gold mark at the top.','Putting',false)}
+  rangeSet();hintOff();overviewCam(.5,.76,true);aimCam();coach('1 of 2','The swing','Pull back to aim. Flick up when the ring reaches gold.','Putting',false)}
 function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();
   if(t.step==='swing'){const ok=!note&&!l.shank&&l.q<.5;t.good=t.good||ok;
-    coach('1 of 2','The swing',note||(l.shank?'A shank. You flicked while the ring was still in the red. Wait for it to climb.':l.pure?'Pure. Right on the gold. Hit as many as you like, or move on.':ok?'A good strike. Flick closer to the gold for more distance. Hit more, or move on.':l.early?'Too early. Let the ring fill further before you flick.':'Too late. Flick just as the ring reaches the top.'),'Putting',t.good)}
+    coach('1 of 2','The swing',note||(l.shank?'Shank. Wait for the ring to leave the red.':l.pure?'Pure.':ok?'Good strike.':l.early?'Early. Wait for gold.':'Late. Flick as it reaches gold.'),'Putting',t.good)}
   else{const ft=Math.round(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*3),ok=holed||ft<=4;t.good=t.good||ok;
-    coach('2 of 2','The putt',holed?'In the hole. You are ready. Putt again, or go and play.':ok?'Stone dead, '+ft+' ft away. You are ready. Putt again, or go and play.':'That finished '+ft+' ft away. Move the marker to allow for the slope, press Putt, and flick on the gold.','Play',t.good)}
+    coach('2 of 2','The putt',holed?'Holed.':ok?'Close: '+ft+' ft.':ft+' ft away. Move the marker to allow for the slope.','Play',t.good)}
   rangeSet()}
 function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard()}
 $('coachSkip').onclick=endRange;
-$('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='swing'){t.step='putt';t.good=false;S.last=null;rangeSet();coach('2 of 2','The putt','Drag anywhere to move the marker to where a flat putt should stop. The streaks show which way the ground falls. Press Putt, then pull back and flick on the gold.','Play',false)}else endRange()};
+$('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='swing'){t.step='putt';t.good=false;S.last=null;rangeSet();coach('2 of 2','The putt','Drag the marker to where a flat putt should stop. Press Putt, then flick on gold.','Play',false)}else endRange()};
 
 // ───────── boot, and staying current while a round is open
 // A new build can arrive mid-round: the round is saved after every stroke, so it resumes where it stood.
 const PLAYING=['intro','ready','aim','flight','wait'];
 function start(d){resize();initDay();resize();let r=d&&d.playing?d:null;if(!r&&!fetchKey('tut'))return startRange();
   try{const s=JSON.parse(sessionStorage.getItem(KEY+'resume')||'null');sessionStorage.removeItem(KEY+'resume');if(s&&s.playing)r=s}catch(e){}
-  if(r&&(r.type==='daily'||r.type==='nine')){begin(r.type,r.course);if(PLAYING.includes(S.mode))toast('Updated to the latest build','Carrying on where you were',2200)}}
+  if(r&&(r.type==='daily'||r.type==='nine')){begin(r.type,r.course);if(PLAYING.includes(S.mode))toast('Updated',1400)}}
 const snap=()=>({type:S.round.type,course:S.round.course,playing:PLAYING.includes(S.mode)});
 const hot=window.claude&&window.claude.hot;
 try{if(hot&&hot.snapshot)hot.snapshot(snap)}catch(e){}

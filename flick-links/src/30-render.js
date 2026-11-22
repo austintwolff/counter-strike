@@ -74,7 +74,6 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   ctx.save();ctx.clip(g.path);ctx.drawImage(h.relief.c,h.relief.x,h.relief.y,h.relief.s,h.relief.s);ctx.restore();
   texFill(g.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,h.axis+.5);texFill(g.path,'grain',.3*tG,.05);
   ctx.strokeStyle='rgba(20,60,20,.3)';ctx.lineWidth=.3;ctx.stroke(g.path);
-  const cr=Math.max(.13,3.2/z);ctx.fillStyle='rgba(255,255,255,.85)';disc(h.pin.x,h.pin.y,cr*1.28);ctx.fillStyle='#07120b';disc(h.pin.x+cr*.08,h.pin.y+cr*.1,cr);
   if(G.cart&&vis(G.cart))drawCart(G.cart.x,G.cart.y,G.cart.a);
   // roofs: a shadow, the footprint, then two slopes either side of the ridge, the one facing the sun lighter
   for(const s of G.building)if(seen(s)){const sv=rotv(SUN.x,SUN.y,-s.ax),lit=sv.y>0?-1:1,Rr=s.R+2;ctx.save();ctx.translate(SUN.x*2.6,SUN.y*2.6);ctx.fillStyle='rgba(5,15,10,.4)';ctx.fill(s.path);ctx.restore();
@@ -116,6 +115,8 @@ function drawLive(h,now){const G=h.geo,z=cam.s;ctx.lineJoin='round';ctx.lineCap=
     ctx.strokeStyle='rgba(234,255,251,.38)';ctx.lineWidth=sz*.14;ctx.beginPath();ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,sz*1.1);ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,-sz*1.1);ctx.stroke();
     ctx.fillStyle='rgba(3,20,24,.3)';ctx.beginPath();ctx.ellipse(sz*.12,sz*.16,sz,sz*.6,0,0,TAU);ctx.fill();ctx.fillStyle='#f4efe2';ctx.beginPath();ctx.ellipse(0,0,sz,sz*.58,0,0,TAU);ctx.fill();
     ctx.fillStyle='#d9d1bd';ctx.beginPath();ctx.ellipse(-sz*.25,0,sz*.55,sz*.36,0,0,TAU);ctx.fill();ctx.fillStyle='#2f5d3a';disc(sz*.85,0,sz*.36);ctx.fillStyle='#e9a23b';ctx.beginPath();ctx.ellipse(sz*1.25,0,sz*.2,sz*.12,0,0,TAU);ctx.fill();ctx.restore()}
+  // the cup keeps its size on screen, so it is drawn here and not into a kept picture that may be magnified
+  const cr=Math.max(.13,3.2/z);ctx.fillStyle='rgba(255,255,255,.85)';disc(h.pin.x,h.pin.y,cr*1.28);ctx.fillStyle='#07120b';disc(h.pin.x+cr*.08,h.pin.y+cr*.1,cr);
   if(z>6)drawFlow(h,now);
   for(const f of S.fx)if(f.type==='ring'){const a=(now-f.t0)/900;if(a<1){ctx.strokeStyle=f.water?'#d8f4f0':K.cream;ctx.globalAlpha=1-a;ctx.lineWidth=2/z;
     for(const m of[1,.55]){ctx.beginPath();ctx.arc(f.x,f.y,(4+a*26)*m/z,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
@@ -126,21 +127,26 @@ function drawLive(h,now){const G=h.geo,z=cam.s;ctx.lineJoin='round';ctx.lineCap=
 // ───────── the scene cache
 // Redrawing the whole course every frame is far too much for a phone. So the scenery is kept in two pictures:
 //   far  — the whole hole, drawn once when the hole starts, used while the camera is moving
+//   mid  — the green and its surrounds, sharp enough for putting, laid over the far picture when the camera moves up close
 //   near — exactly what is on screen, drawn crisp each time the camera comes to rest, used while it stays there
 // Aiming, the swing ring and putting all happen with the camera at rest, so those frames cost one picture plus the ball.
-const SC={far:null,farHole:null,box:null,near:null,key:''};
+const SC={far:null,farHole:null,box:null,mid:null,midHole:null,mbox:null,near:null,key:''};
 function camOn(){ctx.translate(W/2,H*cam.ay);ctx.rotate(cam.r);ctx.scale(cam.s,cam.s);ctx.translate(-cam.x,-cam.y)}
 function viewRect(){const R=hyp(W,H)/cam.s;return[cam.x-R,cam.y-R,2*R,2*R]}
 function onCanvas(c,fn){const main=ctx;ctx=c.getContext('2d');try{fn()}finally{ctx=main}}
 function ensureFar(h){if(SC.farHole===h)return;const[x0,y0,bw,bh]=h.geo.box,k=Math.min(2.4,Math.sqrt((Q>1?4.2e6:2.6e6)/(bw*bh)));SC.far=SC.far||document.createElement('canvas');SC.far.width=Math.ceil(bw*k);SC.far.height=Math.ceil(bh*k);
   onCanvas(SC.far,()=>{ctx.setTransform(k,0,0,k,-x0*k,-y0*k);VR=[x0,y0,bw,bh];RZ=k*.6;drawStatic(h)});SC.farHole=h;SC.box=[x0,y0,bw,bh]}
+function ensureMid(h){if(SC.midHole===h)return;const g=h.green,R=g.R+34,x0=g.x-R,y0=g.y-R,k=Math.min(14,Math.sqrt(Q>1?2.2e6:1.2e6)/(2*R));SC.mid=SC.mid||document.createElement('canvas');SC.mid.width=SC.mid.height=Math.ceil(2*R*k);
+  onCanvas(SC.mid,()=>{ctx.setTransform(k,0,0,k,-x0*k,-y0*k);VR=[x0,y0,2*R,2*R];RZ=k;drawStatic(h)});SC.midHole=h;SC.mbox=[x0,y0,2*R,2*R]}
 function ensureNear(h){const key=[h.course.id,h.n,cam.x,cam.y,cam.s,cam.r,cam.ay,W,H,DPR,Q].join();if(SC.key===key)return;SC.near=SC.near||document.createElement('canvas');
   if(SC.near.width!==cv.width||SC.near.height!==cv.height){SC.near.width=cv.width;SC.near.height=cv.height}
   onCanvas(SC.near,()=>{ctx.setTransform(DPR,0,0,DPR,0,0);ctx.save();camOn();VR=viewRect();RZ=cam.s;drawStatic(h);ctx.restore();drawLight();drawVignette()});SC.key=key}
 const camAtRest=()=>cam.x===camT.x&&cam.y===camT.y&&cam.s===camT.s&&cam.r===camT.r&&cam.ay===camT.ay;
 function drawScene(now){const h=cur();
   if(camAtRest()){ensureNear(h);ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(SC.near,0,0);ctx.setTransform(DPR,0,0,DPR,0,0)}
-  else{ensureFar(h);ctx.fillStyle=h.mist;ctx.fillRect(0,0,W,H);ctx.save();camOn();ctx.drawImage(SC.far,SC.box[0],SC.box[1],SC.box[2],SC.box[3]);ctx.restore();drawVignette()}
+  else{ensureFar(h);ctx.fillStyle=h.mist;ctx.fillRect(0,0,W,H);ctx.save();camOn();ctx.drawImage(SC.far,SC.box[0],SC.box[1],SC.box[2],SC.box[3]);
+    if(cam.s>4.5){const g=h.green,R=hyp(W,H)/cam.s/2;if(hyp(cam.x-g.x,cam.y-g.y)<R+g.R+34){ensureMid(h);ctx.drawImage(SC.mid,SC.mbox[0],SC.mbox[1],SC.mbox[2],SC.mbox[3])}}
+    ctx.restore();drawVignette()}
   ctx.save();camOn();VR=viewRect();drawLive(h,now);ctx.restore()}
 const seen2=seen;
 // Bridges. Timber: an arched plank deck between stone footings, with posts and handrails, and piers under a long span.

@@ -149,7 +149,7 @@ function onUp(e){const g=S.g;if(!g||e.pointerId!==g.id)return;
   if(g.drag){endGesture();aimCam();hud();return}
   if(g.phase==='aim'&&g.fast>0)toSwing(g);
   if(g.phase==='swing'){const prog=(g.x-g.top.x)*g.aim.x+(g.y-g.top.y)*g.aim.y;if(prog>=g.pull*.35)return commit(g.x,g.y)}
-  const strong=g.power>.3;endGesture();if(S.club.putt)hud();else if(strong)hintOn('Flick forward through the ring to swing')}
+  const strong=g.power>.3;endGesture();if(S.club.putt)hud();else if(strong&&!onRange())hintOn('Flick up to swing')}
 cv.addEventListener('pointerup',onUp);cv.addEventListener('pointercancel',e=>{if(S.g&&e.pointerId===S.g.id)endGesture()});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
@@ -205,15 +205,15 @@ function stepBall(dt){const b=S.ball,h=cur();
 function dropSpot(){const h=cur(),d=S.ball.dry,p=S.prev,L=hyp(p.x-d.x,p.y-d.y);if(L<4)return p;const ux=(p.x-d.x)/L,uy=(p.y-d.y)/L;
   for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker')return q}return p}
 function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';b.gone=true;
-  if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water. No penalty on the range.':'Out of play. No penalty on the range.'),900)}
+  if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water.':'Out of play.'),900)}
   S.strokes++;
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});
   if(water){sfx.splash();burst(b.x,b.y,'#d8f4f0',22,9,9)}else sfx.bad();
-  toast(water?'In the water':kind==='ob'?'Out of bounds':'Lost in the trees',(water&&!back?'Drop at the edge':'Replay the shot')+' · one stroke penalty',1900);hud();
+  toast(water?'In the water':kind==='ob'?'Out of bounds':'Lost in the trees',(water&&!back?'Drop':'Replay')+' · +1',1900);hud();
   setTimeout(()=>{setBall(spot.x,spot.y);afterShot()},1500)}
 function atRest(){const l=lieAt(cur(),S.ball);if(!onRange()&&(l==='woods'||l==='ob'))return hazard(l);afterShot()} // on the range a wild one is just fetched back
-function afterShot(){if(onRange())return rangeAfter(false);if(S.strokes>=maxScore()){toast('Picked up','The most a hole can cost is '+maxScore(),1600);return finishHole(maxScore())}
-  const was=S.lie;setupShot();if(S.lie!==was&&(S.lie==='green'||S.lie==='bunker'))toast(S.lie==='green'?'On the green':'In the bunker','',1100);
+function afterShot(){if(onRange())return rangeAfter(false);if(S.strokes>=maxScore()){toast('Picked up','Max '+maxScore(),1600);return finishHole(maxScore())}
+  setupShot();
   S.mode='ready';aimCam();hud();save()}
 function holed(){const b=S.ball,h=cur();b.x=h.pin.x;b.y=h.pin.y;b.vx=b.vy=b.vz=b.z=0;b.air=false;b.gone=true;sfx.cup();burst(b.x,b.y,K.gold,26,5,11);burst(b.x,b.y,'#fff8e0',12,3,8);
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now()});finishHole(S.strokes)}
@@ -254,8 +254,8 @@ function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready
   $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
-  // on the green the line under the course is the caddie's read; the first few putts explain the controls instead
-  if(c.putt&&ready)hintOn((fetchKey('putts')||0)<4||onRange()?(S.pmode==='aim'?'Drag to place the marker, then press Putt':'Pull back, flick up as the ring fills'):readText());else if(c.putt)hintOff()}
+  // on the green the line under the course is the caddie's read; the first few putts name the controls instead. The range has its own card.
+  if(onRange())hintOff();else if(c.putt&&ready)hintOn((fetchKey('putts')||0)<4?(S.pmode==='aim'?'Drag the marker, then press Putt':'Pull back, flick on gold'):readText());else if(c.putt)hintOff()}
 let toastT=0;function toast(s,sub,ms){if(typeof sub==='number'){ms=sub;sub=''}const t=$('toast');t.textContent=s;if(sub){const e=document.createElement('small');e.textContent=sub;t.appendChild(e)}
   t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms||1400)}
 function hintOn(s){const e=$('hint');e.textContent=s;e.style.opacity=1}

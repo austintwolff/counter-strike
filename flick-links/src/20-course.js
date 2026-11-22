@@ -81,8 +81,15 @@ function buildHole(def,dayKey){
   const dr=mulberry32(hashStr('fl-cond:'+dayKey+':'+def.n)),pins=[[-.42,.25],[.44,-.3],[.05,.5],[.3,.38],[-.3,-.42]],pn=pins[Math.floor(dr()*pins.length)];
   const pv=rotv(pn[0]*g[0],pn[1]*g[1],h.green.rot);h.pin={x:end.x+pv.x,y:end.y+pv.y};
   const wsp=Math.round(lerp(0,14,dr())),wa=dr()*TAU;h.wind={x:Math.cos(wa)*wsp,y:Math.sin(wa)*wsp,sp:wsp};
-  const sa=ea+def.slope[0]*DEG,sm=def.slope[1];h.slope={x:Math.cos(sa)*sm,y:Math.sin(sa)*sm,m:sm};
+  // the putting surface: a gentle overall tilt plus a few humps and hollows, fixed for each green
+  const sa=ea+def.slope[0]*DEG,sm=def.slope[1]*.6;h.slope={x:Math.cos(sa)*sm,y:Math.sin(sa)*sm,m:sm};
+  const fr=mulberry32(def.n*7717+3),gr=Math.min(g[0],g[1]);h.bumps=[];
+  for(let i=0,n=3+Math.floor(fr()*2);i<n;i++){const a=fr()*TAU,d=Math.sqrt(fr())*gr*.85,sg=lerp(3.4,6.2,fr()),peak=lerp(.28,.72,fr())*(fr()<.5?-1:1);
+    h.bumps.push({x:end.x+Math.cos(a)*d,y:end.y+Math.sin(a)*d,s:sg,a:peak*sg/.607})}
   return h}
+// downhill pull on a rolling ball at a point, in yards per second squared, and the height potential behind it
+function slopeAt(h,q){let x=h.slope.x,y=h.slope.y;for(const b of h.bumps){const dx=q.x-b.x,dy=q.y-b.y,e=b.a*Math.exp(-(dx*dx+dy*dy)/(2*b.s*b.s))/(b.s*b.s);x+=dx*e;y+=dy*e}return{x,y}}
+function phiAt(h,q){let p=-(h.slope.x*(q.x-h.green.x)+h.slope.y*(q.y-h.green.y));for(const b of h.bumps){const dx=q.x-b.x,dy=q.y-b.y;p+=b.a*Math.exp(-(dx*dx+dy*dy)/(2*b.s*b.s))}return p}
 function lieAt(h,q){
   if(inSh(h.green,q))return'green';
   for(const b of h.bunkers)if(inSh(b,q))return'bunker';

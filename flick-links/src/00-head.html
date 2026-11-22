@@ -24,14 +24,15 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
 .hud{position:absolute;left:0;right:0;display:flex;justify-content:space-between;gap:8px;pointer-events:none;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .hud.top{top:10px;align-items:flex-start}
-.hud.bottom{bottom:12px;align-items:flex-end}
-.plate{pointer-events:auto;color:var(--cream);background:linear-gradient(180deg,var(--club-hi),var(--club) 45%,var(--club-deep));
+.hud.bottom{bottom:8px;align-items:flex-end}
+.plate{pointer-events:none;color:var(--cream);background:linear-gradient(180deg,var(--club-hi),var(--club) 45%,var(--club-deep));
   border:1px solid var(--gold);border-radius:9px;box-shadow:inset 0 0 0 2px rgba(11,42,33,.55),inset 0 1px 0 3px rgba(230,207,138,.12),0 4px 10px rgba(0,0,0,.4)}
+button.plate,.plate button{pointer-events:auto}
 .lbl{font:400 11px/1 var(--caps);letter-spacing:.11em;text-transform:uppercase;color:var(--gold-hi)}
 .num{font:800 30px/0.9 var(--display);font-variant-numeric:lining-nums tabular-nums}
 
-.holeinfo{display:flex;flex-direction:column;gap:5px;padding:9px 13px 10px;max-width:56vw}
-.holeinfo b{font:italic 700 19px/1.05 var(--display)}
+.holeinfo{display:flex;flex-direction:column;gap:4px;padding:8px 12px 8px;max-width:58vw}
+.holeinfo b{font:italic 700 17px/1.05 var(--display)}
 .stack{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .pin{display:flex;align-items:baseline;gap:6px;padding:8px 13px 9px}
 .wind{display:flex;align-items:center;gap:6px;padding:5px 12px 5px 7px}
@@ -39,20 +40,23 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
 .wind svg{width:24px;height:24px;display:block}
 .wind svg path{fill:var(--gold-hi)}
 
-.club{display:flex;align-items:center;gap:2px;padding:5px}
-.club button{width:40px;height:44px;border-radius:7px;font:800 24px/1 var(--display);color:var(--gold-hi)}
+.club{display:flex;align-items:center;gap:2px;padding:3px}
+.club button{width:38px;height:40px;border-radius:7px;font:800 24px/1 var(--display);color:var(--gold-hi)}
 .club button:active{background:rgba(230,207,138,.18)}
 .club button:disabled{opacity:.3}
-.clubtxt{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px}
-.clubtxt b{font:800 19px/1 var(--display)}
-.lie{padding:8px 12px 7px}
-.round{width:40px;height:40px;border-radius:50%;font:800 17px/1 var(--display);display:grid;place-items:center}
+.club button:disabled{visibility:hidden}
+.clubtxt{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:118px;padding:0 4px}
+.clubtxt b{font:800 17px/1 var(--display)}
+.round{width:34px;height:34px;border-radius:50%;font:800 15px/1 var(--display);display:grid;place-items:center}
+.go{min-width:104px;height:48px;padding:2px 18px 0;font:400 15px/1 var(--caps);letter-spacing:.14em;text-transform:uppercase;
+  background:linear-gradient(180deg,#93283a,var(--claret) 55%,var(--claret-deep))}
+.go:active{transform:translateY(2px)}
 .round[aria-pressed="false"]{color:rgba(244,236,214,.45);text-decoration:line-through}
 .tools{display:flex;gap:6px}
 
 #hint,#toast{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;text-align:center;transition:opacity .25s}
-#hint{bottom:88px;white-space:nowrap;font:italic 700 16px/1.2 var(--display);color:var(--cream);text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 12px rgba(0,0,0,.55)}
-#toast{top:118px;width:max-content;max-width:calc(100% - 32px);background:var(--paper);color:var(--ink);padding:10px 18px 9px;border-radius:4px;
+#hint{bottom:70px;white-space:nowrap;font:italic 700 16px/1.2 var(--display);color:var(--cream);text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 12px rgba(0,0,0,.55)}
+#toast{top:128px;width:max-content;max-width:calc(100% - 32px);background:var(--paper);color:var(--ink);padding:10px 18px 9px;border-radius:4px;
   font:italic 700 17px/1.2 var(--display);opacity:0;box-shadow:inset 0 0 0 1px var(--gold),0 6px 16px rgba(0,0,0,.4)}
 #toast.on{opacity:1}
 #toast small{display:block;margin-top:5px;font:400 11px/1 var(--caps);letter-spacing:.11em;text-transform:uppercase;color:var(--ink-2)}
@@ -68,7 +72,7 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
 
 .mast{display:flex;align-items:center;gap:12px}
 .mast svg{width:54px;height:62px;flex:none}
-.mast h1{margin:0;font:italic 700 36px/0.95 var(--display);letter-spacing:-.01em;color:var(--club)}
+.mast h1{margin:0;font:italic 700 40px/0.95 var(--display);letter-spacing:-.01em;color:var(--club)}
 .mast p{margin:5px 0 0;font:400 11.5px/1.25 var(--caps);letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2)}
 .stamp{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .stamp span:last-child{color:var(--claret)}
@@ -132,9 +136,8 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-num
 
   <div class="hud top">
     <div class="plate holeinfo">
-      <span class="lbl" id="hHole">Hole 1</span>
+      <span class="lbl" id="hHole">No. 1 · Par 4 · 423 yd</span>
       <b id="hName">First Tee</b>
-      <span class="lbl" id="hPar">Par 4 · 356 yd</span>
       <span class="lbl" id="hStroke">Shot 1</span>
     </div>
     <div class="stack">
@@ -143,25 +146,23 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-num
         <svg id="windArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l6 9h-4v11h-4V11H6z"/></svg>
         <span class="num" id="hWind">0</span><span class="lbl">mph</span>
       </div>
+      <div class="tools">
+        <button class="plate round" id="btnSound" aria-label="Sound" aria-pressed="true">♪</button>
+        <button class="plate round" id="btnHelp" aria-label="How to play">?</button>
+      </div>
     </div>
   </div>
 
   <div id="toast" role="status" aria-live="polite"></div>
-  <div id="hint">Pull back to aim, then flick forward</div>
+  <div id="hint">Pull back to aim, flick up as the ring fills</div>
 
   <div class="hud bottom">
     <div class="plate club">
       <button id="clubPrev" aria-label="Shorter club">‹</button>
-      <div class="clubtxt"><b id="clubName">Driver</b><span class="lbl" id="clubMax">up to 240 yd</span></div>
+      <div class="clubtxt"><b id="clubName">Driver</b><span class="lbl" id="clubMax">240 yd · Tee</span></div>
       <button id="clubNext" aria-label="Longer club">›</button>
     </div>
-    <div class="stack">
-      <span class="plate lie lbl" id="hLie">Tee</span>
-      <div class="tools">
-        <button class="plate round" id="btnSound" aria-label="Sound" aria-pressed="true">♪</button>
-        <button class="plate round" id="btnHelp" aria-label="How to swing">?</button>
-      </div>
-    </div>
+    <button class="plate go" id="btnPutt" hidden>Putt</button>
   </div>
 
   <div id="scrim" hidden><div id="card" role="dialog" aria-modal="true" aria-label="Flick Links"></div></div>

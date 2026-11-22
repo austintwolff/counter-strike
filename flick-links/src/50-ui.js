@@ -2,8 +2,8 @@
 const CREST='<svg viewBox="0 0 54 62" aria-hidden="true"><path d="M4 4h46v30c0 13-10 21-23 25C14 55 4 47 4 34z" fill="#14493a" stroke="#b9933b" stroke-width="2.5"/><path d="M9.500 9.500h35v24.500c0 9.500-7.500 16-17.500 19.500-10-3.500-17.500-10-17.500-19.500z" fill="none" stroke="#e6cf8a" stroke-width=".9"/><path d="M14 42l6-10 6 3 5-8 9 15z" fill="#cfcabb"/><path d="M20 32l6 3 5-8 2 3-6 9z" fill="#8f8a7b"/><path d="M27 13v14" stroke="#f4ecd6" stroke-width="1.6" stroke-linecap="round"/><path d="M27.500 13.500l9 3.200-9 3.200z" fill="#c9283a"/></svg>';
 const HOW=`<div class="how">
 <figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="24" r="9" fill="none" stroke="#e6cf8a" stroke-width="4"/><path d="M48 35v36" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M41 62l7 9 7-9" fill="none" stroke="#f4ecd6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="48" cy="78" r="11" fill="#f4ecd6" opacity=".45"/></svg><figcaption>Pull back to aim. Farther means harder.</figcaption></figure>
-<figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="24" r="9" fill="none" stroke="#e6cf8a" stroke-width="4"/><path d="M48 80V10" stroke="#e6cf8a" stroke-width="6" stroke-linecap="round"/><path d="M39 20l9-11 9 11" fill="none" stroke="#e6cf8a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>Flick forward through the ring to hit.</figcaption></figure>
-<figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="40" cy="24" r="9" fill="none" stroke="#e6cf8a" stroke-width="4"/><path d="M40 80C40 50 46 30 66 12" fill="none" stroke="#c9283a" stroke-width="6" stroke-linecap="round"/><path d="M40 80V40" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/></svg><figcaption>A crooked flick bends the shot.</figcaption></figure></div>`;
+<figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="50" r="26" fill="none" stroke="#0b2a21" stroke-opacity=".55" stroke-width="11"/><path d="M48 76A26 26 0 0 1 26 36" fill="none" stroke="#f4ecd6" stroke-width="7" stroke-linecap="round"/><path d="M48 76A26 26 0 0 0 70 36" fill="none" stroke="#f4ecd6" stroke-width="7" stroke-linecap="round"/><path d="M39 25.600A26 26 0 0 1 57 25.600" fill="none" stroke="#e6cf8a" stroke-width="11"/><path d="M48 62V40M41 47l7-8 7 8" fill="none" stroke="#e6cf8a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>Flick up the moment the ring fills.</figcaption></figure>
+<figure><svg viewBox="0 0 96 96" aria-hidden="true"><path d="M48 84V44" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M48 84C48 56 42 34 24 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><path d="M48 84C48 56 54 34 72 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><text x="17" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">early</text><text x="60" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">late</text></svg><figcaption>Early hooks it. Late slices it.</figcaption></figure></div>`;
 function sheet(html){$('card').innerHTML=html;$('scrim').hidden=false;$('card').scrollTop=0;const b=$('card').querySelector('.btn');if(b)try{b.focus({preventScroll:true})}catch(e){}}
 function closeSheet(){$('scrim').hidden=true;$('card').innerHTML=''}
 const rel=n=>n===0?'E':(n>0?'+':'−')+Math.abs(n);
@@ -13,39 +13,39 @@ const mk=(s,par)=>{const d=s-par,c=d<=-2?'eagle':d===-1?'birdie':d===1?'bogey':d
 function scoreCard(ids,scores,note){const hs=ids.map(i=>S.holes[i]),wide=ids.length<=3,par=sum(hs.map(h=>h.par)),n=scores.filter(s=>s!=null).length,done=n>=ids.length;
   const toPar=n?rel(sum(scores.slice(0,n))-sum(hs.slice(0,n).map(h=>h.par))):'',d=new Date();
   const row=(cls,label,cells,out)=>`<tr class="${cls}"><th>${label}</th>${cells.map(c=>`<td>${c}</td>`).join('')}<td class="out">${out}</td></tr>`;
-  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${COURSE.club} · Front Nine</b><span>${note}</span></div>
+  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":COURSE.club}</b><span>${note}</span></div>
 <table class="sc${wide?' wide':''}">${row('h','Hole',hs.map(h=>h.n),wide?'Total':'Out')}${row('g',COURSE.tee,hs.map(h=>h.yards),sum(hs.map(h=>h.yards)))}
 ${row('k','Hcp',hs.map(h=>h.hcp),'')}${row('p','Par',hs.map(h=>h.par),par)}
 ${row('s','You',hs.map((h,i)=>scores[i]!=null?mk(scores[i],h.par):''),done?sum(scores):'')}</table>
 <div class="sc-foot"><span>Date <i>${d.getMonth()+1}/${d.getDate()}</i></span><span>Scorer <i>You</i></span><span>To par <i>${toPar}</i></span></div></div>`}
 const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
-function titleCard(){const ids=dailyIds(S.key),d=fetchKey(S.key),n=fetchKey(S.key+':nine'),seen=fetchKey('seen');
+function titleCard(){const ids=dailyIds(S.key),d=fetchKey(S.key),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(0,0);setupShot();overviewCam(.2,.3,true);hud();hintOff();
-  const dGo=d&&!d.done&&(d.hi>0||d.strokes>0),nGo=n&&!n.done&&(n.hi>0||n.strokes>0);
-  sheet(`<div class="mast">${CREST}<div><h1>Flick Links</h1><p>at ${COURSE.club} · ${COURSE.place}</p></div></div>
+  sheet(`<div class="mast">${CREST}<h1>Flick Links</h1></div>
 <div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
-${scoreCard(ids,d&&d.scores?d.scores:[],"Today's three")}
-<div class="row"><button class="btn" data-act="daily">Today's three<small>${d&&d.done?'See your card':dGo?'Resume at No. '+S.holes[ids[d.hi]].n:'One try. Same holes for everyone.'}</small></button>
-<button class="btn green" data-act="nine">Front nine<small>${n&&n.done?'See your card':nGo?'Resume at No. '+(n.hi+1):'Practice all nine holes'}</small></button></div>
-${seen?'':HOW}<p class="fine">An unofficial tribute. Pars, yardages and handicaps follow the club's Gold-tee card. The hole designs are this game's own.</p>`)}
-function helpCard(){sheet(`<h2>How to swing</h2>${HOW}
-<p class="fine">The dotted line shows where a straight shot lands. Wind and the arrows on the green are not in that line, so allow for them. Water and the woods cost one stroke. A live oak in the rough will knock a low ball down.</p>
+${scoreCard(ids,d&&d.scores?d.scores:[],COURSE.club)}
+<div class="row"><button class="btn" data-act="daily">Today's three</button><button class="btn green" data-act="nine">Front nine</button></div>
+${seen?'':HOW}`)}
+function helpCard(){sheet(`<h2>How to play</h2>${HOW}
+<p class="fine"><b>The swing.</b> The dotted line shows where a pure strike lands. A ring at your thumb fills, drains and fills again. Flick through it as it tops out. Early loses distance and hooks. Late loses distance and slices. Longer clubs and bad lies give a smaller window.</p>
+<p class="fine"><b>On the green.</b> The moving streaks run downhill, faster and warmer where it is steep. Drag to place the marker where a flat putt should stop, press Putt, then pull back and flick on the ring. A mistimed putt comes up short or runs long.</p>
+<p class="fine">Water and the woods cost one stroke. A live oak will knock a low ball down.</p>
 <button class="btn" data-act="close">Carry on</button>`)}
 function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:S.holes[S.round.ids[S.hi+1]];
   sheet(`<p class="eyebrow">No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
 <p class="sub">${score===1?'One swing. Frame the card.':score+' strokes'+(score>=maxScore()?', the most a hole can cost.':'.')}</p>
-${scoreCard(S.round.ids,S.round.scores,S.round.type==='nine'?'Practice':"Today's three")}
+${scoreCard(S.round.ids,S.round.scores,S.round.type==='nine'?'Front nine · practice':COURSE.club)}
 <button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
 function shareText(){const r=S.round,hs=r.ids.map(i=>S.holes[i]),par=sum(hs.map(h=>h.par)),tot=sum(r.scores);
   let t=r.type==='nine'?`⛳ Flick Links · front nine at ${COURSE.club}\n`+r.scores.map((s,i)=>emo(s,hs[i].par)).join('')+`\n${tot} strokes (${rel(tot-par)})`
-    :`⛳ Flick Links No. ${S.day} · ${COURSE.club}\n`+r.scores.map((s,i)=>`#${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
+    :`⛳ Flick Links No. ${S.day}\n`+r.scores.map((s,i)=>`#${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
   let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname}catch(e){}
   return url?t+'\n'+url:t}
 function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r.scores=sv.scores;
   const hs=r.ids.map(i=>S.holes[i]),d=sum(r.scores)-sum(hs.map(h=>h.par)),m=fetchKey('meta'),nine=r.type==='nine';
   S.mode='done';S.hi=r.ids.length-1;setBall(0,0);setupShot();hud();hintOff();store('seen',1);overviewCam(.16,.24,false);
   sheet(`<p class="eyebrow">${nine?'Practice round · front nine':dateLine()}</p><h2>${sum(r.scores)} strokes, ${d===0?'even par':d<0?Math.abs(d)+' under':d+' over'}</h2>
-${scoreCard(r.ids,r.scores,nine?'Practice':"Today's three")}
+${scoreCard(r.ids,r.scores,nine?'Front nine · practice':COURSE.club)}
 <textarea id="shareText" readonly rows="3" aria-label="Your result, ready to paste">${shareText()}</textarea>
 <div class="row"><button class="btn" data-act="share">Share score</button><button class="btn ghost" data-act="${nine?'again':'title'}">${nine?'Play it again':'Clubhouse'}</button></div>
 ${nine?'<button class="btn ghost" data-act="title">Clubhouse</button>':''}
@@ -72,7 +72,7 @@ let introT=0;
 function startHole(i,sv){closeSheet();S.hi=i;const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
   overviewCam(.5,.7,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,`Par ${h.par} · ${h.yards} yards · Handicap ${h.hcp}`,2000);
-  if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, then flick forward');
+  if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up as the ring fills');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
 function begin(type){const ids=type==='nine'?COURSE.holes.map((_,i)=>i):dailyIds(S.key);S.round={type,ids,scores:[]};const sv=fetchKey(saveKey());
   if(sv&&sv.done&&Array.isArray(sv.scores)){S.round.scores=sv.scores;return resultsCard()}

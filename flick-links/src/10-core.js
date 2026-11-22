@@ -29,11 +29,16 @@ const TEX=(()=>{const r=mulberry32(4242),T={};
   T.glint=tex(128,128,(g,w,h)=>{g.lineCap='round';for(let i=0;i<70;i++){const x=r()*w,y=r()*h,l=3+r()*9;g.strokeStyle=`rgba(225,250,245,${.12+r()*.35})`;g.lineWidth=.8+r()*1.3;
     for(const ox of[-w,0,w]){g.beginPath();g.moveTo(x+ox,y);g.quadraticCurveTo(x+ox+l/2,y-1.6,x+ox+l,y);g.stroke()}}});
   T.cloud=tex(256,256,(g,w,h)=>{for(let i=0;i<9;i++)wrapDot(g,w,h,r()*w,r()*h,46+r()*56,'20,34,60',.3+r()*.22)});
-  T.bloom=tex(64,64,(g,w,h)=>{for(let i=0;i<150;i++){const x=r()*w,y=r()*h;g.fillStyle=r()<.8?`rgba(${70+r()*30|0},${80+r()*40|0},${200+r()*55|0},.95)`:'rgba(245,245,255,.9)';g.beginPath();g.arc(x,y,.9+r()*1.5,0,TAU);g.fill()}});
+  // wildflowers: bluebonnets, Indian blanket, evening primrose
+  const flowers=(a,b)=>tex(64,64,(g,w,h)=>{for(let i=0;i<150;i++){g.fillStyle=r()<.78?a[Math.floor(r()*a.length)]:b;g.beginPath();g.arc(r()*w,r()*h,.9+r()*1.5,0,TAU);g.fill()}});
+  T.bloom=flowers(['#4a5fd0','#5b74e6','#6a58c8'],'#f5f5ff');T.bloomGold=flowers(['#f2b22c','#e8862a','#d8482a'],'#fff3b0');T.bloomPink=flowers(['#f0a6c4','#e684ae','#f6d0e0'],'#fffaf0');
+  // tufts for rough seen up close, and straw for prairie grass
+  T.tuft=tex(128,128,(g,w,h)=>{g.lineCap='round';for(let i=0;i<420;i++){const x=r()*w,y=r()*h,l=2+r()*4,a=-1.57+(r()-.5)*1.1;g.strokeStyle=r()<.55?`rgba(8,34,6,${.16+r()*.2})`:`rgba(214,240,150,${.1+r()*.16})`;g.lineWidth=.8+r()*.8;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke()}});
+  T.straw=tex(128,128,(g,w,h)=>{g.lineCap='round';for(let i=0;i<520;i++){const x=r()*w,y=r()*h,l=3+r()*7,a=.5+(r()-.5)*.9;g.strokeStyle=r()<.5?`rgba(90,70,20,${.14+r()*.2})`:`rgba(250,232,160,${.14+r()*.22})`;g.lineWidth=.7+r()*.7;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke()}});
   return T})();
 const PAT={};for(const k in TEX)PAT[k]=ctx.createPattern(TEX[k],'repeat');
-function treeSprite(kind,seed){return tex(128,128,g=>{const r=mulberry32(seed),R=50,oak=kind==='oak';
-  const pal=oak?['#20391a','#345f27','#4b8134','#77a84c']:['#172e1f','#23482b','#336337','#4f8246'],cl=[];
+function treeSprite(kind,seed){return tex(128,128,g=>{const r=mulberry32(seed),R=50,oak=kind!=='cedar';
+  const pal=kind==='blossom'?['#6d3148','#b25577','#e58dab','#fbd3e0']:oak?['#20391a','#345f27','#4b8134','#77a84c']:['#172e1f','#23482b','#336337','#4f8246'],cl=[];
   for(let i=0;i<(oak?12:7);i++){const a=r()*TAU,d=Math.sqrt(r())*R*(oak?.56:.4);cl.push({x:64+Math.cos(a)*d,y:64+Math.sin(a)*d,r:R*(oak?.3+r()*.2:.36+r()*.2)})}
   const lay=(col,k,sh)=>{g.fillStyle=col;for(const c of cl){g.beginPath();g.arc(c.x+sh*c.r,c.y+sh*c.r,c.r*k,0,TAU);g.fill()}};
   lay(pal[0],1,.06);lay(pal[1],.9,-.02);lay(pal[2],.6,-.24);g.globalAlpha=.8;lay(pal[3],.27,-.44);
@@ -42,7 +47,7 @@ function treeSprite(kind,seed){return tex(128,128,g=>{const r=mulberry32(seed),R
 function pineSprite(seed){return tex(128,128,g=>{const r=mulberry32(seed),n=9+Math.floor(r()*4),rot=r()*TAU;
   const star=(R,k,col,dx)=>{g.fillStyle=col;g.beginPath();for(let i=0;i<n*2;i++){const a=rot+i/(n*2)*TAU,d=i%2?R*k*(.85+r()*.3):R*(.86+r()*.14);g.lineTo(64+dx+Math.cos(a)*d,64+dx+Math.sin(a)*d)}g.closePath();g.fill()};
   star(50,.58,'#12281c',3);star(47,.56,'#1e4028',0);star(36,.5,'#2c5a34',-4);g.globalAlpha=.85;star(22,.45,'#44774a',-8);g.globalAlpha=1;g.fillStyle='#5c8c58';g.beginPath();g.arc(54,54,4,0,TAU);g.fill()})}
-const SPR={oak:[11,12,13,14].map(s=>treeSprite('oak',s)),cedar:[21,22,23,24].map(s=>treeSprite('cedar',s)),pine:[41,42,43,44].map(pineSprite),
+const SPR={oak:[11,12,13,14].map(s=>treeSprite('oak',s)),cedar:[21,22,23,24].map(s=>treeSprite('cedar',s)),pine:[41,42,43,44].map(pineSprite),blossom:[51,52,53,54].map(s=>treeSprite('blossom',s)),
   shadow:tex(64,64,g=>softDot(g,32,32,32,'6,18,8',.62)),
   rock:[31,32,33].map(s=>tex(96,96,g=>{const r=mulberry32(s),n=7+Math.floor(r()*3),p=[];for(let i=0;i<n;i++){const a=i/n*TAU+r()*.5,d=28+r()*13;p.push([48+Math.cos(a)*d,48+Math.sin(a)*d])}
     const poly=(dx,dy)=>{g.beginPath();p.forEach(([x,y],i)=>i?g.lineTo(x+dx,y+dy):g.moveTo(x+dx,y+dy));g.closePath()};

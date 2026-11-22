@@ -140,6 +140,10 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-num
 .strip b{font:italic 700 18px/1.1 var(--display);color:var(--club);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .strip i{font:600 12.5px/1.25 var(--display);font-style:normal;color:var(--ink-2)}
 .strip em{font:400 11.5px/1 var(--caps);font-style:normal;letter-spacing:.12em;text-transform:uppercase;color:var(--cream);background:var(--club);border-radius:4px;padding:8px 10px 7px}
+.strip.warn{border-color:var(--claret);box-shadow:inset 0 0 0 2px var(--paper),inset 0 0 0 3px rgba(123,30,43,.3)}
+.strip.warn b{color:var(--claret)}
+.strip.warn em{background:var(--claret)}
+#saveNote:empty{display:none}
 .field{display:flex;flex-direction:column;gap:8px}
 .field label{font:400 11.5px/1 var(--caps);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
 .field input{font:600 19px/1.2 var(--display);color:var(--ink);padding:11px 12px;border:1px solid var(--rule);border-radius:4px;background:#fffdf6;width:100%;box-sizing:border-box;-webkit-user-select:text;user-select:text}

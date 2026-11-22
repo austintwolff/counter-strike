@@ -3,7 +3,7 @@ const CREST='<svg viewBox="0 0 54 62" aria-hidden="true"><path d="M4 4h46v30c0 1
 const HOW=`<div class="how">
 <figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="24" r="9" fill="none" stroke="#e6cf8a" stroke-width="4"/><path d="M48 35v36" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M41 62l7 9 7-9" fill="none" stroke="#f4ecd6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="48" cy="78" r="11" fill="#f4ecd6" opacity=".45"/></svg><figcaption>Pull back to aim. Farther means harder.</figcaption></figure>
 <figure><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="50" r="26" fill="none" stroke="#0b2a21" stroke-opacity=".55" stroke-width="11"/><path d="M48 76A26 26 0 0 1 26 36" fill="none" stroke="#f4ecd6" stroke-width="7" stroke-linecap="round"/><path d="M48 76A26 26 0 0 0 70 36" fill="none" stroke="#f4ecd6" stroke-width="7" stroke-linecap="round"/><path d="M39 25.600A26 26 0 0 1 57 25.600" fill="none" stroke="#e6cf8a" stroke-width="11"/><path d="M48 62V40M41 47l7-8 7 8" fill="none" stroke="#e6cf8a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>Flick up the moment the ring fills.</figcaption></figure>
-<figure><svg viewBox="0 0 96 96" aria-hidden="true"><path d="M48 84V44" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M48 84C48 56 42 34 24 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><path d="M48 84C48 56 54 34 72 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><text x="17" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">early</text><text x="60" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">late</text></svg><figcaption>Early hooks it. Late slices it.</figcaption></figure></div>`;
+<figure><svg viewBox="0 0 96 96" aria-hidden="true"><path d="M48 84V44" stroke="#f4ecd6" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M48 84C48 56 42 34 24 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><path d="M48 84C48 56 54 34 72 14" fill="none" stroke="#c9283a" stroke-width="5" stroke-linecap="round"/><text x="17" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">early</text><text x="60" y="42" font-size="11" fill="#f4ecd6" font-family="Georgia,serif" font-style="italic">late</text></svg><figcaption>Early hooks, late slices. Far too early shanks.</figcaption></figure></div>`;
 // again is the function that redraws this sheet when fresh clubhouse data arrives; a redraw keeps its scroll and skips the entrance
 let redrawFn=null;
 function sheet(html,again){const c=$('card'),same=!!again&&redrawFn===again&&!$('scrim').hidden,top=c.scrollTop;c.classList.toggle('still',same);c.innerHTML=html;$('scrim').hidden=false;c.scrollTop=same?top:0;redrawFn=again||null;
@@ -32,14 +32,14 @@ function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('see
 <div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
-${clubStrip()}
+${saveStrip()}${clubStrip()}
 <p class="eyebrow">Practice a front nine</p>
 <div class="row">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>
 ${seen?'':HOW}`,titleCard)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
-<p class="fine"><b>The swing.</b> The dotted line shows where a pure strike lands. A ring at your thumb fills, drains and fills again. Flick through it as it tops out. Early loses distance and hooks. Late loses distance and slices. Longer clubs and bad lies give a smaller window.</p>
-<p class="fine"><b>On the green.</b> The moving streaks run downhill, faster and warmer where it is steep. Drag to place the marker where a flat putt should stop, press Putt, then pull back and flick on the ring. A mistimed putt comes up short or runs long.</p>
-<p class="fine">Water and the woods cost one stroke. A tree in the rough will knock a low ball down. Native grass is playable but takes 40% off the shot.</p>
+<p class="fine"><b>The swing.</b> The dotted line shows where a clean strike lands. A ring at your thumb fills slowly, then faster, and starts over. Flick through it as it tops out. A pure driver is a bomb and a pure iron lands on the line. A little early draws it, a little late fades it, and both cost some distance. Flick while the ring is still in the red at the bottom and you shank it. Longer clubs and bad lies give a smaller window.</p>
+<p class="fine"><b>On the green.</b> The lines run down the slope at the pace a ball drifts there: still on flat ground, quick where it is steep. The caddie's line gives the rise to the cup and how far a straight putt would miss. Drag the marker to where a flat putt should stop, press Putt, then flick on the ring. Mistimed putts come up short or run long.</p>
+<p class="fine"><b>Trouble.</b> Water is a hazard: drop at the edge where the ball went in, one stroke. The woods are out of bounds: replay the shot, one stroke. A tree in the rough knocks a low ball down. Native grass takes 40% off the shot.</p>
 <button class="btn" data-act="close">Carry on</button>`)}
 function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:HOLE(S.round.ids[S.hi+1]);
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
@@ -58,7 +58,7 @@ function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r
 ${scoreCard(r.ids,r.scores)}
 <textarea id="shareText" readonly rows="${shareText().split('\n').length}" aria-label="Your result, ready to paste">${shareText()}</textarea>
 <div class="row"><button class="btn" data-act="share">Share score</button><button class="btn ghost" data-act="${nine?'again':'title'}">${nine?'Play it again':'Home'}</button></div>
-${nine?'<button class="btn ghost" data-act="title">Home</button>':C.club&&C.club.member?'<p class="eyebrow">'+esc(C.club.name)+' today</p>'+tabToday(C.club)+'<button class="btn green" data-act="club">Open the clubhouse</button>':clubStrip()}
+${nine?'':saveStrip()}${nine?'<button class="btn ghost" data-act="title">Home</button>':C.club&&C.club.member?'<p class="eyebrow">'+esc(C.club.name)+' today</p>'+tabToday(C.club)+'<button class="btn green" data-act="club">Open the clubhouse</button>':clubStrip()}
 <p class="fine" id="shareNote">${nine?'Practice rounds do not change today\'s card.':(m&&m.streak>1?`Day streak <b>${m.streak}</b>. `:'')+'New holes in <b id="countdown">--:--:--</b>.'}</p>`,nine?null:resultsCard);tickClock()}
 async function share(){const ta=$('shareText'),text=ta.value,note=$('shareNote');let top=false;try{top=window.top===window.self}catch(e){}
   if(top&&navigator.share){try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}}
@@ -89,7 +89,7 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
 
 // ───────── flow
 let introT=0;
-function startHole(i,sv){closeSheet();S.hi=i;const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
+function startHole(i,sv){closeSheet();S.hi=i;S.marks=[];const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
   overviewCam(.5,.7,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,`${h.course.club} · Par ${h.par} · ${h.yards} yards`,2000);
   if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up as the ring fills');

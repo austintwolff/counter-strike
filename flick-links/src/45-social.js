@@ -65,7 +65,7 @@ ${club?'<label for="houseName">Clubhouse name</label><input id="houseName" maxle
 <p class="fine err" id="formErr" role="alert"></p>
 <div class="row"><button class="btn" type="submit">${join?'Join':club?'Open the doors':'Save'}</button><button class="btn ghost" type="button" data-act="title">Back</button></div>
 ${!C.me&&Net.remote&&window.PublicKeyCredential?'<button class="link" type="button" data-act="signin">Played before on another phone? Sign in</button>':''}</form>
-<p class="fine">${Net.remote?'This phone will remember you each day. Nobody else can post as you.':'Solo for now: this clubhouse lives on this device. Friends can join once the game is on its own web address.'}</p>`)}
+<p class="fine">${Net.remote?(C.me?'':'Your phone will ask to save a passkey. That is your account: no password, and nobody else can post as you.'):'Solo for now: this clubhouse lives on this device. Friends can join once the game is on its own web address.'}</p>`)}
 function clubCard(){const c=C.club;if(!c||!c.member)return titleCard();const t=C.tab,others=(C.me?C.me.clubs:[]).filter(x=>x.code!==c.code);
   sheet(`<p class="eyebrow">Clubhouse · ${plural(c.count,'member')}${Net.remote?'':' · this device only'}</p><h2>${esc(c.name)}</h2>
 <div class="tabs" role="tablist">${[['today','Today'],['standings','Standings'],['records','Records']].map(([k,l])=>`<button role="tab" aria-selected="${t===k}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
@@ -78,9 +78,13 @@ function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,wo
 <p class="fine">${st.hcp==null?'Your handicap arrives after three daily rounds. '+plural(Math.max(1,3-st.rounds),'round')+' to go.':'Your handicap is the best of your recent rounds, scaled to eighteen holes. Lower is better.'}</p>
 <p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
   return`<div class="${e?'won':''}"><i class="mono">${mono}</i><b>${name}${e&&e.n>1?' ×'+e.n:''}</b><span>${sw!=null&&!e?sw+' of 9 so far':what}</span></div>`}).join('')}</div>
-<div class="row">${Net.remote&&window.PublicKeyCredential&&!m.passkey?'<button class="btn green" data-act="passkey">Save my player</button>':''}<button class="btn ghost" data-act="rename">Change name</button><button class="btn ghost" data-act="title">Back</button></div>
-<p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey. Sign in on any phone to pick up where you left off.':'Save your player with Face ID or a fingerprint so a new phone cannot cost you your handicap.'}</p>`,meCard)}
-async function savePasskey(){const note=$('shareNote');try{const o=await Net.call('POST','/passkey/options',{kind:'create'});if(!o.ok)throw o;const pk=o.publicKey;pk.challenge=fromB64(pk.challenge);pk.user.id=fromB64(pk.user.id);
+${saveStrip()}<div class="row"><button class="btn ghost" data-act="rename">Change name</button><button class="btn ghost" data-act="title">Back</button></div>
+<p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey. Sign in on any phone to pick up where you left off.':canSave()?'':'This browser cannot save a passkey. Open the game in Safari or Chrome to save your player.'}</p>`,meCard)}
+const canSave=()=>Net.remote&&!!window.PublicKeyCredential;
+// only ask unprompted on a phone or laptop that has Face ID, a fingerprint reader or a screen lock to back the passkey
+const canPrompt=async()=>{try{return canSave()&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()}catch(e){return false}};
+const saveStrip=()=>C.me&&!C.me.passkey&&canSave()?'<button class="strip warn" data-act="passkey"><span><b>Save your player</b><i>One tap. Keeps your handicap if you change phones.</i></span><em>Save</em></button><p class="fine err" id="saveNote"></p>':'';
+async function savePasskey(){const note=$('saveNote')||$('shareNote');try{const o=await Net.call('POST','/passkey/options',{kind:'create'});if(!o.ok)throw o;const pk=o.publicKey;pk.challenge=fromB64(pk.challenge);pk.user.id=fromB64(pk.user.id);
     const cred=await navigator.credentials.create({publicKey:pk}),r=cred.response,j=await Net.call('POST','/passkey/create',{id:cred.id,clientDataJSON:toB64(r.clientDataJSON),spki:toB64(r.getPublicKey()),alg:r.getPublicKeyAlgorithm()});
     if(!j.ok)throw j;await refresh()}catch(e){if(note)note.textContent=e&&e.name==='NotAllowedError'?'No passkey was saved.':'This device could not save a passkey.'}}
 async function signIn(){const note=$('formErr');try{const o=await Net.call('POST','/passkey/options',{kind:'get'});if(!o.ok)throw o;const pk=o.publicKey;pk.challenge=fromB64(pk.challenge);
@@ -93,7 +97,9 @@ async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.
 $('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),btn=f.querySelector('[type=submit]');
   const cname=kind==="club"?$("houseName").value.trim():"";if(!nick)return say(MSG.name);if(kind==='club'&&cname.length<2)return say('Give the clubhouse a name.');
   btn.disabled=true;
-  try{if(!C.me||kind==='name'){const j=await Net.call('POST','/player',{name:nick});if(!j.ok)throw j}
+  try{const fresh=!C.me;if(fresh||kind==='name'){const j=await Net.call('POST','/player',{name:nick});if(!j.ok)throw j}
+    // a new player is saved to the phone's passkey straight away, so two weeks of rounds never hang on a cookie
+    if(fresh&&await canPrompt()){btn.textContent='Saving your player';await savePasskey()}
     if(kind==='club'){const j=await Net.call('POST','/club',{name:cname,nick});if(!j.ok)throw j;endInvite();pickClub(j.code)}
     if(kind==='join'){const j=await Net.call('POST','/join',{code:C.invite||C.code,nick});if(!j.ok)throw j;endInvite();pickClub(j.code)}
     await refresh();kind==='name'?meCard():(C.tab='today',clubCard())}

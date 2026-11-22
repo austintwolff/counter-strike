@@ -3,7 +3,7 @@
 // Positions are (s, o): yards from the tee along the routing, and yards right (+) or left (−) of it.
 // th is the look and feel of a course: what lies beyond the rough, ground colours, the mix and density of trees.
 const COURSES=[{id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
- th:{out:'woods',floor:'#33512b',rough:'#4b7735',fair:'#69a547',stripe:1,cedar:.34,pine:0,dens:1,marker:'#e6cf8a',cor:[[0,56],[.5,64],[1,60]]},holes:[
+ th:{out:'woods',floor:'#33512b',rough:'#4b7735',fair:'#69a547',stripe:1,cedar:.34,pine:0,dens:1,marker:'#e6cf8a',bloom:'bloom',blossom:29,cor:[[0,56],[.5,64],[1,60]]},holes:[
  {n:1,name:'Circle C',par:4,yd:423,hcp:7,route:[[0,0],[-10,150],[5,280],[55,410]],
   fair:[[.12,.91,[[0,12],[.35,20],[.62,18],[.85,14],[1,10]]]],green:[15,12.5,15,11],slope:[180,.35],
   bunk:[[246,-27,9,5.5,10],[274,-25,7,5,-15],[402,-19,8,5,70],[436,9,7,4.5,0]],pond:[[366,35,22,15,20]],
@@ -45,15 +45,15 @@ const COURSES=[{id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
   rock:[[116,-20,5],[118,-6,4],[117,10,5],[120,24,4],[130,-44,5],[135,46,4],[240,-10,5],[238,14,4],[226,40,3.5]],
   bridge:[[187,-39,90,30]],bloom:[[40,35,12,8],[60,-37,10,7]],path:[[-6,-12],[70,-52],[150,-62],[188,-55]]},
  {n:9,name:'Homestead',par:4,yd:317,hcp:11,route:[[0,0],[8,120],[-6,230],[-30,317]],
-  fair:[[.13,.86,[[0,12],[.5,20],[1,16]]],[.918,.95,[[0,10],[1,9]]]],green:[14,13,0,91],slope:[180,.5],
-  creek:[{w:5.5,p:[[205,76],[249,47],[271,22],[285,0],[295,-25],[301,-52],[311,-84]]}],
-  bunk:[[205,-29,9,5.5,0],[215,31,8,5,0],[306,22,8,5,-50],[336,-6,8,4.5,0],[314,-23,6,4.5,50]],
-  oak:[[130,-37,9],[150,39,9]],rock:[[277,12,2.6],[291,-12,3]],bloom:[[349,27,12,6],[352,-41,10,6]],
-  path:[[-6,14],[100,48],[210,52],[270,40]],bridge:[[288,-6,0,14]],house:[378,-8]}]},
+  fair:[[.13,.71,[[0,12],[.5,20],[1,16]]],[.8,.95,[[0,15],[.5,17],[1,9]]]],green:[14,13,0,91],slope:[180,.5],
+  creek:[{w:5.5,p:[[160,76],[204,47],[226,22],[240,0],[250,-25],[256,-52],[266,-84]]}],
+  bunk:[[190,-29,9,5.5,0],[200,31,8,5,0],[306,22,8,5,-50],[336,-6,8,4.5,0],[314,-23,6,4.5,50]],
+  oak:[[130,-37,9],[150,39,9]],rock:[[232,12,2.6],[246,-12,3]],bloom:[[349,27,12,6],[352,-41,10,6]],
+  path:[[-6,14],[100,48],[190,52],[226,40]],bridge:[[243,-6,0,14]],house:[378,-8]}]},
 
 // Lost Pines (once Wolfdancer): open prairie ridges, loblolly pines, sprawling bunkers. Miss the rough and you are in native grass, not the woods.
 {id:'lp',code:'LP',club:'Lost Pines',tee:'Black',
- th:{out:'native',floor:'#978a4b',rough:'#557f39',fair:'#6ba748',stripe:1,cedar:.08,pine:.8,dens:.3,marker:'#1c1c1c',cor:[[0,58],[.5,68],[1,62]]},holes:[
+ th:{out:'native',floor:'#978a4b',rough:'#557f39',fair:'#6ba748',stripe:1,cedar:.08,pine:.8,dens:.3,marker:'#1c1c1c',bloom:'bloomGold',blossom:0,cor:[[0,58],[.5,68],[1,62]]},holes:[
  {n:1,name:'Loblolly',par:4,yd:420,hcp:17,route:[[0,0],[10,150],[0,290],[-40,420]],
   fair:[[.11,.92,[[0,13],[.4,22],[.7,19],[1,11]]]],green:[15,14,0,101],slope:[190,.4],
   bunk:[[252,30,12,7,10],[282,-28,9,6,0],[400,21,9,6,-50],[416,-22,8,5,50]],oak:[[190,-40,7],[330,41,7]],bloom:[[40,35,12,7]],
@@ -90,7 +90,7 @@ const COURSES=[{id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
 
 // Hancock: Austin's old nine-hole muni. Short, tight, shaded by big pecans and oaks, with Waller Creek wandering through it.
 {id:'hk',code:'HK',club:'Hancock',tee:'Blue',
- th:{out:'woods',floor:'#2f4a28',rough:'#4f7a36',fair:'#6ea14b',stripe:.55,cedar:.1,pine:0,dens:1.2,marker:'#4f86e8',cor:[[0,42],[.5,48],[1,46]]},holes:[
+ th:{out:'woods',floor:'#2f4a28',rough:'#4f7a36',fair:'#6ea14b',stripe:.55,cedar:.1,pine:0,dens:1.2,marker:'#4f86e8',bloom:'bloomPink',blossom:17,cor:[[0,42],[.5,48],[1,46]]},holes:[
  {n:1,name:'Since 1899',par:3,yd:152,hcp:15,route:[[0,0],[3,80],[0,152]],
   fair:[],pad:[[88,0,14,10,0]],green:[11,11,0,201],slope:[190,.45],
   creek:[{w:6,p:[[98,-62],[108,-27],[118,0],[124,27],[122,62]]}],bunk:[[152,-17,6,5,0],[169,8,6,4,30]],oak:[[60,-30,9],[70,32,8]],bridge:[[119,4,0,13]]},
@@ -145,15 +145,27 @@ function buildHole(def,course,dayKey){const th=course.th;
   h.blooms=(def.bloom||[]).map((v,i)=>B(v,50+i,.2));
   h.bridges=(def.bridge||[]).map(([s,o,rot,len])=>{const p=P(s,o);return{x:p.x,y:p.y,a:p.a+rot*DEG,len}});
   h.house=def.house?P(def.house[0],def.house[1]):null;
-  if(def.path){const pp=catmull(def.path.map(([s,o])=>P(s,o)),4);h.path=new Path2D();pp.forEach((q,i)=>i?h.path.lineTo(q.x,q.y):h.path.moveTo(q.x,q.y))}
+  if(def.path){const pp=catmull(def.path.map(([s,o])=>P(s,o)),4);h.path=new Path2D();pp.forEach((q,i)=>i?h.path.lineTo(q.x,q.y):h.path.moveTo(q.x,q.y));
+    const c0=pp[Math.min(3,pp.length-2)],c1=pp[Math.min(4,pp.length-1)],ca=Math.atan2(c1.y-c0.y,c1.x-c0.x);h.cart={x:c0.x-Math.sin(ca)*2.6,y:c0.y+Math.cos(ca)*2.6,a:ca}}
   h.oaks=(def.oak||[]).map(([s,o,rr],i)=>({...P(s,o),r:rr,h:rr*1.15+3,v:i%4,solid:true,kind:th.pine>.5?'pine':'oak'}));
   // beyond the rough: woods on a parkland course, scattered pines over native grass on a prairie one
   const wf=profile(def.cor||th.cor);h.trees=[];
   for(let s=-52;s<L+62;s+=6.5)for(const side of[-1,1])for(let j=0,n=Math.floor(th.dens*(1.2+rng()*2.4)+rng());j<n;j++){
     const rr=lerp(4.2,9.5,rng()*rng()+.12),o=side*(wf(clamp((s+30)/(L+64),0,1))+rr*.55+rng()*rng()*70),p=P(s+rng()*6,o),u=rng();
     if(inSh(h.cor,p,rr*.4)||h.water.some(w=>inSh(w,p,rr+2))||(h.house&&hyp(p.x-h.house.x,p.y-h.house.y)<46))continue;
-    h.trees.push({x:p.x,y:p.y,r:rr,v:Math.floor(rng()*4),kind:u<th.pine?'pine':u<th.pine+th.cedar?'cedar':'oak'})}
+    const kind=u<th.pine?'pine':u<th.pine+th.cedar?'cedar':'oak';
+    h.trees.push({x:p.x,y:p.y,r:rr,v:Math.floor(rng()*4),kind:kind==='oak'&&th.blossom&&(Math.abs(p.x*7+p.y*13)|0)%th.blossom===0?'blossom':kind})}
   h.trees.sort((a,b)=>a.r-b.r);
+  // small things that make it a place: lily pads, reeds and ducks on ponds, pebbles on creek banks, a rake by each bunker, wildflowers
+  const ar=mulberry32(def.n*4441+course.id.charCodeAt(0)*31+course.id.charCodeAt(1));h.lilies=[];h.reeds=[];h.ducks=[];h.pebbles=[];h.rakes=[];
+  for(const w of h.water){if(w.pond){const n=w.poly.length,big=Math.max(w.rx,w.ry);
+      for(let i=0,k=Math.round(3+big/6);i<k;i++){const q=w.poly[Math.floor(ar()*n)],f=lerp(.58,.9,ar());h.lilies.push({x:w.x+(q.x-w.x)*f,y:w.y+(q.y-w.y)*f,r:lerp(.7,1.4,ar()),a:ar()*TAU,fl:ar()<.35})}
+      for(let i=0;i<n;i++)if(ar()<.22){const q=w.poly[i],a=Math.atan2(q.y-w.y,q.x-w.x);h.reeds.push({x:q.x+Math.cos(a)*.5,y:q.y+Math.sin(a)*.5,a,s:lerp(.8,1.4,ar())})}
+      if(big>17)for(let i=0,k=1+(ar()<.5?1:0);i<k;i++)h.ducks.push({w,ph:ar()*TAU,f:lerp(.3,.55,ar()),dir:ar()<.5?1:-1})}
+    else for(const q of w.c)for(const sd of[-1,1])if(ar()<.42)h.pebbles.push({x:q.x+q.nx*sd*(q.w+.2+ar()*.9),y:q.y+q.ny*sd*(q.w+.2+ar()*.9),r:lerp(.3,.85,ar())})}
+  for(const b of h.bunkers){const q=b.poly[Math.floor(ar()*b.poly.length)],a=Math.atan2(q.y-b.y,q.x-b.x);h.rakes.push({x:q.x+Math.cos(a)*1.3,y:q.y+Math.sin(a)*1.3,a:a+1.2+ar()})}
+  for(let i=0;i<4;i++){const sd=ar()<.5?-1:1,s=lerp(20,L-20,ar()),o=sd*(wf(clamp((s+30)/(L+64),0,1))*(th.out==='native'?lerp(1.08,1.5,ar()):lerp(.78,.95,ar())));const p=P(s,o);
+    if(!h.water.some(w=>inSh(w,p,10))&&!h.bunkers.some(b=>inSh(b,p,8)))h.blooms.push(blob(p.x,p.y,lerp(6,11,ar()),lerp(3.5,6.5,ar()),ar()*TAU,def.n*100+70+i,.22))}
   // conditions of the day: pin sheet and wind
   const dr=mulberry32(hashStr('fl-cond:'+dayKey+':'+def.n)),pins=[[-.42,.25],[.44,-.3],[.05,.5],[.3,.38],[-.3,-.42]],pn=pins[Math.floor(dr()*pins.length)];
   const pv=rotv(pn[0]*g[0],pn[1]*g[1],h.green.rot);h.pin={x:end.x+pv.x,y:end.y+pv.y};

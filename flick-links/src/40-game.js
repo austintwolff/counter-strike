@@ -1,8 +1,8 @@
 // ───────── rules of this little world
 const G=22,KW=0.18,CUP_R=0.28,CAP_V=4.2,MAX_OVER=5;
-const MU={green:2.2,fringe:4,fairway:5,tee:5,rough:13,bunker:26,woods:15,native:17,water:13,rock:13};
-const ROLLX={green:1.1,fringe:1,fairway:1,tee:1,rough:.35,bunker:.04,woods:.3,native:.18,water:0,rock:.6};
-const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Rough',bunker:'Bunker',native:'Native'};
+const MU={green:2.2,fringe:4,fairway:5,tee:5,rough:13,bunker:26,woods:15,ob:12,native:17,creekbed:15,water:13,rock:13};
+const ROLLX={green:1.1,fringe:1,fairway:1,tee:1,rough:.35,bunker:.04,woods:.3,ob:.5,native:.18,creekbed:.5,water:0,rock:.6};
+const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Rough',bunker:'Bunker',native:'Native',creekbed:'Creek bed'};
 // carry is a pure strike from a good lie, in yards; roll is added on top (a pure driver finishes near 290)
 const CLUBS=[
   {id:'CH',name:'Chip',carry:38,loft:33,roll:.55,tw:90,sand:true},
@@ -13,7 +13,7 @@ const CLUBS=[
   {id:'3W',name:'3 Wood',carry:232,loft:30,roll:.09,tw:50,bomb:1.05},
   {id:'DR',name:'Driver',carry:262,loft:27,roll:.11,tw:45,bomb:1.05}]; // bomb: a pure strike with the long clubs flies this much farther
 const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
-const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='bunker'?(c.sand?.8:.55):1;
+const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
 const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=__BUILD_TS__; // build.sh stamps the build time here
@@ -29,12 +29,13 @@ function dailyIds(key){const r=mulberry32(hashStr('fl-day:'+key)),by=p=>ALL.map(
 const S={mode:'title',key:'',day:1,holes:[],round:{type:'daily',ids:[0,1,2],scores:[]},hi:0,strokes:0,lie:'tee',clubs:[],ci:0,club:CLUBS[6],
   ball:{x:0,y:0,z:0,vx:0,vy:0,vz:0,air:false,spin:0,club:null,putt:false,gone:false,tree:null,rollK:1},prev:{x:0,y:0},g:null,trail:[],fx:[],parts:[],hintShots:0,muted:false,mark:{x:0,y:0},pmode:'aim',marks:[]};S.round.course='gr';
 // holes are built the first time they are needed; the day's pins and wind are part of the build
-const HOLE=i=>ALL[i]?S.holes[i]||(S.holes[i]=buildHole(ALL[i].def,ALL[i].c,S.key)):undefined;
+const HOLE=i=>ALL[i]?S.holes[i]||(S.holes[i]=buildHole(i,S.key)):undefined;
 const cur=()=>HOLE(S.round.ids[S.hi]);
 const maxScore=()=>cur().par+MAX_OVER;
 const nineKey=id=>S.key+':nine'+(id==='gr'?'':':'+id);
 const saveKey=()=>S.round.type==='nine'?nineKey(S.round.course):S.key;
-function save(){const n=S.round.ids.length;store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n})}
+const onRange=()=>S.round.type==='range';
+function save(){if(onRange())return;const n=S.round.ids.length;store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n})}
 
 // ───────── sound (starts on the first touch)
 let AC=null;
@@ -105,7 +106,7 @@ function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.le
 // How full the ring is at the flick decides the strike: the top is pure, the upper part is decent, the bottom third is a shank.
 const DEAD=.045,FLICK_V=.5,TU=1235,TD=450,EASE=1.7,SHANK=.3;
 const pullMax=()=>clamp(H*.18,84,132);
-const timingWindow=()=>S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'?.7:1);
+const timingWindow=()=>S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1);
 function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=(t-g.t0)%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
 function gPos(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 cv.addEventListener('pointerdown',e=>{
@@ -154,10 +155,10 @@ cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 // p is power 0..1, aim a world direction, dev the flick's angle off the pull line,
 // te the timing error in ms (early is negative) and tf how full the ring was (1 at the top)
 function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)tf=1;
-  p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};S.strokes++;S.hintShots++;save();
+  p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};if(!onRange())S.strokes++;S.hintShots++;save();
   const onTime=Math.abs(te)<=timingWindow(),ts=Math.sign(te),shank=!onTime&&tf<SHANK,q=onTime?0:clamp((1-tf)/(1-SHANK),0,1);
   const ad=Math.abs(dev),kf=ad<=DEAD?0:Math.sign(dev)*clamp((ad-DEAD)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-DEAD),pure=onTime&&kf===0;
-  b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.rollK=1;S.trail.length=0;b.dry={x:b.x,y:b.y};
+  b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
   b.tree=cur().oaks.find(t=>hyp(b.x-t.x,b.y-t.y)<t.r)||null; // a ball already under an oak can be played out from beneath it
   let word,sub=onTime?'Perfect tempo':shank?(ts<0?'Far too early':'Far too late'):(q<.3?'A touch ':'')+(ts<0?'early':'late');
   if(c.putt){const pace=shank?.45:ts<0?1-.22*q:1+.2*q,d=rotv(aim.x,aim.y,over*.5+ts*q*.04),v=Math.sqrt(2*MU.green*markDist()*p*pace);b.vx=d.x*v;b.vy=d.y*v;b.vz=0;b.air=false;b.spin=0;
@@ -167,7 +168,7 @@ function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)t
     b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
     word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}
-  if(pure)sfx.pure();
+  S.last={shank,q,early:ts<0,pure,putt:!!c.putt};if(pure)sfx.pure();
   if(at)S.fx.push({type:'word',text:word,sub,good:pure,bad:shank,x:at.x,y:at.y-44,t0:performance.now()});
   try{navigator.vibrate&&navigator.vibrate(pure?[10,40,10]:shank?60:25)}catch(_){}
   S.mode='flight';hud()}
@@ -177,21 +178,21 @@ const STEP=1/240;
 function stepBall(dt){const b=S.ball,h=cur();
   if(b.air){const sp=hyp(b.vx,b.vy)||1,px=-b.vy/sp,py=b.vx/sp;
     b.vx+=(h.wind.x*KW+px*b.spin)*dt;b.vy+=(h.wind.y*KW+py*b.spin)*dt;b.vz-=G*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;
-    {const l=lieAt(h,b);if(l!=='water'&&l!=='woods')b.dry={x:b.x,y:b.y}} // the last dry ground the ball passed over
+    {const l=lieAt(h,b);if(l!=='water'&&l!=='woods'&&l!=='ob')b.dry={x:b.x,y:b.y}} // the last dry ground the ball passed over
     for(const t of h.oaks)if(b.tree!==t&&b.z>2.5&&b.z<t.h&&hyp(b.x-t.x,b.y-t.y)<t.r*.85){b.tree=t;b.vx*=.12;b.vy*=.12;b.vz=Math.min(b.vz,0)-1;b.spin=0;b.rollK=.2;sfx.leaf();burst(b.x,b.y,'#4b8134',16,10,5);toast('Into the oak',1000)}
     if(b.z<=0){b.z=0;let lie=lieAt(h,b);
       if(lie==='water')return hazard('water');
       if(hyp(b.x-h.pin.x,b.y-h.pin.y)<CUP_R)return holed();
-      if(lie==='rock'&&b.vz<-5){const a=(hashStr(Math.round(b.x*8)+':'+Math.round(b.y*8))%1000/1000-.5)*1.7,d=rotv(b.vx,b.vy,a);
+      if(lie==='creekbed'&&b.vz<-5&&!b.rocked){b.rocked=true;const a=(hashStr(Math.round(b.x*8)+':'+Math.round(b.y*8))%1000/1000-.5)*1.7,d=rotv(b.vx,b.vy,a);
         b.vx=d.x*.42;b.vy=d.y*.42;b.vz=Math.min(15,-b.vz*.5);b.z=.02;b.spin=0;b.rollK=.3;sfx.clack();burst(b.x,b.y,K.stone,8,7,5);return}
       const carry=hyp(b.x-S.prev.x,b.y-S.prev.y),v=Math.sqrt(2*MU[lie]*carry*b.club.roll*ROLLX[lie]*b.rollK),s2=hyp(b.vx,b.vy)||1;
-      b.vx=b.vx/s2*v;b.vy=b.vy/s2*v;b.vz=Math.min(9,-b.vz*.22)*(lie==='bunker'?0:lie==='rough'||lie==='woods'||lie==='native'?.5:1);b.air=false;
+      b.vx=b.vx/s2*v;b.vy=b.vy/s2*v;b.vz=Math.min(9,-b.vz*.22)*(lie==='bunker'?0:lie==='fairway'||lie==='green'||lie==='fringe'||lie==='tee'?1:.5);b.air=false;
       if(lie==='bunker'){sfx.sand();burst(b.x,b.y,K.sand,18,8,6)}else{sfx.land();if(lie==='green'&&S.marks.length<40)S.marks.push({t:'pitch',x:b.x,y:b.y})}}
     return}
   if(b.z>0||b.vz>0){b.vz-=G*dt;b.z+=b.vz*dt;if(b.z<=0){b.z=0;b.vz=-b.vz*.4;if(b.vz<1.2)b.vz=0}}
   const lie=lieAt(h,b),mu=MU[lie];
   if(lie==='water'&&b.z<=.01)return hazard('water');
-  if(lie!=='woods')b.dry={x:b.x,y:b.y};
+  if(lie!=='woods'&&lie!=='ob')b.dry={x:b.x,y:b.y};
   if(lie==='green'||lie==='fringe'){const a=slopeAt(h,b);b.vx+=a.x*dt;b.vy+=a.y*dt}
   const sp=hyp(b.vx,b.vy);
   if(b.z<.05&&sp<CAP_V&&hyp(b.x-h.pin.x,b.y-h.pin.y)<CUP_R)return holed();
@@ -200,19 +201,21 @@ function stepBall(dt){const b=S.ball,h=cur();
   b.x+=b.vx*dt;b.y+=b.vy*dt}
 // Where to drop after water: a couple of yards back from the point of entry, on the line toward where the shot was played.
 function dropSpot(){const h=cur(),d=S.ball.dry,p=S.prev,L=hyp(p.x-d.x,p.y-d.y);if(L<4)return p;const ux=(p.x-d.x)/L,uy=(p.y-d.y)/L;
-  for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='rock'&&l!=='bunker')return q}return p}
-function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';b.gone=true;S.strokes++;
+  for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker')return q}return p}
+function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';b.gone=true;
+  if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water. No penalty on the range.':'Out of play. No penalty on the range.'),900)}
+  S.strokes++;
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});
   if(water){sfx.splash();burst(b.x,b.y,'#d8f4f0',22,9,9)}else sfx.bad();
-  toast(water?'In the water':'Lost in the trees',(water&&!back?'Drop at the edge':'Replay the shot')+' · one stroke penalty',1900);hud();
+  toast(water?'In the water':kind==='ob'?'Out of bounds':'Lost in the trees',(water&&!back?'Drop at the edge':'Replay the shot')+' · one stroke penalty',1900);hud();
   setTimeout(()=>{setBall(spot.x,spot.y);afterShot()},1500)}
-function atRest(){if(lieAt(cur(),S.ball)==='woods')return hazard('woods');afterShot()}
-function afterShot(){if(S.strokes>=maxScore()){toast('Picked up','The most a hole can cost is '+maxScore(),1600);return finishHole(maxScore())}
+function atRest(){const l=lieAt(cur(),S.ball);if(!onRange()&&(l==='woods'||l==='ob'))return hazard(l);afterShot()} // on the range a wild one is just fetched back
+function afterShot(){if(onRange())return rangeAfter(false);if(S.strokes>=maxScore()){toast('Picked up','The most a hole can cost is '+maxScore(),1600);return finishHole(maxScore())}
   const was=S.lie;setupShot();if(S.lie!==was&&(S.lie==='green'||S.lie==='bunker'))toast(S.lie==='green'?'On the green':'In the bunker','',1100);
   S.mode='ready';aimCam();hud();save()}
 function holed(){const b=S.ball,h=cur();b.x=h.pin.x;b.y=h.pin.y;b.vx=b.vy=b.vz=b.z=0;b.air=false;b.gone=true;sfx.cup();burst(b.x,b.y,K.gold,26,5,11);burst(b.x,b.y,'#fff8e0',12,3,8);
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now()});finishHole(S.strokes)}
-function finishHole(score){S.mode='wait';S.round.scores[S.hi]=score;S.strokes=0;const n=S.round.ids.length,last=S.hi>=n-1;
+function finishHole(score){if(onRange()){S.mode='wait';return setTimeout(()=>rangeAfter(true),700)}S.mode='wait';S.round.scores[S.hi]=score;S.strokes=0;const n=S.round.ids.length,last=S.hi>=n-1;
   store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last});
   if(last&&S.round.type==='daily'){bumpStreak();refresh()} // refresh posts the finished card to the clubhouse
   setTimeout(()=>holeCard(score),900)}
@@ -246,11 +249,11 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n);
-  $('hWind').textContent=h.wind.sp;hudDist();hudClub();
+  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
   // on the green the line under the course is the caddie's read; the first few putts explain the controls instead
-  if(c.putt&&ready)hintOn((fetchKey('putts')||0)<4?(S.pmode==='aim'?'Drag to place the marker, then press Putt':'Pull back, flick up as the ring fills'):readText());else if(c.putt)hintOff()}
+  if(c.putt&&ready)hintOn((fetchKey('putts')||0)<4||onRange()?(S.pmode==='aim'?'Drag to place the marker, then press Putt':'Pull back, flick up as the ring fills'):readText());else if(c.putt)hintOff()}
 let toastT=0;function toast(s,sub,ms){if(typeof sub==='number'){ms=sub;sub=''}const t=$('toast');t.textContent=s;if(sub){const e=document.createElement('small');e.textContent=sub;t.appendChild(e)}
   t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms||1400)}
 function hintOn(s){const e=$('hint');e.textContent=s;e.style.opacity=1}

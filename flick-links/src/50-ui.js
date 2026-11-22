@@ -27,7 +27,7 @@ const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{w
 // a day's saved round keeps the holes it was drawn with, so a later change to the draw cannot scramble it
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
 function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
-  S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(0,0);setupShot();overviewCam(.2,.3,true);hud();hintOff();
+  S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(cur().tee.x,cur().tee.y);setupShot();overviewCam(.2,.3,true);hud();hintOff();
   sheet(`<div class="mast">${CREST}<h1>Flick Links</h1>${meChip()}</div>
 <div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
@@ -39,8 +39,9 @@ ${seen?'':HOW}`,titleCard)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>The swing.</b> The dotted line shows where a clean strike lands. A ring at your thumb fills slowly, then faster, and starts over. Flick through it as it tops out. A pure driver is a bomb and a pure iron lands on the line. A little early draws it, a little late fades it, and both cost some distance. Flick while the ring is still in the red at the bottom and you shank it. Longer clubs and bad lies give a smaller window.</p>
 <p class="fine"><b>On the green.</b> The lines run down the slope at the pace a ball drifts there: still on flat ground, quick where it is steep. The caddie's line gives the rise to the cup and how far a straight putt would miss. Drag the marker to where a flat putt should stop, press Putt, then flick on the ring. Mistimed putts come up short or run long.</p>
-<p class="fine"><b>Trouble.</b> Water is a hazard: drop at the edge where the ball went in, one stroke. The woods are out of bounds: replay the shot, one stroke. A tree in the rough knocks a low ball down. Native grass takes 40% off the shot.</p>
-<button class="btn" data-act="close">Carry on</button>`)}
+<p class="fine"><b>Trouble.</b> Water is a hazard: drop at the edge where the ball went in, one stroke. Thick woods and anything off the property cost a stroke and a replay. A tree knocks a low ball down. Native grass takes 40% off the shot, a dry creek bed 30%.</p>
+<p class="fine">The courses are drawn from real map data. © OpenStreetMap contributors.</p>
+<div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button></div>`)}
 function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:HOLE(S.round.ids[S.hi+1]);
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
 <p class="sub">${score===1?'One swing. Frame the card.':score+' strokes'+(score>=maxScore()?', the most a hole can cost.':'.')}</p>
@@ -53,7 +54,7 @@ function shareText(){const r=S.round,hs=r.ids.map(HOLE),par=sum(hs.map(h=>h.par)
   return url?t+'\n'+url:t}
 function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r.scores=sv.scores;
   const hs=r.ids.map(HOLE),d=sum(r.scores)-sum(hs.map(h=>h.par)),m=fetchKey('meta'),nine=r.type==='nine';
-  S.mode='done';S.hi=r.ids.length-1;setBall(0,0);setupShot();hud();hintOff();store('seen',1);overviewCam(.16,.24,false);
+  S.mode='done';S.hi=r.ids.length-1;setBall(cur().tee.x,cur().tee.y);setupShot();hud();hintOff();store('seen',1);overviewCam(.16,.24,false);
   sheet(`<p class="eyebrow">${nine?'Practice round · '+hs[0].course.club:dateLine()}</p><h2>${sum(r.scores)} strokes, ${d===0?'even par':d<0?Math.abs(d)+' under':d+' over'}</h2>
 ${scoreCard(r.ids,r.scores)}
 <textarea id="shareText" readonly rows="${shareText().split('\n').length}" aria-label="Your result, ready to paste">${shareText()}</textarea>
@@ -76,6 +77,7 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='results')resultsCard();
   else if(a==='title')titleCard();
   else if(a==='share')share();
+  else if(a==='range')startRange();
   else if(a==='me')meCard();
   else if(a==='club'){C.tab='today';clubCard()}
   else if(a==='clubform')formCard('club');
@@ -100,10 +102,28 @@ function begin(type,course){const nine=type==='nine';if(nine&&!COURSES.some(c=>c
   if(sv&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length){S.round.scores=sv.scores.slice(0,sv.hi);startHole(sv.hi,sv)}else startHole(0)}
 function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=[];S.muted=!!fetchKey('muted');
   $('btnSound').setAttribute('aria-pressed',String(!S.muted));titleCard()}
+// ───────── the practice range
+// A first visit starts here: hit balls until one is struck well, then roll a putt close. Nothing counts and Skip is always there.
+const RANGE_HOLE=()=>courseIds('lp')[7];   // a wide, straight hole to hit down
+function coach(step,title,text,next,ready){$('coachStep').textContent='Driving range · '+step;$('coachTitle').textContent=title;$('coachText').textContent=text;const n=$('coachNext');n.textContent=next;n.disabled=!ready}
+function rangeSpot(){const h=cur();if(S.tut.step==='swing')return h.tee;const dx=h.tee.x-h.pin.x,dy=h.tee.y-h.pin.y,d=hyp(dx,dy);for(const k of[7,5.5,4,3]){const p={x:h.pin.x+dx/d*k,y:h.pin.y+dy/d*k};if(inSh(h.green,p,-1))return p}return{x:h.green.x,y:h.green.y}}
+function rangeSet(){const p=rangeSpot();setBall(p.x,p.y);S.strokes=0;setupShot();S.mode='ready';aimCam();hud()}
+function startRange(){closeSheet();S.round={type:'range',ids:[RANGE_HOLE()],scores:[],course:null};S.hi=0;S.marks=[];S.tut={step:'swing',good:false};const h=cur();h.wind.x=h.wind.y=0;h.wind.sp=0;
+  rangeSet();overviewCam(.5,.7,true);aimCam();coach('1 of 2','The swing','Touch anywhere and pull back to aim. A ring fills at your thumb. Flick up through it as it reaches the gold mark at the top.','Putting',false)}
+function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();
+  if(t.step==='swing'){const ok=!note&&!l.shank&&l.q<.5;t.good=t.good||ok;
+    coach('1 of 2','The swing',note||(l.shank?'A shank. You flicked while the ring was still in the red. Wait for it to climb.':l.pure?'Pure. Right on the gold. Hit as many as you like, or move on.':ok?'A good strike. Flick closer to the gold for more distance. Hit more, or move on.':l.early?'Too early. Let the ring fill further before you flick.':'Too late. Flick just as the ring reaches the top.'),'Putting',t.good)}
+  else{const ft=Math.round(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*3),ok=holed||ft<=4;t.good=t.good||ok;
+    coach('2 of 2','The putt',holed?'In the hole. You are ready. Putt again, or go and play.':ok?'Stone dead, '+ft+' ft away. You are ready. Putt again, or go and play.':'That finished '+ft+' ft away. Move the marker to allow for the slope, press Putt, and flick on the gold.','Play',t.good)}
+  rangeSet()}
+function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard()}
+$('coachSkip').onclick=endRange;
+$('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='swing'){t.step='putt';t.good=false;S.last=null;rangeSet();coach('2 of 2','The putt','Drag anywhere to move the marker to where a flat putt should stop. The streaks show which way the ground falls. Press Putt, then pull back and flick on the gold.','Play',false)}else endRange()};
+
 // ───────── boot, and staying current while a round is open
 // A new build can arrive mid-round: the round is saved after every stroke, so it resumes where it stood.
 const PLAYING=['intro','ready','aim','flight','wait'];
-function start(d){resize();initDay();resize();let r=d&&d.playing?d:null;
+function start(d){resize();initDay();resize();let r=d&&d.playing?d:null;if(!r&&!fetchKey('tut'))return startRange();
   try{const s=JSON.parse(sessionStorage.getItem(KEY+'resume')||'null');sessionStorage.removeItem(KEY+'resume');if(s&&s.playing)r=s}catch(e){}
   if(r&&(r.type==='daily'||r.type==='nine')){begin(r.type,r.course);if(PLAYING.includes(S.mode))toast('Updated to the latest build','Carrying on where you were',2200)}}
 const snap=()=>({type:S.round.type,course:S.round.course,playing:PLAYING.includes(S.mode)});
@@ -119,4 +139,4 @@ if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==
   try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text(),m=t.match(/BUILD_TS=(\d{10,})/);
     if(m&&+m[1]>BUILD_TS){try{sessionStorage.setItem(KEY+'resume',JSON.stringify(snap()))}catch(e){}location.replace(location.pathname+'?v='+m[1]+location.hash)}}catch(e){}},20000);
 
-if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,courseIds,C,Net,refresh};
+if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,courseIds,C,Net,refresh,startRange};

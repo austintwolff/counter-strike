@@ -54,6 +54,14 @@ button.plate,.plate button{pointer-events:auto}
 .round[aria-pressed="false"]{color:rgba(244,236,214,.45);text-decoration:line-through}
 .tools{display:flex;gap:6px}
 
+#app.tut .hud.top{display:none}
+#coach{position:absolute;top:10px;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:6px;padding:11px 13px 12px;
+  color:var(--ink);background:linear-gradient(180deg,var(--paper),var(--paper-2));border-radius:8px;box-shadow:inset 0 0 0 1px var(--gold),0 6px 16px rgba(0,0,0,.4)}
+#coach .lbl{color:var(--ink-2)}
+#coach b{font:italic 700 21px/1.05 var(--display);color:var(--club)}
+#coach p{font:600 14px/1.35 var(--display);min-height:2.7em}
+#coach .btn{min-height:42px}
+#coach .btn:disabled{opacity:.4;box-shadow:none}
 #hint,#toast{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;text-align:center;transition:opacity .25s}
 #hint{bottom:70px;white-space:nowrap;font:italic 700 16px/1.2 var(--display);color:var(--cream);text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 12px rgba(0,0,0,.55)}
 #toast{top:128px;width:max-content;max-width:calc(100% - 32px);background:var(--paper);color:var(--ink);padding:10px 18px 9px;border-radius:4px;
@@ -216,6 +224,12 @@ table.st{width:100%;border-collapse:collapse;border:1.5px solid var(--rule);back
     </div>
   </div>
 
+  <div id="coach" hidden>
+    <span class="lbl" id="coachStep">Driving range</span>
+    <b id="coachTitle">The swing</b>
+    <p id="coachText"></p>
+    <div class="row"><button class="btn sm ghost" id="coachSkip">Skip</button><button class="btn sm" id="coachNext" disabled>Putting</button></div>
+  </div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="hint">Pull back to aim, flick up as the ring fills</div>
 

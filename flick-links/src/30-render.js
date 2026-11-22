@@ -11,58 +11,73 @@ function disc(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill()}
 function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();ctx.fill()}
 const vis=t=>t.x>VR[0]-14&&t.x<VR[0]+VR[2]+14&&t.y>VR[1]-14&&t.y<VR[1]+VR[3]+14;
 
-function drawWorld(now){const h=cur(),th=h.th,z=cam.s,R=hyp(W,H)/z,tG=clamp((z-3)/8,0,1),tF=clamp(1.15-(z-2)/10,.2,1);VR=[cam.x-R,cam.y-R,2*R,2*R];
+const seen=sh=>{const b=sh.bb;return b[2]>VR[0]&&b[0]<VR[0]+VR[2]&&b[3]>VR[1]&&b[1]<VR[1]+VR[3]};
+const ROOFS=['#8b8478','#7c6f62','#9a8f7d','#6f7377','#94705a','#a39a8a','#5f6660'];
+function drawWorld(now){const h=cur(),th=h.th,G=h.geo,z=cam.s,R=hyp(W,H)/z,tG=clamp((z-3)/8,0,1),tF=clamp(1.15-(z-2)/10,.2,1);VR=[cam.x-R,cam.y-R,2*R,2*R];
   ctx.save();ctx.translate(W/2,H*cam.ay);ctx.rotate(cam.r);ctx.scale(z,z);ctx.translate(-cam.x,-cam.y);ctx.lineJoin='round';ctx.lineCap='round';
-  grass(null,th.floor,tG*.6,tF,th.out==='native'?.55:.7);if(th.out==='native')texFill(null,'straw',.75,.09,.3);
-  ctx.strokeStyle=th.rough;ctx.globalAlpha=.3;ctx.lineWidth=10;ctx.stroke(h.cor.path);ctx.globalAlpha=.55;ctx.lineWidth=4.5;ctx.stroke(h.cor.path);ctx.globalAlpha=1;
-  grass(h.cor.path,th.rough,tG,tF,.75);texFill(h.cor.path,'tuft',.7*clamp((z-4)/8,0,1),.06);
-  for(const b of h.blooms){ctx.fillStyle='#3d6a3c';ctx.globalAlpha=.45;ctx.fill(b.path);ctx.globalAlpha=1;texFill(b.path,th.bloom,.95,.085,b.rot)}
-  if(h.path){ctx.strokeStyle='rgba(20,30,10,.3)';ctx.lineWidth=3.1;ctx.stroke(h.path);ctx.strokeStyle=K.path;ctx.lineWidth=2.2;ctx.stroke(h.path)}
-  // fairway: first cut, then cross-cut mowing stripes
-  ctx.strokeStyle=K.cut;ctx.lineWidth=5.5;for(const f of h.fair)ctx.stroke(f.path);
-  for(const f of h.fair){ctx.fillStyle=th.fair;ctx.fill(f.path);texFill(f.path,'stripe',.075*th.stripe,1.75,h.axis+Math.PI/4);texFill(f.path,'stripe',.06*th.stripe,1.75,h.axis-Math.PI/4);
+  const native=th.out==='native';
+  // the land: what lies outside the property, then the property itself
+  if(G.boundary){grass(null,th.outer,tG*.5,tF,.6);ctx.strokeStyle=th.floor;ctx.globalAlpha=.5;ctx.lineWidth=5;ctx.stroke(G.boundary.path);ctx.globalAlpha=1;grass(G.boundary.path,th.floor,tG*.6,tF,native?.55:.7);if(native)texFill(G.boundary.path,'straw',.75,.09,.3)}
+  else{grass(null,th.floor,tG*.6,tF,native?.55:.7);if(native)texFill(null,'straw',.75,.09,.3)}
+  // streets and the neighbourhood
+  for(const r of G.roads)if(seen2(r)){ctx.strokeStyle='#3d4038';ctx.lineWidth=r.w+1.6;ctx.stroke(r.path);ctx.strokeStyle='#5d5f58';ctx.lineWidth=r.w;ctx.stroke(r.path);
+    if(r.w>=9&&z>1.6){ctx.setLineDash([3,4]);ctx.strokeStyle='rgba(240,214,110,.7)';ctx.lineWidth=.35;ctx.stroke(r.path);ctx.setLineDash([])}}
+  for(const s of G.parking)if(seen(s)){ctx.fillStyle='#62645d';ctx.fill(s.path);if(z>1.8){const b=s.bb;for(let x=b[0]+3;x<b[2]-3;x+=3.4)for(let y=b[1]+4;y<b[3]-4;y+=11){const q={x,y};if(((x*7+y*3)|0)%5<3&&inSh(s,q,-2.5)){ctx.fillStyle=['#d9d4c7','#7b2f33','#2f4a63','#1f1f1f','#b9b9b4'][((x*13+y*7)|0)%5];rrect(x-1.1,y-2.3,2.2,4.6,.5)}}}}
+  // the rough: a mown band around every fairway, tee and green
+  if(native){ctx.strokeStyle=th.rough;for(const[list,w]of[[G.fair,50],[G.green,56],[G.tee,24]]){ctx.lineWidth=w;for(const s of list)if(seen(s)){ctx.globalAlpha=.4;ctx.lineWidth=w+12;ctx.stroke(s.path);ctx.globalAlpha=1;ctx.lineWidth=w;ctx.stroke(s.path)}}
+    for(const s of G.rough)if(seen(s))grass(s.path,th.rough,tG,tF,.75);
+  }
+  for(const s of G.woods)if(seen(s)){ctx.fillStyle=th.woods;ctx.fill(s.path);texFill(s.path,'mottle',.8,.35,.9)}
+  for(const b of G.blooms)if(seen(b)){ctx.fillStyle='#3d6a3c';ctx.globalAlpha=.4;ctx.fill(b.path);ctx.globalAlpha=1;texFill(b.path,th.bloom,.95,.085,b.rot)}
+  // dry creek beds and bare limestone
+  for(const w of G.dry)if(seen(w)){ctx.strokeStyle='rgba(60,52,30,.5)';ctx.lineWidth=2;ctx.stroke(w.path);ctx.fillStyle='#cdc4a6';ctx.fill(w.path);texFill(w.path,'rake',.5,.09,.4);inner(w.path,SUN.x,SUN.y,'#7c7150',.5,1.6)}
+  for(const s of G.rock)if(seen(s)){ctx.fillStyle='#d6d1c2';ctx.fill(s.path);texFill(s.path,'grain',.7,.11);inner(s.path,SUN.x*1.2,SUN.y*1.2,'#7d776a',.5,2.4);inner(s.path,-SUN.x,-SUN.y,'#ffffff',.5,1.4)}
+  // paths: cart paths are pale concrete, park trails are crushed granite
+  for(const w of G.paths)if(seen2(w)){ctx.strokeStyle='rgba(20,30,10,.28)';ctx.lineWidth=w.cart?3:2.5;ctx.stroke(w.path);ctx.strokeStyle=w.cart?K.path:'#c9b98f';ctx.lineWidth=w.cart?2.1:1.7;ctx.stroke(w.path)}
+  // fairways: first cut, then cross-cut mowing stripes
+  ctx.strokeStyle=K.cut;ctx.lineWidth=5.5;for(const f of G.fair)if(seen(f))ctx.stroke(f.path);
+  for(const f of G.fair)if(seen(f)){ctx.fillStyle=th.fair;ctx.fill(f.path);texFill(f.path,'stripe',.075*th.stripe,1.75,h.axis+Math.PI/4);texFill(f.path,'stripe',.06*th.stripe,1.75,h.axis-Math.PI/4);
     texFill(f.path,'mottle',.45,.35,1.3);texFill(f.path,'grain',.45*tG,.0625)}
-  ctx.save();ctx.translate(h.tee.x,h.tee.y);ctx.rotate(h.tee.a);ctx.fillStyle=K.cut;rrect(-8,-7.5,15,15,2.5);ctx.fillStyle=K.tee;rrect(-7,-6.5,13,13,2);
-  ctx.fillStyle='rgba(255,255,255,.07)';for(let x=-7;x<6;x+=3.25)ctx.fillRect(x,-6.5,1.6,13);
-  for(const v of[-4.8,4.8]){ctx.fillStyle='rgba(10,30,10,.4)';disc(1.6+.25,v+.3,.6);ctx.fillStyle=th.marker;disc(1.6,v,.55)}ctx.restore();
+  for(const s of G.tee)if(seen(s)){ctx.strokeStyle=K.cut;ctx.lineWidth=2;ctx.stroke(s.path);ctx.fillStyle=K.tee;ctx.fill(s.path);texFill(s.path,'stripe',.06,.5,h.tee.a)}
+  ctx.save();ctx.translate(h.tee.x,h.tee.y);ctx.rotate(h.tee.a);for(const v of[-4.2,4.2]){ctx.fillStyle='rgba(10,30,10,.4)';disc(.25,v+.3,.6);ctx.fillStyle=th.marker;disc(0,v,.55)}ctx.restore();
+  // sports fields and pools beside the course
+  for(const s of G.pitches)if(seen(s)){const hard=/tennis|basket|pickle/.test(s.sport);ctx.fillStyle=hard?'#3f7f6b':'#5f9f4a';ctx.fill(s.path);if(!hard)texFill(s.path,'stripe',.08,1.2,.2);ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=.35;ctx.stroke(s.path);
+    ctx.beginPath();ctx.moveTo((s.bb[0]+s.bb[2])/2,s.y-s.ry*.5);ctx.lineTo((s.bb[0]+s.bb[2])/2,s.y+s.ry*.5);ctx.globalAlpha=.5;ctx.stroke();ctx.globalAlpha=1}
+  for(const s of G.pool)if(seen(s)){ctx.fillStyle='#e6e1d2';ctx.strokeStyle='#e6e1d2';ctx.lineWidth=1.6;ctx.stroke(s.path);ctx.fillStyle='#4fb6d8';ctx.fill(s.path)}
   // water
-  for(const w of h.water){ctx.strokeStyle=K.bank;ctx.lineWidth=w.pond?3:2.2;ctx.stroke(w.path);
-    if(w.pond){if(!w.grad){const g=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,Math.max(w.rx,w.ry)*1.1);g.addColorStop(0,K.deep);g.addColorStop(.62,K.water);g.addColorStop(1,'#2f8686');w.grad=g}ctx.fillStyle=w.grad}
+  for(const w of G.water)if(seen(w)){ctx.strokeStyle=K.bank;ctx.lineWidth=w.pond?3:2.2;ctx.stroke(w.path);
+    if(w.pond){if(!w.grad){const g=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.R*1.05);g.addColorStop(0,K.deep);g.addColorStop(.62,K.water);g.addColorStop(1,'#2f8686');w.grad=g}ctx.fillStyle=w.grad}
     else ctx.fillStyle=K.water;
     ctx.fill(w.path);inner(w.path,0,0,K.shallow,.3,w.pond?7:2.2);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.45,2.6);
     texFill(w.path,'glint',.6,.2,.3,now*.0016*(1+h.wind.sp/8),Math.sin(now/2300)*3);
     ctx.save();ctx.clip(w.path);ctx.setLineDash([1.6,2.6]);ctx.lineDashOffset=-now/520;ctx.strokeStyle='#eafffb';ctx.globalAlpha=.3;ctx.lineWidth=w.pond?1.5:.9;ctx.stroke(w.path);ctx.setLineDash([]);
-    if(w.pond){const R=Math.max(w.rx,w.ry),sx=w.x-SUN.x*R*.3,sy=w.y-SUN.y*R*.3,gl=ctx.createRadialGradient(sx,sy,0,sx,sy,R*.6);gl.addColorStop(0,'rgba(255,250,215,.24)');gl.addColorStop(1,'rgba(255,250,215,0)');
-      ctx.globalAlpha=.75+Math.sin(now/1700+w.x)*.25;ctx.fillStyle=gl;ctx.fillRect(sx-R,sy-R,2*R,2*R);
-      // a fish rises now and then
-      const T=5200,k=Math.floor(now/T+w.x*.01),u=(now/T+w.x*.01)%1,rr=mulberry32(k*131+7),q=w.poly[Math.floor(rr()*w.poly.length)],f=.25+rr()*.5,rx=w.x+(q.x-w.x)*f,ry=w.y+(q.y-w.y)*f;
+    if(w.pond&&w.area>150){const Rr=w.rx,sx=w.x-SUN.x*Rr*.3,sy=w.y-SUN.y*Rr*.3,gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rr*.7);gl.addColorStop(0,'rgba(255,250,215,.24)');gl.addColorStop(1,'rgba(255,250,215,0)');
+      ctx.globalAlpha=.75+Math.sin(now/1700+w.x)*.25;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr);
+      const T=5200,tt=now/T+Math.abs(w.x)*.01,k=Math.floor(tt),u=tt%1,rr=mulberry32(k*131+7),q=w.poly[Math.floor(rr()*w.poly.length)],f=.25+rr()*.5,rx=w.x+(q.x-w.x)*f,ry=w.y+(q.y-w.y)*f;
       if(u<.5){ctx.strokeStyle='#eafffb';ctx.lineWidth=.16;for(const m of[1,.55]){ctx.globalAlpha=(1-u*2)*.5;ctx.beginPath();ctx.arc(rx,ry,(.4+u*9)*m,0,TAU);ctx.stroke()}}}
     ctx.restore()}
-  if(z>1.2)for(const l of h.lilies){ctx.fillStyle='#2f6a3a';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.arc(l.x+.08,l.y+.1,l.r,l.a+.4,l.a+TAU);ctx.fill();
+  if(z>1.2)for(const l of G.lilies)if(vis(l)){ctx.fillStyle='#2f6a3a';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.arc(l.x+.08,l.y+.1,l.r,l.a+.4,l.a+TAU);ctx.fill();
     ctx.fillStyle='#5a9f4e';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.arc(l.x,l.y,l.r,l.a+.4,l.a+TAU);ctx.fill();ctx.fillStyle='rgba(215,245,160,.35)';disc(l.x-l.r*.25,l.y-l.r*.25,l.r*.38);
     if(l.fl){ctx.fillStyle='#fff3f7';disc(l.x+Math.cos(l.a)*l.r*.3,l.y+Math.sin(l.a)*l.r*.3,l.r*.34);ctx.fillStyle='#f4c84a';disc(l.x+Math.cos(l.a)*l.r*.3,l.y+Math.sin(l.a)*l.r*.3,l.r*.13)}}
-  for(const d of h.ducks){const w=d.w,n=w.poly.length,u=((now/14000*d.dir+d.ph/TAU)%1+1)%1*n,i=Math.floor(u),fr=u-i,a=w.poly[i],b=w.poly[(i+1)%n],x=w.x+(lerp(a.x,b.x,fr)-w.x)*d.f,y=w.y+(lerp(a.y,b.y,fr)-w.y)*d.f,
+  for(const d of G.ducks)if(seen(d.w)){const w=d.w,n=w.poly.length,u=((now/14000*d.dir+d.ph/TAU)%1+1)%1*n,i=Math.floor(u),fr=u-i,a=w.poly[i],b=w.poly[(i+1)%n],x=w.x+(lerp(a.x,b.x,fr)-w.x)*d.f,y=w.y+(lerp(a.y,b.y,fr)-w.y)*d.f,
       hd=Math.atan2((b.y-a.y)*d.dir,(b.x-a.x)*d.dir),sz=Math.max(.55,4.2/z);ctx.save();ctx.translate(x,y);ctx.rotate(hd);
     ctx.strokeStyle='rgba(234,255,251,.38)';ctx.lineWidth=sz*.14;ctx.beginPath();ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,sz*1.1);ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,-sz*1.1);ctx.stroke();
     ctx.fillStyle='rgba(3,20,24,.3)';ctx.beginPath();ctx.ellipse(sz*.12,sz*.16,sz,sz*.6,0,0,TAU);ctx.fill();ctx.fillStyle='#f4efe2';ctx.beginPath();ctx.ellipse(0,0,sz,sz*.58,0,0,TAU);ctx.fill();
     ctx.fillStyle='#d9d1bd';ctx.beginPath();ctx.ellipse(-sz*.25,0,sz*.55,sz*.36,0,0,TAU);ctx.fill();ctx.fillStyle='#2f5d3a';disc(sz*.85,0,sz*.36);ctx.fillStyle='#e9a23b';ctx.beginPath();ctx.ellipse(sz*1.25,0,sz*.2,sz*.12,0,0,TAU);ctx.fill();ctx.restore()}
-  if(z>1.8){ctx.lineCap='round';for(const r of h.reeds)if(vis(r)){ctx.strokeStyle='#27481f';ctx.lineWidth=.22*r.s;ctx.beginPath();
+  if(z>1.8){ctx.lineCap='round';for(const r of G.reeds)if(vis(r)){ctx.strokeStyle='#27481f';ctx.lineWidth=.22*r.s;ctx.beginPath();
       for(const da of[-.6,0,.6]){ctx.moveTo(r.x,r.y);ctx.lineTo(r.x+Math.cos(r.a+da)*1.1*r.s,r.y+Math.sin(r.a+da)*1.1*r.s)}ctx.stroke();ctx.fillStyle='#6b4a2a';disc(r.x+Math.cos(r.a)*1.15*r.s,r.y+Math.sin(r.a)*1.15*r.s,.24*r.s)}
-    for(const q of h.pebbles)if(vis(q)){ctx.fillStyle='rgba(20,24,16,.35)';disc(q.x+.12,q.y+.14,q.r);ctx.fillStyle='#bdb8a8';disc(q.x,q.y,q.r);ctx.fillStyle='#e4e0d3';disc(q.x-q.r*.25,q.y-q.r*.28,q.r*.5)}}
-  for(const i of h.isles){ctx.save();ctx.translate(SUN.x*1.6,SUN.y*1.6);ctx.strokeStyle='rgba(3,20,24,.55)';ctx.lineWidth=3.4;ctx.stroke(i.path);ctx.restore();
-    ctx.strokeStyle='#6b6759';ctx.lineWidth=3.6;ctx.stroke(i.path);ctx.strokeStyle=K.stone;ctx.lineWidth=2.2;ctx.stroke(i.path);grass(i.path,th.rough,tG,tF,.75)}
-  for(const b of h.bridges)drawBridge(b,th.bridge,now);
-  for(const k of h.rocks)if(vis(k)){ctx.drawImage(SPR.shadow,k.x-k.r*1.3+SUN.x*k.r*.55,k.y-k.r*1.3+SUN.y*k.r*.55,k.r*2.6,k.r*2.6);ctx.drawImage(SPR.rock[k.v],k.x-k.r*1.25,k.y-k.r*1.25,k.r*2.5,k.r*2.5)}
-  // green complex
-  ctx.fillStyle=K.fringe;ctx.fill(h.fringe.path);texFill(h.fringe.path,'grain',.4*tG,.0625);
-  for(const b of h.bunkers){ctx.strokeStyle='#2c4a1d';ctx.globalAlpha=.6;ctx.lineWidth=1.7;ctx.stroke(b.path);ctx.globalAlpha=1;ctx.fillStyle=K.sand;ctx.fill(b.path);
-    texFill(b.path,'rake',.5*clamp(z/6,.3,1),.07,b.rot);inner(b.path,SUN.x,SUN.y,K.sandSh,.55,2.3);inner(b.path,-SUN.x*.8,-SUN.y*.8,'#fffdf2',.75,1.3)}
-  if(z>2.2)for(const r of h.rakes){ctx.save();ctx.translate(r.x,r.y);ctx.rotate(r.a);ctx.lineCap='round';ctx.strokeStyle='rgba(10,20,8,.35)';ctx.lineWidth=.22;ctx.beginPath();ctx.moveTo(-1.3+.15,.18);ctx.lineTo(1.3+.15,.18);ctx.stroke();
+    for(const q of G.pebbles)if(vis(q)){ctx.fillStyle='rgba(20,24,16,.35)';disc(q.x+.12,q.y+.14,q.r);ctx.fillStyle='#bdb8a8';disc(q.x,q.y,q.r);ctx.fillStyle='#e4e0d3';disc(q.x-q.r*.25,q.y-q.r*.28,q.r*.5)}}
+  for(const b of G.bridges)if(vis(b))drawBridge(b,b.wide>6?'road':th.bridge,now);
+  // every green on the property, bunkers, then the one being played with its contours
+  ctx.lineJoin='round';for(const s of G.green)if(seen(s)){ctx.strokeStyle=K.fringe;ctx.lineWidth=4.8;ctx.stroke(s.path);ctx.fillStyle=K.fringe;ctx.fill(s.path)}
+  for(const b of G.bunker)if(seen(b)){ctx.strokeStyle='#2c4a1d';ctx.globalAlpha=.6;ctx.lineWidth=1.7;ctx.stroke(b.path);ctx.globalAlpha=1;ctx.fillStyle=K.sand;ctx.fill(b.path);
+    texFill(b.path,'rake',.5*clamp(z/6,.3,1),.07,b.x*.1);inner(b.path,SUN.x,SUN.y,K.sandSh,.55,2.3);inner(b.path,-SUN.x*.8,-SUN.y*.8,'#fffdf2',.75,1.3)}
+  if(z>2.2)for(const r of G.rakes)if(vis(r)){ctx.save();ctx.translate(r.x,r.y);ctx.rotate(r.a);ctx.lineCap='round';ctx.strokeStyle='rgba(10,20,8,.35)';ctx.lineWidth=.22;ctx.beginPath();ctx.moveTo(-1.3+.15,.18);ctx.lineTo(1.3+.15,.18);ctx.stroke();
     ctx.strokeStyle='#b08a55';ctx.lineWidth=.16;ctx.beginPath();ctx.moveTo(-1.3,0);ctx.lineTo(1.3,0);ctx.stroke();ctx.strokeStyle='#5d4a2c';ctx.lineWidth=.2;ctx.beginPath();ctx.moveTo(1.3,-.5);ctx.lineTo(1.3,.5);ctx.stroke();ctx.restore()}
-  const g=h.green;ctx.fillStyle=K.green;ctx.fill(g.path);
-  if(!h.relief)h.relief=relief(h);
+  for(const s of G.green)if(seen(s)){ctx.fillStyle=K.green;ctx.fill(s.path);if(s!==h.green){texFill(s.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,s.x*.01);ctx.strokeStyle='rgba(20,60,20,.3)';ctx.lineWidth=.3;ctx.stroke(s.path)}}
+  const g=h.green;if(!h.relief)h.relief=relief(h);
   ctx.save();ctx.clip(g.path);ctx.drawImage(h.relief.c,h.relief.x,h.relief.y,h.relief.s,h.relief.s);ctx.restore();
-  texFill(g.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,g.rot+.5);texFill(g.path,'grain',.3*tG,.05);
+  texFill(g.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,h.axis+.5);texFill(g.path,'grain',.3*tG,.05);
   ctx.strokeStyle='rgba(20,60,20,.3)';ctx.lineWidth=.3;ctx.stroke(g.path);
   if(z>6)drawFlow(h,now);
   const cr=Math.max(.13,3.2/z);ctx.fillStyle='rgba(255,255,255,.85)';disc(h.pin.x,h.pin.y,cr*1.28);ctx.fillStyle='#07120b';disc(h.pin.x+cr*.08,h.pin.y+cr*.1,cr);
@@ -70,27 +85,33 @@ function drawWorld(now){const h=cur(),th=h.th,z=cam.s,R=hyp(W,H)/z,tG=clamp((z-3
     for(const m of[1,.55]){ctx.beginPath();ctx.arc(f.x,f.y,(4+a*26)*m/z,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
   for(const m of S.marks){if(m.t==='pitch'){ctx.fillStyle='rgba(20,50,20,.38)';disc(m.x,m.y,.13);ctx.fillStyle='rgba(255,255,220,.25)';disc(m.x-.05,m.y-.05,.06)}
     else{ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.a);ctx.fillStyle='#6f5a36';ctx.beginPath();ctx.ellipse(.5,0,.55,.2,0,0,TAU);ctx.fill();ctx.fillStyle='rgba(30,22,8,.4)';ctx.beginPath();ctx.ellipse(.42,.03,.38,.11,0,0,TAU);ctx.fill();ctx.restore()}}
-  if(h.cart)drawCart(h.cart.x,h.cart.y,h.cart.a);
-  if(h.house){drawHouse(h.house);const p=h.house,c=Math.cos(p.a),s2=Math.sin(p.a);for(let i=0;i<3;i++)drawCart(p.x+c*(-24)-s2*(-44+i*4.2),p.y+s2*(-24)+c*(-44+i*4.2),p.a)}
-  // trees last: shadows, then canopies
-  for(const t of h.trees)if(vis(t))ctx.drawImage(SPR.shadow,t.x-t.r*1.35+SUN.x*t.r*.75,t.y-t.r*1.35+SUN.y*t.r*.75,t.r*2.7,t.r*2.7);
-  for(const t of h.oaks)ctx.drawImage(SPR.shadow,t.x-t.r*1.4+SUN.x*t.r*.8,t.y-t.r*1.4+SUN.y*t.r*.8,t.r*2.8,t.r*2.8);
-  const gust=.04+h.wind.sp*.016,wn=h.wind.sp?1/h.wind.sp:0,sway=t=>{const k=Math.sin(now/780+t.x*.11+t.y*.07)*gust*t.r*.5;return[t.x-t.r*1.28+(h.wind.x*wn||.7)*k,t.y-t.r*1.28+(h.wind.y*wn||.7)*k]};
-  for(const t of h.trees)if(vis(t)){const[x,y]=sway(t);ctx.drawImage(SPR[t.kind][t.v],x,y,t.r*2.56,t.r*2.56)}
-  for(const t of h.oaks){const[x,y]=sway(t);ctx.drawImage(SPR[t.kind][t.v],x,y,t.r*2.56,t.r*2.56)}
+  if(G.cart&&vis(G.cart))drawCart(G.cart.x,G.cart.y,G.cart.a);
+  // roofs: a shadow, the footprint, then two slopes either side of the ridge, the one facing the sun lighter
+  for(const s of G.building)if(seen(s)){const sv=rotv(SUN.x,SUN.y,-s.ax),lit=sv.y>0?-1:1,Rr=s.R+2;ctx.save();ctx.translate(SUN.x*2.6,SUN.y*2.6);ctx.fillStyle='rgba(5,15,10,.4)';ctx.fill(s.path);ctx.restore();
+    ctx.fillStyle=ROOFS[Math.abs((s.x*3+s.y*7)|0)%ROOFS.length];ctx.fill(s.path);
+    ctx.save();ctx.clip(s.path);ctx.translate(s.x,s.y);ctx.rotate(s.ax);ctx.fillStyle='rgba(255,244,214,.26)';ctx.fillRect(-Rr,lit>0?0:-Rr,2*Rr,Rr);ctx.fillStyle='rgba(10,8,4,.2)';ctx.fillRect(-Rr,lit>0?-Rr:0,2*Rr,Rr);
+    if(z>3){ctx.fillStyle='rgba(0,0,0,.07)';for(let y=-Rr;y<Rr;y+=1.1)ctx.fillRect(-Rr,y,2*Rr,.18)}
+    ctx.strokeStyle='rgba(30,24,16,.55)';ctx.lineWidth=.32;ctx.beginPath();ctx.moveTo(-Rr,0);ctx.lineTo(Rr,0);ctx.stroke();ctx.restore();
+    ctx.strokeStyle='rgba(30,26,20,.6)';ctx.lineWidth=.4;ctx.lineJoin='miter';ctx.stroke(s.path);ctx.lineJoin='round'}
+  // trees last: shadows, then canopies, swaying with the wind. Only the buckets on screen are walked.
+  const gust=.04+h.wind.sp*.016,wn=h.wind.sp?1/h.wind.sp:0,wx=h.wind.x*wn||.7,wy=h.wind.y*wn||.7,cells=[];
+  for(let cx=Math.floor(VR[0]/120);cx<=Math.floor((VR[0]+VR[2])/120);cx++)for(let cy=Math.floor(VR[1]/120);cy<=Math.floor((VR[1]+VR[3])/120);cy++){const c=G.grid.get(cx+','+cy);if(c)cells.push(c)}
+  for(const k of['trees','solid'])for(const c of cells)for(const t of c[k])ctx.drawImage(SPR.shadow,t.x-t.r*1.35+SUN.x*t.r*.75,t.y-t.r*1.35+SUN.y*t.r*.75,t.r*2.7,t.r*2.7);
+  for(const k of['trees','solid'])for(const c of cells)for(const t of c[k]){const sw=Math.sin(now/780+t.x*.11+t.y*.07)*gust*t.r*.5;ctx.drawImage(SPR[t.kind][t.v],t.x-t.r*1.28+wx*sw,t.y-t.r*1.28+wy*sw,t.r*2.56,t.r*2.56)}
   drawSky(now,h);
   ctx.globalCompositeOperation='multiply';texFill(null,'cloud',.4,2.1,.4,now*.004*(h.wind.x/7+.6),now*.004*(h.wind.y/7+.3));ctx.globalCompositeOperation='source-over';
   ctx.restore()}
+const seen2=w=>{const p=w.pts;if(!w.bb){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of p){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}w.bb=[x0-9,y0-9,x1+9,y1+9]}return seen(w)};
 // Bridges. Timber: an arched plank deck between stone footings, with posts and handrails, and piers under a long span.
 // Stone: an old park bridge with a cobbled deck, parapet walls, capped pillars and the dark of an arch on the water either side.
-function drawBridge(b,style,now){const sv=rotv(SUN.x,SUN.y,-b.a),l=b.len,hl=l/2,hw=2.2,stone=style==='stone';
+function drawBridge(b,style,now){const sv=rotv(SUN.x,SUN.y,-b.a),l=b.len,hl=l/2,hw=style==='road'?b.wide/2+1.2:2.2,stone=style!=='wood';
   ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.a);ctx.lineCap='butt';
   // shadow on the water and banks, soft in two passes
   ctx.fillStyle='rgba(3,16,14,.2)';rrect(-hl+sv.x*2.2-.4,-hw+sv.y*2.2-.4,l+.8,hw*2+.8,.8);ctx.fillStyle='rgba(3,16,14,.3)';rrect(-hl+sv.x*1.5,-hw+sv.y*1.5,l,hw*2,.5);
   if(stone){
     for(const sd of[-1,1]){ctx.fillStyle='rgba(2,12,14,.55)';ctx.beginPath();ctx.ellipse(0,sd*(hw+.1),Math.min(3.2,hl*.5),1.1,0,sd>0?0:Math.PI,sd>0?Math.PI:TAU);ctx.fill()} // the arch
-    const g=ctx.createLinearGradient(-hl,0,hl,0);g.addColorStop(0,'#9c978a');g.addColorStop(.5,'#c2bdaf');g.addColorStop(1,'#9c978a');ctx.fillStyle=g;rrect(-hl,-hw,l,hw*2,.4);
-    ctx.strokeStyle='rgba(60,56,48,.32)';ctx.lineWidth=.07;ctx.beginPath();for(let x=-hl+.6,i=0;x<hl;x+=.62,i++){ctx.moveTo(x,-hw+.6);ctx.lineTo(x,hw-.6);for(let y=-hw+.6+(i&1?.45:0);y<hw-.6;y+=.9){ctx.moveTo(x,y);ctx.lineTo(x+.62,y)}}ctx.stroke(); // cobbles
+    const g=ctx.createLinearGradient(-hl,0,hl,0);g.addColorStop(0,'#9c978a');g.addColorStop(.5,'#c2bdaf');g.addColorStop(1,'#9c978a');ctx.fillStyle=style==='road'?'#5d5f58':g;rrect(-hl,-hw,l,hw*2,.4);if(style!=='road'){
+    ctx.strokeStyle='rgba(60,56,48,.32)';ctx.lineWidth=.07;ctx.beginPath();for(let x=-hl+.6,i=0;x<hl;x+=.62,i++){ctx.moveTo(x,-hw+.6);ctx.lineTo(x,hw-.6);for(let y=-hw+.6+(i&1?.45:0);y<hw-.6;y+=.9){ctx.moveTo(x,y);ctx.lineTo(x+.62,y)}}ctx.stroke()} // cobbles
     for(const sd of[-1,1]){const y=sd*(hw-.3);ctx.fillStyle='rgba(20,18,12,.35)';ctx.fillRect(-hl+sv.x*.35,y-.3+sv.y*.35,l,.6);ctx.fillStyle='#d9d5c8';ctx.fillRect(-hl,y-.3,l,.6);ctx.fillStyle='#8d887b';ctx.fillRect(-hl,y+(sv.y>0?.14:-.3),l,.16);
       ctx.strokeStyle='rgba(60,56,48,.4)';ctx.lineWidth=.06;ctx.beginPath();for(let x=-hl+1;x<hl;x+=1.15){ctx.moveTo(x,y-.3);ctx.lineTo(x,y+.3)}ctx.stroke()} // parapets
     for(const ex of[-1,1])for(const sd of[-1,1]){const x=ex*(hl-.1),y=sd*(hw-.3);ctx.fillStyle='rgba(20,18,12,.4)';rrect(x-.55+sv.x*.5,y-.55+sv.y*.5,1.1,1.1,.15);ctx.fillStyle='#b9b4a6';rrect(x-.55,y-.55,1.1,1.1,.15);ctx.fillStyle='#e6e2d6';rrect(x-.38,y-.38,.76,.76,.12)}
@@ -131,7 +152,7 @@ function drawHouse(p){const sv=rotv(SUN.x,SUN.y,-p.a),lit=sv.x>0;ctx.save();ctx.
     ctx.fillStyle='rgba(255,255,255,.05)';for(let yy=y+2;yy<y+hh;yy+=3)ctx.fillRect(x,yy,w,.3)}
   ctx.fillStyle='#b9b2a2';ctx.fillRect(12,-20,3.5,3.5);ctx.fillRect(12,14,3.5,3.5);ctx.restore()}
 // Hillshade of the green: slopes that face the sun are lit, slopes that fall away from it are shaded.
-function relief(h){const g=h.green,R=g.R+3,N=112;return{x:g.x-R,y:g.y-R,s:2*R,c:tex(N,N,x2=>{const im=x2.createImageData(N,N),d=im.data;
+function relief(h){const g=h.green,R=g.R+3,N=128;return{x:g.x-R,y:g.y-R,s:2*R,c:tex(N,N,x2=>{const im=x2.createImageData(N,N),d=im.data;
   for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=slopeAt(h,{x:g.x-R+(i+.5)/N*2*R,y:g.y-R+(j+.5)/N*2*R}),v=-(a.x*SUN.x+a.y*SUN.y)*.62,k=(j*N+i)*4;
     if(v>0){d[k]=255;d[k+1]=255;d[k+2]=200}else{d[k]=0;d[k+1]=34;d[k+2]=16}d[k+3]=Math.min(165,Math.abs(v)*255)}x2.putImageData(im,0,0)})}}
 // The read. From each point of a grid a line runs down the fall line, curving as the ground does.

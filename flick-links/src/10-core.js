@@ -37,22 +37,32 @@ const TEX=(()=>{const r=mulberry32(4242),T={};
   T.straw=tex(128,128,(g,w,h)=>{g.lineCap='round';for(let i=0;i<520;i++){const x=r()*w,y=r()*h,l=3+r()*7,a=.5+(r()-.5)*.9;g.strokeStyle=r()<.5?`rgba(90,70,20,${.14+r()*.2})`:`rgba(250,232,160,${.14+r()*.22})`;g.lineWidth=.7+r()*.7;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke()}});
   return T})();
 const PAT={};for(const k in TEX)PAT[k]=ctx.createPattern(TEX[k],'repeat');
-function treeSprite(kind,seed){return tex(128,128,g=>{const r=mulberry32(seed),R=50,oak=kind!=='cedar';
-  const pal=kind==='blossom'?['#6d3148','#b25577','#e58dab','#fbd3e0']:oak?['#20391a','#345f27','#4b8134','#77a84c']:['#172e1f','#23482b','#336337','#4f8246'],cl=[];
-  for(let i=0;i<(oak?12:7);i++){const a=r()*TAU,d=Math.sqrt(r())*R*(oak?.56:.4);cl.push({x:64+Math.cos(a)*d,y:64+Math.sin(a)*d,r:R*(oak?.3+r()*.2:.36+r()*.2)})}
+// Texas trees seen from above. Each is a cluster of leafy clumps lit from the north-west; the recipe sets its character:
+// n clumps, how far they spread, how big each is, how lacy the crown is, and how large the tree grows.
+const TREES={
+  liveoak:{pal:['#1b3117','#2e4f25','#456b31','#6c8c45'],n:15,sp:.62,r0:.26,r1:.16,size:1.2},   // broad, dark, sprawling
+  juniper:{pal:['#13271c','#1f4029','#2f5a37','#467a4a'],n:7,sp:.38,r0:.34,r1:.18,size:.76},    // Ashe juniper, the Hill Country "cedar"
+  elm:{pal:['#284620','#3f6c31','#5c9042','#8cb85c'],n:8,sp:.44,r0:.3,r1:.16,size:.9},          // cedar elm, upright and lighter
+  pecan:{pal:['#2a471d','#487730','#6c9d3f','#a2c75f'],n:17,sp:.68,r0:.19,r1:.12,size:1.32},    // tall and airy, yellow-green
+  postoak:{pal:['#22371a','#385826','#547833','#7c9848'],n:10,sp:.5,r0:.3,r1:.16,size:1},       // the savanna oak of the Lost Pines
+  mesquite:{pal:['#36462b','#55693d','#788d57','#a8b882'],n:30,sp:.72,r0:.09,r1:.07,size:.85,lacy:.82}}; // low, wide and see-through
+function treeSprite(kind,seed){const t=TREES[kind];return tex(128,128,g=>{const r=mulberry32(seed),R=50,pal=t.pal,cl=[];
+  for(let i=0;i<t.n;i++){const a=r()*TAU,d=Math.sqrt(r())*R*t.sp;cl.push({x:64+Math.cos(a)*d,y:64+Math.sin(a)*d,r:R*(t.r0+r()*t.r1)})}
   const lay=(col,k,sh)=>{g.fillStyle=col;for(const c of cl){g.beginPath();g.arc(c.x+sh*c.r,c.y+sh*c.r,c.r*k,0,TAU);g.fill()}};
-  lay(pal[0],1,.06);lay(pal[1],.9,-.02);lay(pal[2],.6,-.24);g.globalAlpha=.8;lay(pal[3],.27,-.44);
+  g.globalAlpha=t.lacy||1;lay(pal[0],1,.06);lay(pal[1],.9,-.02);lay(pal[2],.6,-.24);g.globalAlpha=.8*(t.lacy||1);lay(pal[3],.27,-.44);
   g.globalCompositeOperation='source-atop';g.globalAlpha=.4;for(let i=0;i<260;i++){const a=r()*TAU,d=Math.sqrt(r())*R;g.fillStyle=r()<.5?pal[0]:pal[3];g.fillRect(64+Math.cos(a)*d,64+Math.sin(a)*d,2,2)}})}
-// a pine from above: a ragged star of boughs, darker and bluer than an oak
-function pineSprite(seed){return tex(128,128,g=>{const r=mulberry32(seed),n=9+Math.floor(r()*4),rot=r()*TAU;
+// conifers: a ragged star of boughs. Loblolly pine is dark and blue; bald cypress, along the water, is feathery and bright.
+function starSprite(seed,pal,soft){return tex(128,128,g=>{const r=mulberry32(seed),n=(soft?13:9)+Math.floor(r()*4),rot=r()*TAU;
   const star=(R,k,col,dx)=>{g.fillStyle=col;g.beginPath();for(let i=0;i<n*2;i++){const a=rot+i/(n*2)*TAU,d=i%2?R*k*(.85+r()*.3):R*(.86+r()*.14);g.lineTo(64+dx+Math.cos(a)*d,64+dx+Math.sin(a)*d)}g.closePath();g.fill()};
-  star(50,.58,'#12281c',3);star(47,.56,'#1e4028',0);star(36,.5,'#2c5a34',-4);g.globalAlpha=.85;star(22,.45,'#44774a',-8);g.globalAlpha=1;g.fillStyle='#5c8c58';g.beginPath();g.arc(54,54,4,0,TAU);g.fill()})}
-const SPR={oak:[11,12,13,14].map(s=>treeSprite('oak',s)),cedar:[21,22,23,24].map(s=>treeSprite('cedar',s)),pine:[41,42,43,44].map(pineSprite),blossom:[51,52,53,54].map(s=>treeSprite('blossom',s)),
+  const k=soft?.74:.58;star(50,k,pal[0],3);star(47,k-.02,pal[1],0);star(36,k-.08,pal[2],-4);g.globalAlpha=.85;star(22,k-.13,pal[3],-8);g.globalAlpha=1;g.fillStyle=pal[4];g.beginPath();g.arc(54,54,4,0,TAU);g.fill()})}
+TREES.pine={size:.9};TREES.cypress={size:.84};
+const SPR={pine:[41,42,43,44].map(x=>starSprite(x,['#12281c','#1e4028','#2c5a34','#44774a','#5c8c58'])),cypress:[61,62,63,64].map(x=>starSprite(x,['#1b3a20','#2c6431','#479043','#7cc061','#a6dc84'],true)),
   shadow:tex(64,64,g=>softDot(g,32,32,32,'6,18,8',.62)),
   rock:[31,32,33].map(s=>tex(96,96,g=>{const r=mulberry32(s),n=7+Math.floor(r()*3),p=[];for(let i=0;i<n;i++){const a=i/n*TAU+r()*.5,d=28+r()*13;p.push([48+Math.cos(a)*d,48+Math.sin(a)*d])}
     const poly=(dx,dy)=>{g.beginPath();p.forEach(([x,y],i)=>i?g.lineTo(x+dx,y+dy):g.moveTo(x+dx,y+dy));g.closePath()};
     poly(0,0);g.fillStyle='#8f8a7b';g.fill();g.save();g.clip();poly(-5,-6);g.fillStyle='#c9c4b4';g.fill();poly(-12,-14);g.fillStyle='#e6e2d6';g.fill();
     g.strokeStyle='rgba(60,55,45,.5)';g.lineWidth=1.5;for(let i=0;i<3;i++){g.beginPath();g.moveTo(20+r()*56,20+r()*56);g.lineTo(20+r()*56,20+r()*56);g.stroke()}g.restore()}))};
+for(const k of['liveoak','juniper','elm','pecan','postoak','mesquite'])SPR[k]=[11,12,13,14].map(x=>treeSprite(k,x+k.length*10));
 
 // ───────── geometry (world units are yards; +x east, +y south)
 function catmull(P,step){const out=[];for(let i=0;i<P.length-1;i++){const a=P[Math.max(0,i-1)],b=P[i],c=P[i+1],d=P[Math.min(P.length-1,i+2)],n=Math.max(2,Math.ceil(hyp(c.x-b.x,c.y-b.y)/step));
@@ -80,9 +90,16 @@ function blobPoly(sh,g){const out=[],c=Math.cos(sh.rot),s=Math.sin(sh.rot);for(l
   if(g){const l=hyp(u,v)||1;u*=1+g/l;v*=1+g/l}out.push({x:sh.x+u*c-v*s,y:sh.y+u*s+v*c})}return out}
 function blob(x,y,rx,ry,rot,seed,amp=.12){const r=mulberry32(seed*7919+13),wob=[];for(let k=2;k<=5;k++)wob.push([k,amp*(r()*.8+.4)/(k-1),r()*TAU]);
   const sh={kind:'blob',x,y,rx,ry,rot,wob,R:Math.max(rx,ry)*(1+amp*2.4)};sh.poly=blobPoly(sh,0);return fin(sh,true)}
-function grown(sh,g){return fin({kind:'grown',of:sh,g,poly:blobPoly(sh,g)},true)}
+// a mapped outline, as a list of points. x, y is its centre and R the reach from it.
+function polyShape(pts,straight){const sh=fin({kind:'poly',poly:pts},!straight&&pts.length>6);let a=0,cx=0,cy=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length],c=p.x*q.y-q.x*p.y;a+=c;cx+=(p.x+q.x)*c;cy+=(p.y+q.y)*c}
+  if(Math.abs(a)<1e-6){cx=pts[0].x;cy=pts[0].y}else{cx/=3*a;cy/=3*a}sh.x=cx;sh.y=cy;sh.area=Math.abs(a)/2;sh.R=Math.max(...pts.map(p=>hyp(p.x-cx,p.y-cy)));sh.rx=sh.ry=Math.sqrt(sh.area/Math.PI);sh.rot=0;return sh}
+function edgeDist(pts,q){let m=1e9;for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length],dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy||1,t=clamp(((q.x-a.x)*dx+(q.y-a.y)*dy)/l2,0,1);m=Math.min(m,hyp(q.x-a.x-dx*t,q.y-a.y-dy*t))}return m}
+function grown(sh,g){return sh.kind==='poly'?{kind:'grown',of:sh,g,bb:sh.bb,path:sh.path}:fin({kind:'grown',of:sh,g,poly:blobPoly(sh,g)},true)}
 function inSh(sh,q,g=0){
   if(sh.kind==='grown')return inSh(sh.of,q,sh.g+g);
+  if(sh.kind==='poly'){const b=sh.bb;if(q.x<b[0]-g||q.x>b[2]+g||q.y<b[1]-g||q.y>b[3]+g)return false;const p=sh.poly;let c=false;
+    for(let i=0,j=p.length-1;i<p.length;j=i++)if((p[i].y>q.y)!==(p[j].y>q.y)&&q.x<(p[j].x-p[i].x)*(q.y-p[i].y)/(p[j].y-p[i].y)+p[i].x)c=!c;
+    return g===0?c:g>0?c||edgeDist(p,q)<=g:c&&edgeDist(p,q)>=-g}
   if(sh.kind==='blob'){const dx=q.x-sh.x,dy=q.y-sh.y;if(Math.abs(dx)>sh.R+g||Math.abs(dy)>sh.R+g)return false;
     const c=Math.cos(sh.rot),s=Math.sin(sh.rot),u=dx*c+dy*s,v=-dx*s+dy*c,th=Math.atan2(v/sh.ry,u/sh.rx),m=bm(sh,th);return hyp(u,v)<=hyp(Math.cos(th)*sh.rx*m,Math.sin(th)*sh.ry*m)+g}
   const b=sh.bb;if(q.x<b[0]-g||q.x>b[2]+g||q.y<b[1]-g||q.y>b[3]+g)return false;

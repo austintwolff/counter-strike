@@ -10,42 +10,47 @@ const rel=n=>n===0?'E':(n>0?'+':'−')+Math.abs(n);
 function scoreName(s,par){if(s===1)return'Hole in one';const d=s-par;return d<=-3?'Albatross':d===-2?'Eagle':d===-1?'Birdie':d===0?'Par':d===1?'Bogey':d===2?'Double bogey':d===3?'Triple bogey':rel(d)+' on the hole'}
 const emo=(s,par)=>s===1?'🎯':s-par<=-2?'🦅':s-par===-1?'🐦':s===par?'⚪':s-par===1?'🟧':'🟥';
 const mk=(s,par)=>{const d=s-par,c=d<=-2?'eagle':d===-1?'birdie':d===1?'bogey':d>=2?'dbl':'';return`<span class="mk ${c}">${s}</span>`};
-function scoreCard(ids,scores,note){const hs=ids.map(i=>S.holes[i]),wide=ids.length<=3,par=sum(hs.map(h=>h.par)),n=scores.filter(s=>s!=null).length,done=n>=ids.length;
+// a round's card. Today's three can mix courses, so it carries a course row; a practice nine carries its tee.
+function scoreCard(ids,scores){const hs=ids.map(HOLE),wide=ids.length<=3,par=sum(hs.map(h=>h.par)),n=scores.filter(s=>s!=null).length,done=n>=ids.length,c=hs[0].course;
   const toPar=n?rel(sum(scores.slice(0,n))-sum(hs.slice(0,n).map(h=>h.par))):'',d=new Date();
-  const row=(cls,label,cells,out)=>`<tr class="${cls}"><th>${label}</th>${cells.map(c=>`<td>${c}</td>`).join('')}<td class="out">${out}</td></tr>`;
-  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":COURSE.club}</b><span>${note}</span></div>
-<table class="sc${wide?' wide':''}">${row('h','Hole',hs.map(h=>h.n),wide?'Total':'Out')}${row('g',COURSE.tee,hs.map(h=>h.yards),sum(hs.map(h=>h.yards)))}
-${row('k','Hcp',hs.map(h=>h.hcp),'')}${row('p','Par',hs.map(h=>h.par),par)}
+  const row=(cls,label,cells,out)=>`<tr class="${cls}"><th>${label}</th>${cells.map(x=>`<td>${x}</td>`).join('')}<td class="out">${out}</td></tr>`;
+  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":c.club}</b><span>${wide?'No. '+S.day:'Front nine · practice'}</span></div>
+<table class="sc${wide?' wide':''}">${wide?row('h','Course',hs.map(h=>h.course.club),''):''}${row(wide?'n':'h','Hole',hs.map(h=>h.n),wide?'Total':'Out')}
+${row('g',wide?'Yards':c.tee,hs.map(h=>h.yards),sum(hs.map(h=>h.yards)))}${row('k','Hcp',hs.map(h=>h.hcp),'')}${row('p','Par',hs.map(h=>h.par),par)}
 ${row('s','You',hs.map((h,i)=>scores[i]!=null?mk(scores[i],h.par):''),done?sum(scores):'')}</table>
 <div class="sc-foot"><span>Date <i>${d.getMonth()+1}/${d.getDate()}</i></span><span>Scorer <i>You</i></span><span>To par <i>${toPar}</i></span></div></div>`}
 const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
-function titleCard(){const ids=dailyIds(S.key),d=fetchKey(S.key),seen=fetchKey('seen');
+// a day's saved round keeps the holes it was drawn with, so a later change to the draw cannot scramble it
+const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
+function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(0,0);setupShot();overviewCam(.2,.3,true);hud();hintOff();
   sheet(`<div class="mast">${CREST}<h1>Flick Links</h1></div>
 <div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
-${scoreCard(ids,d&&d.scores?d.scores:[],COURSE.club)}
-<div class="row"><button class="btn" data-act="daily">Today's three</button><button class="btn green" data-act="nine">Front nine</button></div>
+${scoreCard(ids,d&&d.scores?d.scores:[])}
+<button class="btn" data-act="daily">Today's three</button>
+<p class="eyebrow">Practice a front nine</p>
+<div class="row">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>
 ${seen?'':HOW}`)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>The swing.</b> The dotted line shows where a pure strike lands. A ring at your thumb fills, drains and fills again. Flick through it as it tops out. Early loses distance and hooks. Late loses distance and slices. Longer clubs and bad lies give a smaller window.</p>
 <p class="fine"><b>On the green.</b> The moving streaks run downhill, faster and warmer where it is steep. Drag to place the marker where a flat putt should stop, press Putt, then pull back and flick on the ring. A mistimed putt comes up short or runs long.</p>
-<p class="fine">Water and the woods cost one stroke. A live oak will knock a low ball down.</p>
+<p class="fine">Water and the woods cost one stroke. A tree in the rough will knock a low ball down. Native grass is playable but takes 40% off the shot.</p>
 <button class="btn" data-act="close">Carry on</button>`)}
-function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:S.holes[S.round.ids[S.hi+1]];
-  sheet(`<p class="eyebrow">No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
+function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:HOLE(S.round.ids[S.hi+1]);
+  sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
 <p class="sub">${score===1?'One swing. Frame the card.':score+' strokes'+(score>=maxScore()?', the most a hole can cost.':'.')}</p>
-${scoreCard(S.round.ids,S.round.scores,S.round.type==='nine'?'Front nine · practice':COURSE.club)}
-<button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
-function shareText(){const r=S.round,hs=r.ids.map(i=>S.holes[i]),par=sum(hs.map(h=>h.par)),tot=sum(r.scores);
-  let t=r.type==='nine'?`⛳ Flick Links · front nine at ${COURSE.club}\n`+r.scores.map((s,i)=>emo(s,hs[i].par)).join('')+`\n${tot} strokes (${rel(tot-par)})`
-    :`⛳ Flick Links No. ${S.day}\n`+r.scores.map((s,i)=>`#${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
+${scoreCard(S.round.ids,S.round.scores)}
+<button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
+function shareText(){const r=S.round,hs=r.ids.map(HOLE),par=sum(hs.map(h=>h.par)),tot=sum(r.scores);
+  let t=r.type==='nine'?`⛳ Flick Links · front nine at ${hs[0].course.club}\n`+r.scores.map((s,i)=>emo(s,hs[i].par)).join('')+`\n${tot} strokes (${rel(tot-par)})`
+    :`⛳ Flick Links No. ${S.day}\n`+r.scores.map((s,i)=>`${hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
   let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname}catch(e){}
   return url?t+'\n'+url:t}
 function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r.scores=sv.scores;
-  const hs=r.ids.map(i=>S.holes[i]),d=sum(r.scores)-sum(hs.map(h=>h.par)),m=fetchKey('meta'),nine=r.type==='nine';
+  const hs=r.ids.map(HOLE),d=sum(r.scores)-sum(hs.map(h=>h.par)),m=fetchKey('meta'),nine=r.type==='nine';
   S.mode='done';S.hi=r.ids.length-1;setBall(0,0);setupShot();hud();hintOff();store('seen',1);overviewCam(.16,.24,false);
-  sheet(`<p class="eyebrow">${nine?'Practice round · front nine':dateLine()}</p><h2>${sum(r.scores)} strokes, ${d===0?'even par':d<0?Math.abs(d)+' under':d+' over'}</h2>
-${scoreCard(r.ids,r.scores,nine?'Front nine · practice':COURSE.club)}
+  sheet(`<p class="eyebrow">${nine?'Practice round · '+hs[0].course.club:dateLine()}</p><h2>${sum(r.scores)} strokes, ${d===0?'even par':d<0?Math.abs(d)+' under':d+' over'}</h2>
+${scoreCard(r.ids,r.scores)}
 <textarea id="shareText" readonly rows="3" aria-label="Your result, ready to paste">${shareText()}</textarea>
 <div class="row"><button class="btn" data-act="share">Share score</button><button class="btn ghost" data-act="${nine?'again':'title'}">${nine?'Play it again':'Clubhouse'}</button></div>
 ${nine?'<button class="btn ghost" data-act="title">Clubhouse</button>':''}
@@ -59,8 +64,8 @@ function tickClock(){const a=$('buildAge');if(a)a.textContent=buildAge();const e
   e.textContent=pad(Math.floor(s/3600))+':'+pad(Math.floor(s/60)%60)+':'+pad(s%60)}
 setInterval(()=>{tickClock();if(S.key&&todayKey()!==S.key&&(S.mode==='done'||S.mode==='title'))initDay()},1000);
 $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;ac();
-  if(a==='daily'||a==='nine')begin(a);
-  else if(a==='again'){store(S.key+':nine',null);begin('nine')}
+  if(a==='daily'||a==='nine')begin(a,b.dataset.c);
+  else if(a==='again'){store(saveKey(),null);begin('nine',S.round.course)}
   else if(a==='close')closeSheet();
   else if(a==='next'){closeSheet();startHole(S.hi+1)}
   else if(a==='results')resultsCard();
@@ -71,21 +76,22 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
 let introT=0;
 function startHole(i,sv){closeSheet();S.hi=i;const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
-  overviewCam(.5,.7,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,`Par ${h.par} · ${h.yards} yards · Handicap ${h.hcp}`,2000);
+  overviewCam(.5,.7,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,`${h.course.club} · Par ${h.par} · ${h.yards} yards`,2000);
   if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up as the ring fills');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
-function begin(type){const ids=type==='nine'?COURSE.holes.map((_,i)=>i):dailyIds(S.key);S.round={type,ids,scores:[]};const sv=fetchKey(saveKey());
+function begin(type,course){const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';
+  S.round={type,course:nine?course:null,ids:[],scores:[]};const sv=fetchKey(saveKey());S.round.ids=nine?courseIds(course):todaysIds(sv);const ids=S.round.ids;
   if(sv&&sv.done&&Array.isArray(sv.scores)){S.round.scores=sv.scores;return resultsCard()}
   if(sv&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length){S.round.scores=sv.scores.slice(0,sv.hi);startHole(sv.hi,sv)}else startHole(0)}
-function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=COURSE.holes.map(d=>buildHole(d,S.key));S.muted=!!fetchKey('muted');
+function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=[];S.muted=!!fetchKey('muted');
   $('btnSound').setAttribute('aria-pressed',String(!S.muted));titleCard()}
 // ───────── boot, and staying current while a round is open
 // A new build can arrive mid-round: the round is saved after every stroke, so it resumes where it stood.
 const PLAYING=['intro','ready','aim','flight','wait'];
 function start(d){resize();initDay();resize();let r=d&&d.playing?d:null;
   try{const s=JSON.parse(sessionStorage.getItem(KEY+'resume')||'null');sessionStorage.removeItem(KEY+'resume');if(s&&s.playing)r=s}catch(e){}
-  if(r&&(r.type==='daily'||r.type==='nine')){begin(r.type);if(PLAYING.includes(S.mode))toast('Updated to the latest build','Carrying on where you were',2200)}}
-const snap=()=>({type:S.round.type,playing:PLAYING.includes(S.mode)});
+  if(r&&(r.type==='daily'||r.type==='nine')){begin(r.type,r.course);if(PLAYING.includes(S.mode))toast('Updated to the latest build','Carrying on where you were',2200)}}
+const snap=()=>({type:S.round.type,course:S.round.course,playing:PLAYING.includes(S.mode)});
 const hot=window.claude&&window.claude.hot;
 try{if(hot&&hot.snapshot)hot.snapshot(snap)}catch(e){}
 if(hot&&hot.ready)hot.ready(start);else start(hot&&hot.data||{});
@@ -96,4 +102,4 @@ if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==
   try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text(),m=t.match(/BUILD_TS=(\d{10,})/);
     if(m&&+m[1]>BUILD_TS){try{sessionStorage.setItem(KEY+'resume',JSON.stringify(snap()))}catch(e){}location.replace(location.pathname+'?v='+m[1]+location.hash)}}catch(e){}},20000);
 
-if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSE};
+if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,courseIds};

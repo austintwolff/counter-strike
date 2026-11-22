@@ -1,8 +1,8 @@
 // ───────── rules of this little world
 const G=22,KW=0.18,CUP_R=0.28,CAP_V=4.2,MAX_OVER=5;
-const MU={green:2.2,fringe:4,fairway:5,tee:5,rough:13,bunker:26,woods:15,water:13,rock:13};
-const ROLLX={green:1.1,fringe:1,fairway:1,tee:1,rough:.35,bunker:.04,woods:.3,water:0,rock:.6};
-const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Rough',bunker:'Bunker'};
+const MU={green:2.2,fringe:4,fairway:5,tee:5,rough:13,bunker:26,woods:15,native:17,water:13,rock:13};
+const ROLLX={green:1.1,fringe:1,fairway:1,tee:1,rough:.35,bunker:.04,woods:.3,native:.18,water:0,rock:.6};
+const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Rough',bunker:'Bunker',native:'Native'};
 const CLUBS=[
   {id:'CH',name:'Chip',carry:38,loft:33,roll:.55,tw:90},
   {id:'PW',name:'Wedge',carry:95,loft:49,roll:.035,tw:75},
@@ -11,7 +11,7 @@ const CLUBS=[
   {id:'3W',name:'3 Wood',carry:205,loft:30,roll:.09,tw:50},
   {id:'DR',name:'Driver',carry:240,loft:27,roll:.11,tw:45}];
 const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
-const lieMult=(lie,c)=>lie==='rough'?.8:lie==='bunker'?(c.id==='PW'||c.id==='CH'?.8:.55):1;
+const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='bunker'?(c.id==='PW'||c.id==='CH'?.8:.55):1;
 
 // ───────── day, saves
 const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=__BUILD_TS__; // build.sh stamps the build time here
@@ -20,15 +20,18 @@ const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
 function store(k,v){try{v==null?localStorage.removeItem(KEY+k):localStorage.setItem(KEY+k,JSON.stringify(v))}catch(e){}}
 function fetchKey(k){try{return JSON.parse(localStorage.getItem(KEY+k)||'null')}catch(e){return null}}
-// one par 3, one par 4 and one par 5 from the nine, played in card order
-function dailyIds(key){const r=mulberry32(hashStr('fl-day:'+key)),by=p=>COURSE.holes.map((h,i)=>h.par===p?i:-1).filter(i=>i>=0),pick=a=>a[Math.floor(r()*a.length)];
+// one par 3, one par 4 and one par 5 drawn from every course, played in card order
+function dailyIds(key){const r=mulberry32(hashStr('fl-day:'+key)),by=p=>ALL.map((e,i)=>e.def.par===p?i:-1).filter(i=>i>=0),pick=a=>a[Math.floor(r()*a.length)];
   return[pick(by(3)),pick(by(4)),pick(by(5))].sort((a,b)=>a-b)}
 
 const S={mode:'title',key:'',day:1,holes:[],round:{type:'daily',ids:[0,1,2],scores:[]},hi:0,strokes:0,lie:'tee',clubs:[],ci:0,club:CLUBS[5],
-  ball:{x:0,y:0,z:0,vx:0,vy:0,vz:0,air:false,spin:0,club:null,putt:false,gone:false,tree:null,rollK:1},prev:{x:0,y:0},g:null,trail:[],fx:[],parts:[],hintShots:0,muted:false,mark:{x:0,y:0},pmode:'aim'};
-const cur=()=>S.holes[S.round.ids[S.hi]];
+  ball:{x:0,y:0,z:0,vx:0,vy:0,vz:0,air:false,spin:0,club:null,putt:false,gone:false,tree:null,rollK:1},prev:{x:0,y:0},g:null,trail:[],fx:[],parts:[],hintShots:0,muted:false,mark:{x:0,y:0},pmode:'aim'};S.round.course='gr';
+// holes are built the first time they are needed; the day's pins and wind are part of the build
+const HOLE=i=>ALL[i]?S.holes[i]||(S.holes[i]=buildHole(ALL[i].def,ALL[i].c,S.key)):undefined;
+const cur=()=>HOLE(S.round.ids[S.hi]);
 const maxScore=()=>cur().par+MAX_OVER;
-const saveKey=()=>S.key+(S.round.type==='nine'?':nine':'');
+const nineKey=id=>S.key+':nine'+(id==='gr'?'':':'+id);
+const saveKey=()=>S.round.type==='nine'?nineKey(S.round.course):S.key;
 function save(){const n=S.round.ids.length;store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n})}
 
 // ───────── sound (starts on the first touch)
@@ -87,11 +90,11 @@ function setBall(x,y){Object.assign(S.ball,{x,y,z:0,vx:0,vy:0,vz:0,air:false,spi
 function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];placeMarker();aimCam();hud()}
 
 // ───────── swing
-// Pull back to set aim and power. A ring at the touch point fills in TU ms, drains and fills again.
+// Pull back to set aim and power. A ring at the touch point fills in TU ms, drains in TD and fills again.
 // Flick forward through the touch point as the ring tops out: the gap from the top is the timing error.
-const DEAD=.045,FLICK_V=.5,TU=950,TD=450;
+const DEAD=.045,FLICK_V=.5,TU=1235,TD=450;
 const pullMax=()=>clamp(H*.18,84,132);
-const timingWindow=()=>S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'?.7:1);
+const timingWindow=()=>S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'?.7:1);
 function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=(t-g.t0)%(TU+TD);return tau<TU?{f:tau/TU,e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
 function gPos(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 cv.addEventListener('pointerdown',e=>{
@@ -168,7 +171,7 @@ function stepBall(dt){const b=S.ball,h=cur();
       if(lie==='rock'&&b.vz<-5){const a=(hashStr(Math.round(b.x*8)+':'+Math.round(b.y*8))%1000/1000-.5)*1.7,d=rotv(b.vx,b.vy,a);
         b.vx=d.x*.42;b.vy=d.y*.42;b.vz=Math.min(15,-b.vz*.5);b.z=.02;b.spin=0;b.rollK=.3;sfx.clack();burst(b.x,b.y,K.stone,8,7,5);return}
       const carry=hyp(b.x-S.prev.x,b.y-S.prev.y),v=Math.sqrt(2*MU[lie]*carry*b.club.roll*ROLLX[lie]*b.rollK),s2=hyp(b.vx,b.vy)||1;
-      b.vx=b.vx/s2*v;b.vy=b.vy/s2*v;b.vz=Math.min(9,-b.vz*.22)*(lie==='bunker'?0:lie==='rough'||lie==='woods'?.5:1);b.air=false;
+      b.vx=b.vx/s2*v;b.vy=b.vy/s2*v;b.vz=Math.min(9,-b.vz*.22)*(lie==='bunker'?0:lie==='rough'||lie==='woods'||lie==='native'?.5:1);b.air=false;
       if(lie==='bunker'){sfx.sand();burst(b.x,b.y,K.sand,18,8,6)}else sfx.land()}
     return}
   if(b.z>0||b.vz>0){b.vz-=G*dt;b.z+=b.vz*dt;if(b.z<=0){b.z=0;b.vz=-b.vz*.4;if(b.vz<1.2)b.vz=0}}
@@ -212,7 +215,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
   const ws=rotv(cur().wind.x,cur().wind.y,cam.r),deg=Math.round(Math.atan2(ws.y,ws.x)/DEG+90);
   if(deg!==windDeg){windDeg=deg;$('windArrow').style.transform=`rotate(${deg}deg)`}}
 function resize(){const r=cv.getBoundingClientRect();W=Math.max(1,r.width);H=Math.max(1,r.height);DPR=Math.min([1,1.5,2][Q],window.devicePixelRatio||1);cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);VIG=null;
-  if(S.holes.length){if(S.mode==='ready')aimCam();else if(S.mode==='title')overviewCam(.2,.3,true)}}
+  if(S.key){if(S.mode==='ready')aimCam();else if(S.mode==='title')overviewCam(.2,.3,true)}}
 addEventListener('resize',resize);
 
 // ───────── plaques
@@ -223,7 +226,7 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
     $('clubMax').textContent=Math.round(markDist()*3)+' ft pace · '+(n<1?'level':(dp>0?'up ':'down ')+n+' in')}
   else $('clubMax').textContent=Math.round(c.carry*m)+' yd · '+(LIE[S.lie]||'Rough')+(m<1?' −'+Math.round((1-m)*100)+'%':'')}
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
-  $('hHole').textContent=`No. ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
+  $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n);
   $('hWind').textContent=h.wind.sp;hudDist();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;

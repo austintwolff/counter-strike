@@ -13,7 +13,7 @@ function angTo(a,b,t){const d=((b-a+Math.PI)%TAU+TAU)%TAU-Math.PI;return a+d*t}
 // ───────── scene palette (a Hill Country summer: bermuda, white sand, limestone, tea-coloured water)
 const K={floor:'#33512b',rough:'#4b7735',cut:'#5a8d3d',fair:'#69a547',fringe:'#70b04d',green:'#7bc05a',tee:'#72ad4c',
   sand:'#f0e7cd',sandSh:'#8c7a52',water:'#1d6470',deep:'#103d49',shallow:'#63b3a6',bank:'#34351f',path:'#d8ceb4',
-  stone:'#cfcabb',wood:'#8a6a43',cream:'#f4ecd6',gold:'#e6cf8a',claret:'#9c2a3c',ink:'#0b2a21'};
+  stone:'#cfcabb',wood:'#8a6a43',cream:'#f4ecd6',gold:'#e6cf8a',claret:'#9c2a3c',ink:'#0b2a21'}; // ground colours come from each course's theme
 const SUN={x:.62,y:.78}; // shadows fall this way in the world; the sun sits to the north-west
 
 // ───────── textures and sprites, drawn once
@@ -38,7 +38,11 @@ function treeSprite(kind,seed){return tex(128,128,g=>{const r=mulberry32(seed),R
   const lay=(col,k,sh)=>{g.fillStyle=col;for(const c of cl){g.beginPath();g.arc(c.x+sh*c.r,c.y+sh*c.r,c.r*k,0,TAU);g.fill()}};
   lay(pal[0],1,.06);lay(pal[1],.9,-.02);lay(pal[2],.6,-.24);g.globalAlpha=.8;lay(pal[3],.27,-.44);
   g.globalCompositeOperation='source-atop';g.globalAlpha=.4;for(let i=0;i<260;i++){const a=r()*TAU,d=Math.sqrt(r())*R;g.fillStyle=r()<.5?pal[0]:pal[3];g.fillRect(64+Math.cos(a)*d,64+Math.sin(a)*d,2,2)}})}
-const SPR={oak:[11,12,13,14].map(s=>treeSprite('oak',s)),cedar:[21,22,23].map(s=>treeSprite('cedar',s)),
+// a pine from above: a ragged star of boughs, darker and bluer than an oak
+function pineSprite(seed){return tex(128,128,g=>{const r=mulberry32(seed),n=9+Math.floor(r()*4),rot=r()*TAU;
+  const star=(R,k,col,dx)=>{g.fillStyle=col;g.beginPath();for(let i=0;i<n*2;i++){const a=rot+i/(n*2)*TAU,d=i%2?R*k*(.85+r()*.3):R*(.86+r()*.14);g.lineTo(64+dx+Math.cos(a)*d,64+dx+Math.sin(a)*d)}g.closePath();g.fill()};
+  star(50,.58,'#12281c',3);star(47,.56,'#1e4028',0);star(36,.5,'#2c5a34',-4);g.globalAlpha=.85;star(22,.45,'#44774a',-8);g.globalAlpha=1;g.fillStyle='#5c8c58';g.beginPath();g.arc(54,54,4,0,TAU);g.fill()})}
+const SPR={oak:[11,12,13,14].map(s=>treeSprite('oak',s)),cedar:[21,22,23,24].map(s=>treeSprite('cedar',s)),pine:[41,42,43,44].map(pineSprite),
   shadow:tex(64,64,g=>softDot(g,32,32,32,'6,18,8',.62)),
   rock:[31,32,33].map(s=>tex(96,96,g=>{const r=mulberry32(s),n=7+Math.floor(r()*3),p=[];for(let i=0;i<n;i++){const a=i/n*TAU+r()*.5,d=28+r()*13;p.push([48+Math.cos(a)*d,48+Math.sin(a)*d])}
     const poly=(dx,dy)=>{g.beginPath();p.forEach(([x,y],i)=>i?g.lineTo(x+dx,y+dy):g.moveTo(x+dx,y+dy));g.closePath()};

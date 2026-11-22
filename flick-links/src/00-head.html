@@ -99,6 +99,7 @@ p{margin:0;line-height:1.45}
 .btn small{display:block;margin-top:4px;font:italic 600 12px/1 var(--display);letter-spacing:0;text-transform:none;opacity:.85}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 .row .btn{flex:1 1 150px}
+.btn.sm{flex:1 1 96px;min-height:46px;padding:2px 6px 0;font-size:12.5px;letter-spacing:.09em}
 
 /* the scorecard: printed stock, pencil marks */
 .card-sc{border:1.5px solid var(--rule);background:var(--paper);box-shadow:0 2px 0 rgba(43,90,72,.18)}
@@ -112,6 +113,8 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-num
 .sc.wide th{width:74px}
 .sc tr.h td,.sc tr.h th{background:var(--club);color:var(--cream);border-color:var(--club-hi);font:400 12px/1 var(--caps);padding-block:6px 5px}
 .sc tr.g td,.sc tr.g th{background:var(--tee-gold)}
+.sc tr.n td{font:800 15px/1 var(--display)}
+.sc tr.h td{white-space:nowrap}
 .sc tr.p td{font-weight:800;font-size:14px}
 .sc tr.k td{font:italic 600 11.5px/1 var(--display);color:var(--ink-2)}
 .sc tr.s td{height:38px;padding:0;font:700 23px/1 var(--hand);color:var(--pencil)}

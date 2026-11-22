@@ -3,7 +3,7 @@
 // Positions are (s, o): yards from the tee along the routing, and yards right (+) or left (−) of it.
 // th is the look and feel of a course: what lies beyond the rough, ground colours, the mix and density of trees.
 const COURSES=[{id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
- th:{out:'woods',floor:'#33512b',rough:'#4b7735',fair:'#69a547',stripe:1,cedar:.34,pine:0,dens:1,marker:'#e6cf8a',bloom:'bloom',blossom:0,cor:[[0,56],[.5,64],[1,60]]},holes:[
+ th:{out:'woods',floor:'#33512b',rough:'#4b7735',fair:'#69a547',stripe:1,cedar:.34,pine:0,dens:1,marker:'#e6cf8a',bloom:'bloom',blossom:0,bridge:'wood',cor:[[0,56],[.5,64],[1,60]]},holes:[
  {n:1,name:'Circle C',par:4,yd:423,hcp:7,route:[[0,0],[-10,150],[5,280],[55,410]],
   fair:[[.12,.91,[[0,12],[.35,20],[.62,18],[.85,14],[1,10]]]],green:[15,12.5,15,11],slope:[180,.35],
   bunk:[[246,-27,9,5.5,10],[274,-25,7,5,-15],[402,-19,8,5,70],[436,9,7,4.5,0]],pond:[[366,35,22,15,20]],
@@ -53,7 +53,7 @@ const COURSES=[{id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
 
 // Lost Pines (once Wolfdancer): open prairie ridges, loblolly pines, sprawling bunkers. Miss the rough and you are in native grass, not the woods.
 {id:'lp',code:'LP',club:'Lost Pines',tee:'Black',
- th:{out:'native',floor:'#978a4b',rough:'#557f39',fair:'#6ba748',stripe:1,cedar:.08,pine:.8,dens:.3,marker:'#1c1c1c',bloom:'bloomGold',blossom:0,cor:[[0,58],[.5,68],[1,62]]},holes:[
+ th:{out:'native',floor:'#978a4b',rough:'#557f39',fair:'#6ba748',stripe:1,cedar:.08,pine:.8,dens:.3,marker:'#1c1c1c',bloom:'bloomGold',blossom:0,bridge:'wood',cor:[[0,58],[.5,68],[1,62]]},holes:[
  {n:1,name:'Loblolly',par:4,yd:420,hcp:17,route:[[0,0],[10,150],[0,290],[-40,420]],
   fair:[[.11,.92,[[0,13],[.4,22],[.7,19],[1,11]]]],green:[15,14,0,101],slope:[190,.4],
   bunk:[[252,30,12,7,10],[282,-28,9,6,0],[400,21,9,6,-50],[416,-22,8,5,50]],oak:[[190,-40,7],[330,41,7]],bloom:[[40,35,12,7]],
@@ -90,7 +90,7 @@ const COURSES=[{id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
 
 // Hancock: Austin's old nine-hole muni. Short, tight, shaded by big pecans and oaks, with Waller Creek wandering through it.
 {id:'hk',code:'HK',club:'Hancock',tee:'Blue',
- th:{out:'woods',floor:'#2f4a28',rough:'#4f7a36',fair:'#6ea14b',stripe:.55,cedar:.1,pine:0,dens:1.2,marker:'#4f86e8',bloom:'bloomPink',blossom:0,cor:[[0,42],[.5,48],[1,46]]},holes:[
+ th:{out:'woods',floor:'#2f4a28',rough:'#4f7a36',fair:'#6ea14b',stripe:.55,cedar:.1,pine:0,dens:1.2,marker:'#4f86e8',bloom:'bloomPink',blossom:0,bridge:'stone',cor:[[0,42],[.5,48],[1,46]]},holes:[
  {n:1,name:'Since 1899',par:3,yd:152,hcp:15,route:[[0,0],[3,80],[0,152]],
   fair:[],pad:[[88,0,14,10,0]],green:[11,11,0,201],slope:[190,.45],
   creek:[{w:6,p:[[98,-62],[108,-27],[118,0],[124,27],[122,62]]}],bunk:[[152,-17,6,5,0],[169,8,6,4,30]],oak:[[60,-30,9],[70,32,8]],bridge:[[119,4,0,13]]},

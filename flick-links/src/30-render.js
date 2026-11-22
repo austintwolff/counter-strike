@@ -51,9 +51,7 @@ function drawWorld(now){const h=cur(),th=h.th,z=cam.s,R=hyp(W,H)/z,tG=clamp((z-3
     for(const q of h.pebbles)if(vis(q)){ctx.fillStyle='rgba(20,24,16,.35)';disc(q.x+.12,q.y+.14,q.r);ctx.fillStyle='#bdb8a8';disc(q.x,q.y,q.r);ctx.fillStyle='#e4e0d3';disc(q.x-q.r*.25,q.y-q.r*.28,q.r*.5)}}
   for(const i of h.isles){ctx.save();ctx.translate(SUN.x*1.6,SUN.y*1.6);ctx.strokeStyle='rgba(3,20,24,.55)';ctx.lineWidth=3.4;ctx.stroke(i.path);ctx.restore();
     ctx.strokeStyle='#6b6759';ctx.lineWidth=3.6;ctx.stroke(i.path);ctx.strokeStyle=K.stone;ctx.lineWidth=2.2;ctx.stroke(i.path);grass(i.path,th.rough,tG,tF,.75)}
-  for(const b of h.bridges){const sv=rotv(SUN.x,SUN.y,-b.a),l=b.len;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.a);
-    ctx.fillStyle='rgba(3,16,14,.4)';ctx.fillRect(-l/2+sv.x*1.4,-2+sv.y*1.4,l,4);ctx.fillStyle=K.wood;ctx.fillRect(-l/2,-1.9,l,3.8);
-    ctx.fillStyle='rgba(40,25,10,.35)';for(let x=-l/2+.9;x<l/2;x+=1.1)ctx.fillRect(x,-1.9,.14,3.8);ctx.fillStyle='#5f4526';ctx.fillRect(-l/2,-1.95,l,.42);ctx.fillRect(-l/2,1.53,l,.42);ctx.restore()}
+  for(const b of h.bridges)drawBridge(b,th.bridge,now);
   for(const k of h.rocks)if(vis(k)){ctx.drawImage(SPR.shadow,k.x-k.r*1.3+SUN.x*k.r*.55,k.y-k.r*1.3+SUN.y*k.r*.55,k.r*2.6,k.r*2.6);ctx.drawImage(SPR.rock[k.v],k.x-k.r*1.25,k.y-k.r*1.25,k.r*2.5,k.r*2.5)}
   // green complex
   ctx.fillStyle=K.fringe;ctx.fill(h.fringe.path);texFill(h.fringe.path,'grain',.4*tG,.0625);
@@ -82,6 +80,28 @@ function drawWorld(now){const h=cur(),th=h.th,z=cam.s,R=hyp(W,H)/z,tG=clamp((z-3
   for(const t of h.oaks){const[x,y]=sway(t);ctx.drawImage(SPR[t.kind][t.v],x,y,t.r*2.56,t.r*2.56)}
   drawSky(now,h);
   ctx.globalCompositeOperation='multiply';texFill(null,'cloud',.4,2.1,.4,now*.004*(h.wind.x/7+.6),now*.004*(h.wind.y/7+.3));ctx.globalCompositeOperation='source-over';
+  ctx.restore()}
+// Bridges. Timber: an arched plank deck between stone footings, with posts and handrails, and piers under a long span.
+// Stone: an old park bridge with a cobbled deck, parapet walls, capped pillars and the dark of an arch on the water either side.
+function drawBridge(b,style,now){const sv=rotv(SUN.x,SUN.y,-b.a),l=b.len,hl=l/2,hw=2.2,stone=style==='stone';
+  ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.a);ctx.lineCap='butt';
+  // shadow on the water and banks, soft in two passes
+  ctx.fillStyle='rgba(3,16,14,.2)';rrect(-hl+sv.x*2.2-.4,-hw+sv.y*2.2-.4,l+.8,hw*2+.8,.8);ctx.fillStyle='rgba(3,16,14,.3)';rrect(-hl+sv.x*1.5,-hw+sv.y*1.5,l,hw*2,.5);
+  if(stone){
+    for(const sd of[-1,1]){ctx.fillStyle='rgba(2,12,14,.55)';ctx.beginPath();ctx.ellipse(0,sd*(hw+.1),Math.min(3.2,hl*.5),1.1,0,sd>0?0:Math.PI,sd>0?Math.PI:TAU);ctx.fill()} // the arch
+    const g=ctx.createLinearGradient(-hl,0,hl,0);g.addColorStop(0,'#9c978a');g.addColorStop(.5,'#c2bdaf');g.addColorStop(1,'#9c978a');ctx.fillStyle=g;rrect(-hl,-hw,l,hw*2,.4);
+    ctx.strokeStyle='rgba(60,56,48,.32)';ctx.lineWidth=.07;ctx.beginPath();for(let x=-hl+.6,i=0;x<hl;x+=.62,i++){ctx.moveTo(x,-hw+.6);ctx.lineTo(x,hw-.6);for(let y=-hw+.6+(i&1?.45:0);y<hw-.6;y+=.9){ctx.moveTo(x,y);ctx.lineTo(x+.62,y)}}ctx.stroke(); // cobbles
+    for(const sd of[-1,1]){const y=sd*(hw-.3);ctx.fillStyle='rgba(20,18,12,.35)';ctx.fillRect(-hl+sv.x*.35,y-.3+sv.y*.35,l,.6);ctx.fillStyle='#d9d5c8';ctx.fillRect(-hl,y-.3,l,.6);ctx.fillStyle='#8d887b';ctx.fillRect(-hl,y+(sv.y>0?.14:-.3),l,.16);
+      ctx.strokeStyle='rgba(60,56,48,.4)';ctx.lineWidth=.06;ctx.beginPath();for(let x=-hl+1;x<hl;x+=1.15){ctx.moveTo(x,y-.3);ctx.lineTo(x,y+.3)}ctx.stroke()} // parapets
+    for(const ex of[-1,1])for(const sd of[-1,1]){const x=ex*(hl-.1),y=sd*(hw-.3);ctx.fillStyle='rgba(20,18,12,.4)';rrect(x-.55+sv.x*.5,y-.55+sv.y*.5,1.1,1.1,.15);ctx.fillStyle='#b9b4a6';rrect(x-.55,y-.55,1.1,1.1,.15);ctx.fillStyle='#e6e2d6';rrect(x-.38,y-.38,.76,.76,.12)}
+  }else{
+    if(l>20)for(let x=-hl+4.5;x<hl-3;x+=6.5)for(const sd of[-1,1]){const y=sd*(hw+.25);ctx.strokeStyle='rgba(234,255,251,.3)';ctx.lineWidth=.1;ctx.beginPath();ctx.arc(x,y,.7+.25*Math.sin(now/600+x),0,TAU);ctx.stroke();ctx.fillStyle='#3d2c18';disc(x,y,.38);ctx.fillStyle='#6b4f30';disc(x-.08,y-.08,.24)} // piers
+    for(const ex of[-1,1]){const x=ex*(hl-.5);ctx.fillStyle='rgba(20,18,12,.35)';rrect(x-1+sv.x*.5,-hw-.5+sv.y*.5,2,hw*2+1,.5);ctx.fillStyle='#b6b1a3';rrect(x-1,-hw-.5,2,hw*2+1,.5);ctx.fillStyle='#dedacd';rrect(x-.8,-hw-.35,1.2,hw*2+.4,.4)} // stone footings
+    const g=ctx.createLinearGradient(-hl,0,hl,0);g.addColorStop(0,'#6f5231');g.addColorStop(.5,'#b08a57');g.addColorStop(1,'#6f5231');ctx.fillStyle=g;ctx.fillRect(-hl+.6,-hw+.35,l-1.2,hw*2-.7); // the deck, lit along its crown
+    for(let x=-hl+.6,i=0;x<hl-.6;x+=.5,i++){if(i%3===1){ctx.fillStyle='rgba(255,236,190,.09)';ctx.fillRect(x,-hw+.35,.5,hw*2-.7)}ctx.fillStyle='rgba(40,25,10,.4)';ctx.fillRect(x,-hw+.35,.07,hw*2-.7)}
+    for(const sd of[-1,1]){const y=sd*(hw-.2);ctx.fillStyle='rgba(20,12,4,.38)';ctx.fillRect(-hl+.6+sv.x*.4,y-.17+sv.y*.4,l-1.2,.34);ctx.fillStyle='#5a4124';ctx.fillRect(-hl+.6,y-.17,l-1.2,.34);ctx.fillStyle='#8a6a43';ctx.fillRect(-hl+.6,y-.17,l-1.2,.12);
+      for(let x=-hl+.9;x<=hl-.85;x+=Math.max(1.9,(l-1.8)/Math.round((l-1.8)/2.2))){ctx.fillStyle='rgba(20,12,4,.4)';rrect(x-.26+sv.x*.4,y-.26+sv.y*.4,.52,.52,.08);ctx.fillStyle='#4a3520';rrect(x-.26,y-.26,.52,.52,.08);ctx.fillStyle='#a17d50';rrect(x-.16,y-.16,.32,.32,.06)}} // rails and posts
+  }
   ctx.restore()}
 // a little cream golf cart with a green roof and a bag on the back
 function drawCart(x,y,a){const sv=rotv(SUN.x,SUN.y,-a);ctx.save();ctx.translate(x,y);ctx.rotate(a);

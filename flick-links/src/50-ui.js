@@ -93,7 +93,7 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
 let introT=0;
 function startHole(i,sv){closeSheet();S.hi=i;S.marks=[];const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
-  overviewCam(.5,.7,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,`${h.course.club} · Par ${h.par} · ${h.yards} yards`,2000);
+  overviewCam(.5,.76,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,`${h.course.club} · Par ${h.par} · ${h.yards} yards`,2000);
   if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up as the ring fills');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
 function begin(type,course){const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';
@@ -109,7 +109,7 @@ function coach(step,title,text,next,ready){$('coachStep').textContent='Driving r
 function rangeSpot(){const h=cur();if(S.tut.step==='swing')return h.tee;const dx=h.tee.x-h.pin.x,dy=h.tee.y-h.pin.y,d=hyp(dx,dy);for(const k of[7,5.5,4,3]){const p={x:h.pin.x+dx/d*k,y:h.pin.y+dy/d*k};if(inSh(h.green,p,-1))return p}return{x:h.green.x,y:h.green.y}}
 function rangeSet(){const p=rangeSpot();setBall(p.x,p.y);S.strokes=0;setupShot();S.mode='ready';aimCam();hud()}
 function startRange(){closeSheet();S.round={type:'range',ids:[RANGE_HOLE()],scores:[],course:null};S.hi=0;S.marks=[];S.tut={step:'swing',good:false};const h=cur();h.wind.x=h.wind.y=0;h.wind.sp=0;
-  rangeSet();overviewCam(.5,.7,true);aimCam();coach('1 of 2','The swing','Touch anywhere and pull back to aim. A ring fills at your thumb. Flick up through it as it reaches the gold mark at the top.','Putting',false)}
+  rangeSet();overviewCam(.5,.76,true);aimCam();coach('1 of 2','The swing','Touch anywhere and pull back to aim. A ring fills at your thumb. Flick up through it as it reaches the gold mark at the top.','Putting',false)}
 function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();
   if(t.step==='swing'){const ok=!note&&!l.shank&&l.q<.5;t.good=t.good||ok;
     coach('1 of 2','The swing',note||(l.shank?'A shank. You flicked while the ring was still in the red. Wait for it to climb.':l.pure?'Pure. Right on the gold. Hit as many as you like, or move on.':ok?'A good strike. Flick closer to the gold for more distance. Hit more, or move on.':l.early?'Too early. Let the ring fill further before you flick.':'Too late. Flick just as the ring reaches the top.'),'Putting',t.good)}

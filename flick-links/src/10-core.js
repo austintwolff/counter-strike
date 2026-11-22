@@ -1,6 +1,6 @@
 // ───────── basics
 const $=id=>document.getElementById(id);
-const cv=$('c'),ctx=cv.getContext('2d');
+const cv=$('c'),MAIN=cv.getContext('2d');let ctx=MAIN; // drawing code uses ctx; scenery is drawn once into its own canvas by pointing ctx there
 let W=1,H=1,DPR=1;
 const TAU=Math.PI*2,DEG=Math.PI/180;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t,hyp=Math.hypot;

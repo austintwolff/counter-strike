@@ -13,8 +13,10 @@ const vis=t=>t.x>VR[0]-14&&t.x<VR[0]+VR[2]+14&&t.y>VR[1]-14&&t.y<VR[1]+VR[3]+14;
 
 const seen=sh=>{const b=sh.bb;return b[2]>VR[0]&&b[0]<VR[0]+VR[2]&&b[3]>VR[1]&&b[1]<VR[1]+VR[3]};
 const ROOFS=['#8b8478','#7c6f62','#9a8f7d','#6f7377','#94705a','#a39a8a','#5f6660'];
-function drawWorld(now){const h=cur(),th=h.th,G=h.geo,z=cam.s,R=hyp(W,H)/z,tG=clamp((z-3)/8,0,1),tF=clamp(1.15-(z-2)/10,.2,1);VR=[cam.x-R,cam.y-R,2*R,2*R];
-  ctx.save();ctx.translate(W/2,H*cam.ay);ctx.rotate(cam.r);ctx.scale(z,z);ctx.translate(-cam.x,-cam.y);ctx.lineJoin='round';ctx.lineCap='round';
+// Scenery. Everything here stands still, so it is drawn once and kept (see the scene cache below), not once a frame.
+// RZ is the scale it is being drawn at, in CSS pixels per yard; the caller has set the transform and VR, the area to cover.
+let RZ=1;
+function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),tF=clamp(1.15-(z-2)/10,.2,1);ctx.lineJoin='round';ctx.lineCap='round';
   const native=th.out==='native';
   // the land: what lies outside the property, then the property itself
   if(G.boundary){grass(null,th.outer,tG*.5,tF,.6);ctx.strokeStyle=th.floor;ctx.globalAlpha=.5;ctx.lineWidth=5;ctx.stroke(G.boundary.path);ctx.globalAlpha=1;grass(G.boundary.path,th.floor,tG*.6,tF,native?.55:.7);if(native)texFill(G.boundary.path,'straw',.75,.09,.3)}
@@ -52,18 +54,11 @@ function drawWorld(now){const h=cur(),th=h.th,G=h.geo,z=cam.s,R=hyp(W,H)/z,tG=cl
     texFill(w.path,'glint',.6,.2,.3,now*.0016*(1+h.wind.sp/8),Math.sin(now/2300)*3);
     ctx.save();ctx.clip(w.path);ctx.setLineDash([1.6,2.6]);ctx.lineDashOffset=-now/520;ctx.strokeStyle='#eafffb';ctx.globalAlpha=.3;ctx.lineWidth=w.pond?1.5:.9;ctx.stroke(w.path);ctx.setLineDash([]);
     if(w.pond&&w.area>150){const Rr=w.rx,sx=w.x-SUN.x*Rr*.3,sy=w.y-SUN.y*Rr*.3,gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rr*.7);gl.addColorStop(0,'rgba(255,250,215,.24)');gl.addColorStop(1,'rgba(255,250,215,0)');
-      ctx.globalAlpha=.75+Math.sin(now/1700+w.x)*.25;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr);
-      const T=5200,tt=now/T+Math.abs(w.x)*.01,k=Math.floor(tt),u=tt%1,rr=mulberry32(k*131+7),q=w.poly[Math.floor(rr()*w.poly.length)],f=.25+rr()*.5,rx=w.x+(q.x-w.x)*f,ry=w.y+(q.y-w.y)*f;
-      if(u<.5){ctx.strokeStyle='#eafffb';ctx.lineWidth=.16;for(const m of[1,.55]){ctx.globalAlpha=(1-u*2)*.5;ctx.beginPath();ctx.arc(rx,ry,(.4+u*9)*m,0,TAU);ctx.stroke()}}}
+      ctx.globalAlpha=.8;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr)}
     ctx.restore()}
   if(z>1.2)for(const l of G.lilies)if(vis(l)){ctx.fillStyle='#2f6a3a';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.arc(l.x+.08,l.y+.1,l.r,l.a+.4,l.a+TAU);ctx.fill();
     ctx.fillStyle='#5a9f4e';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.arc(l.x,l.y,l.r,l.a+.4,l.a+TAU);ctx.fill();ctx.fillStyle='rgba(215,245,160,.35)';disc(l.x-l.r*.25,l.y-l.r*.25,l.r*.38);
     if(l.fl){ctx.fillStyle='#fff3f7';disc(l.x+Math.cos(l.a)*l.r*.3,l.y+Math.sin(l.a)*l.r*.3,l.r*.34);ctx.fillStyle='#f4c84a';disc(l.x+Math.cos(l.a)*l.r*.3,l.y+Math.sin(l.a)*l.r*.3,l.r*.13)}}
-  for(const d of G.ducks)if(seen(d.w)){const w=d.w,n=w.poly.length,u=((now/14000*d.dir+d.ph/TAU)%1+1)%1*n,i=Math.floor(u),fr=u-i,a=w.poly[i],b=w.poly[(i+1)%n],x=w.x+(lerp(a.x,b.x,fr)-w.x)*d.f,y=w.y+(lerp(a.y,b.y,fr)-w.y)*d.f,
-      hd=Math.atan2((b.y-a.y)*d.dir,(b.x-a.x)*d.dir),sz=Math.max(.55,4.2/z);ctx.save();ctx.translate(x,y);ctx.rotate(hd);
-    ctx.strokeStyle='rgba(234,255,251,.38)';ctx.lineWidth=sz*.14;ctx.beginPath();ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,sz*1.1);ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,-sz*1.1);ctx.stroke();
-    ctx.fillStyle='rgba(3,20,24,.3)';ctx.beginPath();ctx.ellipse(sz*.12,sz*.16,sz,sz*.6,0,0,TAU);ctx.fill();ctx.fillStyle='#f4efe2';ctx.beginPath();ctx.ellipse(0,0,sz,sz*.58,0,0,TAU);ctx.fill();
-    ctx.fillStyle='#d9d1bd';ctx.beginPath();ctx.ellipse(-sz*.25,0,sz*.55,sz*.36,0,0,TAU);ctx.fill();ctx.fillStyle='#2f5d3a';disc(sz*.85,0,sz*.36);ctx.fillStyle='#e9a23b';ctx.beginPath();ctx.ellipse(sz*1.25,0,sz*.2,sz*.12,0,0,TAU);ctx.fill();ctx.restore()}
   if(z>1.8){ctx.lineCap='round';for(const r of G.reeds)if(vis(r)){ctx.strokeStyle='#27481f';ctx.lineWidth=.22*r.s;ctx.beginPath();
       for(const da of[-.6,0,.6]){ctx.moveTo(r.x,r.y);ctx.lineTo(r.x+Math.cos(r.a+da)*1.1*r.s,r.y+Math.sin(r.a+da)*1.1*r.s)}ctx.stroke();ctx.fillStyle='#6b4a2a';disc(r.x+Math.cos(r.a)*1.15*r.s,r.y+Math.sin(r.a)*1.15*r.s,.24*r.s)}
     for(const q of G.pebbles)if(vis(q)){ctx.fillStyle='rgba(20,24,16,.35)';disc(q.x+.12,q.y+.14,q.r);ctx.fillStyle='#bdb8a8';disc(q.x,q.y,q.r);ctx.fillStyle='#e4e0d3';disc(q.x-q.r*.25,q.y-q.r*.28,q.r*.5)}}
@@ -79,12 +74,7 @@ function drawWorld(now){const h=cur(),th=h.th,G=h.geo,z=cam.s,R=hyp(W,H)/z,tG=cl
   ctx.save();ctx.clip(g.path);ctx.drawImage(h.relief.c,h.relief.x,h.relief.y,h.relief.s,h.relief.s);ctx.restore();
   texFill(g.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,h.axis+.5);texFill(g.path,'grain',.3*tG,.05);
   ctx.strokeStyle='rgba(20,60,20,.3)';ctx.lineWidth=.3;ctx.stroke(g.path);
-  if(z>6)drawFlow(h,now);
   const cr=Math.max(.13,3.2/z);ctx.fillStyle='rgba(255,255,255,.85)';disc(h.pin.x,h.pin.y,cr*1.28);ctx.fillStyle='#07120b';disc(h.pin.x+cr*.08,h.pin.y+cr*.1,cr);
-  for(const f of S.fx)if(f.type==='ring'){const a=(now-f.t0)/900;if(a<1){ctx.strokeStyle=f.water?'#d8f4f0':K.cream;ctx.globalAlpha=1-a;ctx.lineWidth=2/z;
-    for(const m of[1,.55]){ctx.beginPath();ctx.arc(f.x,f.y,(4+a*26)*m/z,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
-  for(const m of S.marks){if(m.t==='pitch'){ctx.fillStyle='rgba(20,50,20,.38)';disc(m.x,m.y,.13);ctx.fillStyle='rgba(255,255,220,.25)';disc(m.x-.05,m.y-.05,.06)}
-    else{ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.a);ctx.fillStyle='#6f5a36';ctx.beginPath();ctx.ellipse(.5,0,.55,.2,0,0,TAU);ctx.fill();ctx.fillStyle='rgba(30,22,8,.4)';ctx.beginPath();ctx.ellipse(.42,.03,.38,.11,0,0,TAU);ctx.fill();ctx.restore()}}
   if(G.cart&&vis(G.cart))drawCart(G.cart.x,G.cart.y,G.cart.a);
   // roofs: a shadow, the footprint, then two slopes either side of the ridge, the one facing the sun lighter
   for(const s of G.building)if(seen(s)){const sv=rotv(SUN.x,SUN.y,-s.ax),lit=sv.y>0?-1:1,Rr=s.R+2;ctx.save();ctx.translate(SUN.x*2.6,SUN.y*2.6);ctx.fillStyle='rgba(5,15,10,.4)';ctx.fill(s.path);ctx.restore();
@@ -93,15 +83,66 @@ function drawWorld(now){const h=cur(),th=h.th,G=h.geo,z=cam.s,R=hyp(W,H)/z,tG=cl
     if(z>3){ctx.fillStyle='rgba(0,0,0,.07)';for(let y=-Rr;y<Rr;y+=1.1)ctx.fillRect(-Rr,y,2*Rr,.18)}
     ctx.strokeStyle='rgba(30,24,16,.55)';ctx.lineWidth=.32;ctx.beginPath();ctx.moveTo(-Rr,0);ctx.lineTo(Rr,0);ctx.stroke();ctx.restore();
     ctx.strokeStyle='rgba(30,26,20,.6)';ctx.lineWidth=.4;ctx.lineJoin='miter';ctx.stroke(s.path);ctx.lineJoin='round'}
-  // trees last: shadows, then canopies, swaying with the wind. Only the buckets on screen are walked.
-  const gust=.04+h.wind.sp*.016,wn=h.wind.sp?1/h.wind.sp:0,wx=h.wind.x*wn||.7,wy=h.wind.y*wn||.7,cells=[];
-  for(let cx=Math.floor(VR[0]/120);cx<=Math.floor((VR[0]+VR[2])/120);cx++)for(let cy=Math.floor(VR[1]/120);cy<=Math.floor((VR[1]+VR[3])/120);cy++){const c=G.grid.get(cx+','+cy);if(c)cells.push(c)}
+  // trees last: shadows, then canopies. Only the buckets in view are walked.
+  const cells=[];for(let cx=Math.floor(VR[0]/120);cx<=Math.floor((VR[0]+VR[2])/120);cx++)for(let cy=Math.floor(VR[1]/120);cy<=Math.floor((VR[1]+VR[3])/120);cy++){const c=G.grid.get(cx+','+cy);if(c)cells.push(c)}
   for(const k of['trees','solid'])for(const c of cells)for(const t of c[k])ctx.drawImage(SPR.shadow,t.x-t.r*1.35+SUN.x*t.r*.75,t.y-t.r*1.35+SUN.y*t.r*.75,t.r*2.7,t.r*2.7);
-  for(const k of['trees','solid'])for(const c of cells)for(const t of c[k]){const sw=Math.sin(now/780+t.x*.11+t.y*.07)*gust*t.r*.5;ctx.drawImage(SPR[t.kind][t.v],t.x-t.r*1.28+wx*sw,t.y-t.r*1.28+wy*sw,t.r*2.56,t.r*2.56)}
-  drawSky(now,h);
-  ctx.globalCompositeOperation='multiply';texFill(null,'cloud',.4,2.1,.4,now*.004*(h.wind.x/7+.6),now*.004*(h.wind.y/7+.3));ctx.globalCompositeOperation='source-over';
-  ctx.restore()}
-const seen2=w=>{const p=w.pts;if(!w.bb){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of p){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}w.bb=[x0-9,y0-9,x1+9,y1+9]}return seen(w)};
+  for(const k of['trees','solid'])for(const c of cells)for(const t of c[k])ctx.drawImage(SPR[t.kind][t.v],t.x-t.r*1.28,t.y-t.r*1.28,t.r*2.56,t.r*2.56);
+  // cloud shadows lie still on the ground: a drifting layer cost a full-screen fill every frame
+  if(Q>0)texFill(null,'cloud',.3,2.1,.4,0,0)}
+// The hole stands in a haze. Near the line of play everything is sharp; further out the same ground goes soft and misty,
+// and past the edge of what was built there is only the mist.
+const mixHex=(a,b,t)=>{const p=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16)),A=p(a),B=p(b);return'rgb('+A.map((v,i)=>Math.round(lerp(v,B[i],t))).join()+')'};
+function drawStatic(h){const B=h.geo.box;if(!h.fog){h.mist=mixHex(h.th.floor,'#dde4d0',.42);h.fog=fogOf(h)}
+  ctx.fillStyle=h.mist;ctx.fillRect(VR[0],VR[1],VR[2],VR[3]);ctx.save();ctx.beginPath();ctx.rect(B[0],B[1],B[2],B[3]);ctx.clip();drawScenery(h);ctx.restore();
+  ctx.drawImage(h.fog,B[0]-1,B[1]-1,B[2]+2,B[3]+2)}
+function fogOf(h){const B=h.geo.box,u=4,w=Math.ceil(B[2]/u),hh=Math.ceil(B[3]/u),sm=t=>{t=clamp(t,0,1);return t*t*(3-2*t)},keepV=VR,keepZ=RZ;
+  const world=x=>{x.setTransform(1/u,0,0,1/u,-B[0]/u,-B[1]/u);x.lineCap=x.lineJoin='round'};
+  // rub a layer out along the line of play, leaving keep(d) of it at d yards from the line
+  const rub=(x,d0,d1,keep)=>{const N=18;world(x);x.globalCompositeOperation='destination-out';x.strokeStyle='#000';x.beginPath();h.route.pts.forEach((q,i)=>i?x.lineTo(q.x,q.y):x.moveTo(q.x,q.y));
+    let left=1;for(let i=0;i<N;i++){const t=keep(i===N-1?d0:lerp(d1,d0,(i+.5)/(N-1)));x.globalAlpha=left>0?clamp(1-t/left,0,1):0;left=Math.min(left,t);x.lineWidth=2*lerp(d1,d0,i/(N-1));x.stroke()}
+    x.globalAlpha=1;x.globalCompositeOperation='source-over';x.setTransform(1,0,0,1,0,0)};
+  // the ground out there, drawn small and passed down and back up through smaller pictures so it comes out blurred
+  const small=tex(w,hh,()=>{});onCanvas(small,()=>{ctx.setTransform(1/u,0,0,1/u,-B[0]/u,-B[1]/u);VR=B;RZ=1;drawScenery(h)});VR=keepV;RZ=keepZ;
+  const half=tex(Math.ceil(w/2),Math.ceil(hh/2),x=>x.drawImage(small,0,0,Math.ceil(w/2),Math.ceil(hh/2))),quarter=tex(Math.ceil(w/4),Math.ceil(hh/4),x=>x.drawImage(half,0,0,Math.ceil(w/4),Math.ceil(hh/4)));
+  const soft=tex(Math.ceil(w/2),Math.ceil(hh/2),x=>{x.imageSmoothingQuality='high';x.drawImage(quarter,0,0,Math.ceil(w/2),Math.ceil(hh/2))});
+  const mist=tex(w,hh,x=>{x.fillStyle=h.mist;x.fillRect(0,0,w,hh);rub(x,FADE0-14,FADE1+16,d=>.06+.94*sm((d-FADE0+14)/(FADE1-FADE0+30)))});
+  return tex(w,hh,x=>{x.imageSmoothingQuality='high';x.drawImage(soft,0,0,w,hh);x.drawImage(mist,0,0);rub(x,FADE0,FADE0+46,d=>sm((d-FADE0)/46))})}
+// The few things in the world that move, drawn every frame over the kept scenery.
+function drawLive(h,now){const G=h.geo,z=cam.s;ctx.lineJoin='round';ctx.lineCap='round';
+  for(const w of G.water)if(w.pond&&w.area>150&&seen(w)){const T=5200,tt=now/T+Math.abs(w.x)*.01,k=Math.floor(tt),u=tt%1,rr=mulberry32(k*131+7),q=w.poly[Math.floor(rr()*w.poly.length)],f=.25+rr()*.5,rx=w.x+(q.x-w.x)*f,ry=w.y+(q.y-w.y)*f;
+    if(u<.5){ctx.strokeStyle='#eafffb';ctx.lineWidth=.16;for(const m of[1,.55]){ctx.globalAlpha=(1-u*2)*.5;ctx.beginPath();ctx.arc(rx,ry,(.4+u*9)*m,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
+  for(const d of G.ducks)if(seen(d.w)){const w=d.w,n=w.poly.length,u=((now/14000*d.dir+d.ph/TAU)%1+1)%1*n,i=Math.floor(u),fr=u-i,a=w.poly[i],b=w.poly[(i+1)%n],x=w.x+(lerp(a.x,b.x,fr)-w.x)*d.f,y=w.y+(lerp(a.y,b.y,fr)-w.y)*d.f,
+      hd=Math.atan2((b.y-a.y)*d.dir,(b.x-a.x)*d.dir),sz=Math.max(.55,4.2/z);ctx.save();ctx.translate(x,y);ctx.rotate(hd);
+    ctx.strokeStyle='rgba(234,255,251,.38)';ctx.lineWidth=sz*.14;ctx.beginPath();ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,sz*1.1);ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,-sz*1.1);ctx.stroke();
+    ctx.fillStyle='rgba(3,20,24,.3)';ctx.beginPath();ctx.ellipse(sz*.12,sz*.16,sz,sz*.6,0,0,TAU);ctx.fill();ctx.fillStyle='#f4efe2';ctx.beginPath();ctx.ellipse(0,0,sz,sz*.58,0,0,TAU);ctx.fill();
+    ctx.fillStyle='#d9d1bd';ctx.beginPath();ctx.ellipse(-sz*.25,0,sz*.55,sz*.36,0,0,TAU);ctx.fill();ctx.fillStyle='#2f5d3a';disc(sz*.85,0,sz*.36);ctx.fillStyle='#e9a23b';ctx.beginPath();ctx.ellipse(sz*1.25,0,sz*.2,sz*.12,0,0,TAU);ctx.fill();ctx.restore()}
+  if(z>6)drawFlow(h,now);
+  for(const f of S.fx)if(f.type==='ring'){const a=(now-f.t0)/900;if(a<1){ctx.strokeStyle=f.water?'#d8f4f0':K.cream;ctx.globalAlpha=1-a;ctx.lineWidth=2/z;
+    for(const m of[1,.55]){ctx.beginPath();ctx.arc(f.x,f.y,(4+a*26)*m/z,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
+  for(const m of S.marks){if(m.t==='pitch'){ctx.fillStyle='rgba(20,50,20,.38)';disc(m.x,m.y,.13);ctx.fillStyle='rgba(255,255,220,.25)';disc(m.x-.05,m.y-.05,.06)}
+    else{ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.a);ctx.fillStyle='#6f5a36';ctx.beginPath();ctx.ellipse(.5,0,.55,.2,0,0,TAU);ctx.fill();ctx.fillStyle='rgba(30,22,8,.4)';ctx.beginPath();ctx.ellipse(.42,.03,.38,.11,0,0,TAU);ctx.fill();ctx.restore()}}
+  drawSky(now,h);}
+
+// ───────── the scene cache
+// Redrawing the whole course every frame is far too much for a phone. So the scenery is kept in two pictures:
+//   far  — the whole hole, drawn once when the hole starts, used while the camera is moving
+//   near — exactly what is on screen, drawn crisp each time the camera comes to rest, used while it stays there
+// Aiming, the swing ring and putting all happen with the camera at rest, so those frames cost one picture plus the ball.
+const SC={far:null,farHole:null,box:null,near:null,key:''};
+function camOn(){ctx.translate(W/2,H*cam.ay);ctx.rotate(cam.r);ctx.scale(cam.s,cam.s);ctx.translate(-cam.x,-cam.y)}
+function viewRect(){const R=hyp(W,H)/cam.s;return[cam.x-R,cam.y-R,2*R,2*R]}
+function onCanvas(c,fn){const main=ctx;ctx=c.getContext('2d');try{fn()}finally{ctx=main}}
+function ensureFar(h){if(SC.farHole===h)return;const[x0,y0,bw,bh]=h.geo.box,k=Math.min(2.4,Math.sqrt((Q>1?4.2e6:2.6e6)/(bw*bh)));SC.far=SC.far||document.createElement('canvas');SC.far.width=Math.ceil(bw*k);SC.far.height=Math.ceil(bh*k);
+  onCanvas(SC.far,()=>{ctx.setTransform(k,0,0,k,-x0*k,-y0*k);VR=[x0,y0,bw,bh];RZ=k*.6;drawStatic(h)});SC.farHole=h;SC.box=[x0,y0,bw,bh]}
+function ensureNear(h){const key=[h.course.id,h.n,cam.x,cam.y,cam.s,cam.r,cam.ay,W,H,DPR,Q].join();if(SC.key===key)return;SC.near=SC.near||document.createElement('canvas');
+  if(SC.near.width!==cv.width||SC.near.height!==cv.height){SC.near.width=cv.width;SC.near.height=cv.height}
+  onCanvas(SC.near,()=>{ctx.setTransform(DPR,0,0,DPR,0,0);ctx.save();camOn();VR=viewRect();RZ=cam.s;drawStatic(h);ctx.restore();drawLight();drawVignette()});SC.key=key}
+const camAtRest=()=>cam.x===camT.x&&cam.y===camT.y&&cam.s===camT.s&&cam.r===camT.r&&cam.ay===camT.ay;
+function drawScene(now){const h=cur();
+  if(camAtRest()){ensureNear(h);ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(SC.near,0,0);ctx.setTransform(DPR,0,0,DPR,0,0)}
+  else{ensureFar(h);ctx.fillStyle=h.mist;ctx.fillRect(0,0,W,H);ctx.save();camOn();ctx.drawImage(SC.far,SC.box[0],SC.box[1],SC.box[2],SC.box[3]);ctx.restore();drawVignette()}
+  ctx.save();camOn();VR=viewRect();drawLive(h,now);ctx.restore()}
+const seen2=seen;
 // Bridges. Timber: an arched plank deck between stone footings, with posts and handrails, and piers under a long span.
 // Stone: an old park bridge with a cobbled deck, parapet walls, capped pillars and the dark of an arch on the water either side.
 function drawBridge(b,style,now){const sv=rotv(SUN.x,SUN.y,-b.a),l=b.len,hl=l/2,hw=style==='road'?b.wide/2+1.2:2.2,stone=style!=='wood';

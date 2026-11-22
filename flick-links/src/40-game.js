@@ -65,17 +65,19 @@ function toScreen(x,y){const v=rotv(x-cam.x,y-cam.y,cam.r);return{x:W/2+v.x*cam.
 function overviewCam(ay,frac,snap){const h=cur(),t=h.tee,p=h.pin,L=hyp(p.x-t.x,p.y-t.y)||1,ux=(p.x-t.x)/L,uy=(p.y-t.y)/L;
   let a0=0,a1=L,l0=0,l1=0;for(let i=0;i<h.route.pts.length;i+=4){const q=h.route.pts[i],dx=q.x-t.x,dy=q.y-t.y,al=dx*ux+dy*uy,la=-dx*uy+dy*ux;a0=Math.min(a0,al);a1=Math.max(a1,al);l0=Math.min(l0,la);l1=Math.max(l1,la)}
   const am=(a0+a1)/2,lm=(l0+l1)/2;
-  camT.x=t.x+ux*am-uy*lm;camT.y=t.y+uy*am+ux*lm;camT.s=Math.min(H*frac/(a1-a0+80),W/(l1-l0+110));camT.r=-Math.PI/2-Math.atan2(uy,ux);camT.ay=ay;if(snap)Object.assign(cam,camT)}
+  camT.x=t.x+ux*am-uy*lm;camT.y=t.y+uy*am+ux*lm;camT.s=Math.min(H*frac/(a1-a0+56),W/(l1-l0+150));camT.r=-Math.PI/2-Math.atan2(uy,ux);camT.ay=ay;if(snap)Object.assign(cam,camT)}
 const markDist=()=>hyp(S.mark.x-S.ball.x,S.mark.y-S.ball.y);
 function reachOf(c){return c.putt?markDist():c.carry*lieMult(S.lie,c)*(1+c.roll)}
 function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
   const t=d<=285?h.pin:rAt(h.route,Math.min(h.total,rProj(h.route,b)+250));
   const view=S.club.putt?clamp(Math.max(d,markDist())*1.3,7,70):clamp(Math.min(d*1.18,reachOf(S.club)*1.15),7,430);
-  camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.56/view;if(d>.4)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
+  camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.6/view;if(d>.4)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
 function updateCam(dt){
-  if(S.mode==='flight'&&!S.ball.putt){camT.x=S.ball.x;camT.y=S.ball.y;camT.ay=.6}
+  if(S.mode==='flight'&&!S.ball.putt&&camT.s<5){camT.x=S.ball.x;camT.y=S.ball.y;camT.ay=.6}
   const k=1-Math.exp(-dt*(S.mode==='flight'?7:4.2));
-  cam.x=lerp(cam.x,camT.x,k);cam.y=lerp(cam.y,camT.y,k);cam.s=lerp(cam.s,camT.s,k);cam.ay=lerp(cam.ay,camT.ay,k);cam.r=angTo(cam.r,camT.r,k)}
+  cam.x=lerp(cam.x,camT.x,k);cam.y=lerp(cam.y,camT.y,k);cam.s=lerp(cam.s,camT.s,k);cam.ay=lerp(cam.ay,camT.ay,k);cam.r=angTo(cam.r,camT.r,k);
+  // once it is as good as there, snap to rest: the scenery can then be drawn crisp once and kept
+  const dr=((camT.r-cam.r+Math.PI)%TAU+TAU)%TAU-Math.PI;if(hyp(cam.x-camT.x,cam.y-camT.y)*cam.s<.6&&Math.abs(cam.s/camT.s-1)<.004&&Math.abs(dr)<.002&&Math.abs(cam.ay-camT.ay)<.002)Object.assign(cam,camT)}
 
 // ───────── shot setup
 function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie='rough';S.lie=lie;
@@ -232,7 +234,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
   const g=S.g;if(g&&!g.drag&&g.t0&&g.phase==='aim'){const tk=Math.floor((performance.now()-g.t0+TD)/(TU+TD));if(tk>g.tick){g.tick=tk;sfx.tick()}}
   updateCam(dt);
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  drawWorld(now);drawLight();drawPreview(now);drawFlag(now);drawBall(dt);drawVignette();drawGesture(now);
+  drawScene(now);drawPreview(now);drawFlag(now);drawBall(dt);drawGesture(now);
   if(S.fx.length>12)S.fx.splice(0,S.fx.length-12);
   const ws=rotv(cur().wind.x,cur().wind.y,cam.r),deg=Math.round(Math.atan2(ws.y,ws.x)/DEG+90);
   if(deg!==windDeg){windDeg=deg;$('windArrow').style.transform=`rotate(${deg}deg)`}}

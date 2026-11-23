@@ -73,8 +73,13 @@ function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
   const view=S.club.putt?clamp(Math.max(d,markDist())*1.3,7,70):clamp(Math.min(d*1.18,reachOf(S.club)*1.15),7,430);
   camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.6/view;if(d>.02)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
 function updateCam(dt){
-  if(S.mode==='flight'&&!S.ball.putt&&camT.s<5){camT.x=S.ball.x;camT.y=S.ball.y;camT.ay=.6}
-  const k=1-Math.exp(-dt*(S.mode==='flight'?7:S.g?13:4.2)); // once a swing has begun the camera hurries to its place: the aim is read off the screen
+  const b=S.ball;let ease=0;
+  if(S.mode==='flight'&&!b.putt){const h=cur(),d=hyp(b.x-h.pin.x,b.y-h.pin.y);
+    if(!b.onGreen&&b.z<.6&&d<45&&inSh(h.fringe,b))b.onGreen=true;
+    // once an approach has come down on the green the camera eases in on the cup, so the roll past it (or into it) can be watched
+    if(b.onGreen&&d<45){const view=clamp(d*2.3+9,11,60);camT.x=lerp(h.pin.x,b.x,.4);camT.y=lerp(h.pin.y,b.y,.4);camT.ay=.5;camT.s=Math.max(camT.s,H*.6/view);ease=3}
+    else if(camT.s<5){camT.x=b.x;camT.y=b.y;camT.ay=.6}}
+  const k=1-Math.exp(-dt*(ease||(S.mode==='flight'?7:S.g?13:4.2))); // once a swing has begun the camera hurries to its place: the aim is read off the screen
   cam.x=lerp(cam.x,camT.x,k);cam.y=lerp(cam.y,camT.y,k);cam.s=lerp(cam.s,camT.s,k);cam.ay=lerp(cam.ay,camT.ay,k);cam.r=angTo(cam.r,camT.r,k);
   // once it is as good as there, snap to rest: the scenery can then be drawn crisp once and kept
   const dr=((camT.r-cam.r+Math.PI)%TAU+TAU)%TAU-Math.PI;if(hyp(cam.x-camT.x,cam.y-camT.y)*cam.s<1.5&&Math.abs(cam.s/camT.s-1)<.008&&Math.abs(dr)<.004&&Math.abs(cam.ay-camT.ay)<.003)Object.assign(cam,camT)}
@@ -112,7 +117,9 @@ const METHODS={
 const LEVELS=[['Club',1],['Tour',.7],['Major',.45]],LAB=Object.assign({m:'classic',lvl:0},fetchKey('lab')||{});if(!METHODS[LAB.m])LAB.m='classic';LAB.lvl=clamp(LAB.lvl|0,0,2);
 const onLab=()=>S.round.type==='range'&&!!(S.tut&&S.tut.lab),SWM=()=>onLab()?METHODS[LAB.m]:METHODS.classic,SWK=()=>onLab()?LEVELS[LAB.lvl][1]:1;
 const pullMax=()=>clamp(H*.18,84,132);
-const timingWindow=()=>{const M=SWM(),w=S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*M.win*SWK()*(M.rove&&S.g?1.3-.6*S.g.power:1);return onLab()?Math.max(18,w):w};
+// The woods get wilder the harder they are swung: past 70% power the window narrows, to half at a full pull, and a miss bends further.
+const reachFor=pw=>S.club.bomb?clamp(((pw==null?(S.g?S.g.power:0):pw)-.7)/.3,0,1):0;
+const timingWindow=pw=>{const M=SWM(),w=S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*M.win*SWK()*(M.rove&&S.g?1.3-.6*S.g.power:1)*(1-.5*reachFor(pw));return onLab()?Math.max(18,w):w};
 const ghostAt=(g,t)=>g.t0?Math.min(pullMax(),14+(pullMax()-14)*Math.max(0,t-g.t0)/SWM().TB):0;
 // where the ring stands at time t: f how full it is (or, for tempo, how far the gold ring has grown) and e the timing error in ms
 function meterAt(g,t){const M=SWM();
@@ -171,15 +178,15 @@ cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 // te the timing error in ms (early is negative) and tf how full the ring was (1 at the top)
 function fire(p,aim,dev,at,te,tf,j){const b=S.ball,c=S.club;te=te||0;if(tf==null)tf=1;
   p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};S.shot=null;$('hLast').hidden=true;if(!onRange())S.strokes++;S.hintShots++;save();
-  const dead=j?j.dead:DEAD,onTime=j?j.onTime:Math.abs(te)<=timingWindow(),ts=Math.sign(te),shank=j?j.shank:!onTime&&tf<SHANK,q=j?j.q:onTime?0:clamp((1-tf)/(1-SHANK),0,1);
+  const wild=1+1.2*reachFor(p),dead=(j?j.dead:DEAD)/(1+.6*reachFor(p)),onTime=j?j.onTime:Math.abs(te)<=timingWindow(p),ts=Math.sign(te),shank=j?j.shank:!onTime&&tf<SHANK,q=j?j.q:onTime?0:clamp((1-tf)/(1-SHANK),0,1);
   const ad=Math.abs(dev),kf=ad<=dead?0:Math.sign(dev)*clamp((ad-dead)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-dead),pure=onTime&&kf===0;
-  b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
+  b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.onGreen=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
   b.tree=cur().oaks.find(t=>hyp(b.x-t.x,b.y-t.y)<t.r)||null; // a ball already under an oak can be played out from beneath it
   let word,sub=onTime?'Perfect tempo':shank?(ts<0?'Far too early':'Far too late'):(q<.3?'A touch ':'')+(ts<0?'early':'late');
   if(c.putt){const pace=shank?.4:onTime?1:ts<0?.95-.27*q:1.05+.25*q,d=rotv(aim.x,aim.y,over*.6+(onTime?0:ts*(.01+q*.06))),v=Math.sqrt(2*MU.green*markDist()*p*pace);b.vx=d.x*v;b.vy=d.y*v;b.vz=0;b.air=false;b.spin=0;
     word=pure?'Pure roll':shank?'Stubbed':kf>0?'Pushed':kf<0?'Pulled':ts<0?'Left short':'Hit firm';sfx.putt();store('putts',(fetchKey('putts')||0)+1)}
   else{const th=(shank?c.loft*.6:c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.38:pure?c.bomb||1:onTime?.985:.955-.3*Math.pow(q,1.3)),v=Math.sqrt(carry*G/Math.sin(2*th)),
-      k=shank?0:clamp(kf*1.15+(onTime?0:ts*(.1+q*.9)),-1.3,1.3),d=rotv(aim.x,aim.y,shank?.6:over*.36+(onTime?0:ts*(.012+q*.07))); // a shank squirts low and hard right
+      k=shank?0:clamp((kf*1.15+(onTime?0:ts*(.1+q*.9)))*wild,-1.6,1.6),d=rotv(aim.x,aim.y,shank?.6:(over*.36+(onTime?0:ts*(.012+q*.07)))*(1+.5*(wild-1))); // a shank squirts low and hard right
     b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
     word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}

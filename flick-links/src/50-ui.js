@@ -34,7 +34,7 @@ ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
 ${saveStrip()}${clubStrip()}
 <p class="eyebrow">Practice a front nine</p>
-<div class="pick">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>`,titleCard)}
+<div class="pick">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}<button class="btn ghost sm wide" data-act="lab">Swing lab</button></div>`,titleCard)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>Putting.</b> Drag the marker to where a flat putt should stop. Press Putt, then flick on gold. The streaks run downhill.</p>
 <p class="fine"><b>Trouble.</b> Water: drop at the edge, +1. Out of bounds or lost: replay, +1.</p>
@@ -137,10 +137,11 @@ $('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='swi
 // ───────── boot, and staying current while a round is open
 // A new build can arrive mid-round: the round is saved after every stroke, so it resumes where it stood.
 const PLAYING=['intro','ready','aim','flight','wait'];
-function start(d){resize();initDay();resize();let r=d&&d.playing?d:null;if(!r&&!fetchKey('tut'))return startRange();
-  try{const s=JSON.parse(sessionStorage.getItem(KEY+'resume')||'null');sessionStorage.removeItem(KEY+'resume');if(s&&s.playing)r=s}catch(e){}
+function start(d){resize();initDay();resize();let r=d&&(d.playing||d.lab)?d:null;if(!r&&!fetchKey('tut'))return startRange();
+  try{const s=JSON.parse(sessionStorage.getItem(KEY+'resume')||'null');sessionStorage.removeItem(KEY+'resume');if(s&&(s.playing||s.lab))r=s}catch(e){}
+  if(r&&r.lab)return startLab();
   if(r&&(r.type==='daily'||r.type==='nine')){begin(r.type,r.course);if(PLAYING.includes(S.mode))toast('Updated',1400)}}
-const snap=()=>({type:S.round.type,course:S.round.course,playing:PLAYING.includes(S.mode)});
+const snap=()=>({type:S.round.type,course:S.round.course,playing:PLAYING.includes(S.mode),lab:onLab()});
 const hot=window.claude&&window.claude.hot;
 try{if(hot&&hot.snapshot)hot.snapshot(snap)}catch(e){}
 if(hot&&hot.ready)hot.ready(start);else start(hot&&hot.data||{});

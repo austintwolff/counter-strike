@@ -75,6 +75,18 @@ button.plate,.plate button{pointer-events:auto}
 #coach p{font:600 14px/1.35 var(--display);min-height:2.7em}
 #coach .btn{min-height:42px}
 #coach .btn:disabled{opacity:.4;box-shadow:none}
+#lab{position:absolute;top:10px;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:7px;padding:10px 12px 11px;
+  background:var(--paper);color:var(--ink);border:1.5px solid var(--gold);border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+#lab[hidden]{display:none}
+#lab .lbl{color:var(--ink-2)}
+#lab .seg{display:flex;border:1px solid var(--club);border-radius:6px;overflow:hidden}
+#lab .seg button{flex:1;min-height:36px;padding:0 4px;font:400 11px/1 var(--caps);letter-spacing:.06em;text-transform:uppercase;color:var(--club);background:transparent;border:0;border-left:1px solid var(--club)}
+#lab .seg button:first-child{border-left:0}
+#lab .seg button[aria-pressed=true]{background:var(--club);color:var(--cream)}
+#lab p{font:600 13px/1.3 var(--display);min-height:1.3em}
+#lab #labOut{color:var(--claret);min-height:2.6em}
+#lab .foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#lab .foot .btn{min-height:34px;flex:0 0 auto;padding:0 16px}
 #hint,#toast{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;text-align:center;transition:opacity .25s}
 #hint{bottom:70px;white-space:nowrap;font:italic 700 16px/1.2 var(--display);color:var(--cream);text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 12px rgba(0,0,0,.55)}
 #toast{top:128px;width:max-content;max-width:calc(100% - 32px);background:var(--paper);color:var(--ink);padding:10px 18px 9px;border-radius:4px;
@@ -243,6 +255,14 @@ table.st{width:100%;border-collapse:collapse;border:1.5px solid var(--rule);back
     <b id="coachTitle">The swing</b>
     <p id="coachText"></p>
     <div class="row"><button class="btn sm ghost" id="coachSkip">Skip</button><button class="btn sm" id="coachNext" disabled>Putting</button></div>
+  </div>
+  <div id="lab" hidden>
+    <span class="lbl">Swing lab</span>
+    <div class="seg" id="labM"></div>
+    <div class="seg" id="labL"></div>
+    <p id="labTip"></p>
+    <p id="labOut" role="status" aria-live="polite"></p>
+    <div class="foot"><span class="lbl" id="labStat"></span><button class="btn sm ghost" id="labDone">Done</button></div>
   </div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="hint"></div>
@@ -834,15 +854,20 @@ function drawGesture(now){const g=S.g;
   ctx.lineCap='round';ctx.strokeStyle='rgba(244,236,214,.28)';ctx.lineWidth=2;ctx.setLineDash([3,9]);ctx.beginPath();ctx.arc(g.ox,g.oy,L,0,TAU);ctx.stroke();ctx.setLineDash([]);
   ctx.strokeStyle='rgba(244,236,214,.8)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(g.ox,g.oy);ctx.lineTo(g.x,g.y);ctx.stroke();
   if(g.phase==='swing'&&g.trail.length>1){ctx.strokeStyle=K.gold;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(g.trail[0].x,g.trail[0].y);for(const q of g.trail)ctx.lineTo(q.x,q.y);ctx.stroke()}
-  // the meter: two arcs climb from the bottom of the ring and meet at the gold notch on top.
-  // The bottom third is the shank zone, marked red; the fill itself turns red while it is in there.
-  const a0=Math.PI/2,shk=SHANK*Math.PI,low=m.f<SHANK;
+  const M=SWM();
+  if(M.tempo){ // a gold ring grows from the ball at the pace of a good backswing; the thumb rides its edge
+    const gh=ghostAt(g,g.frozen!=null?g.ft:performance.now());ctx.lineCap='butt';ctx.strokeStyle='rgba(6,22,17,.72)';ctx.lineWidth=10;ctx.beginPath();ctx.arc(g.ox,g.oy,R,0,TAU);ctx.stroke();
+    if(gh){ctx.strokeStyle='rgba(6,22,17,.45)';ctx.lineWidth=8;ctx.beginPath();ctx.arc(g.ox,g.oy,gh,0,TAU);ctx.stroke();ctx.strokeStyle=hit?'#fff6c9':K.gold;ctx.lineWidth=hit?5.5:4;ctx.beginPath();ctx.arc(g.ox,g.oy,gh,0,TAU);ctx.stroke()}}
+  else{
+  // the meter: two arcs climb from the bottom of the ring toward the top. The gold marks where to flick: on top, or for the
+  // roving method somewhere lower on both sides. The bottom third is the shank zone, marked red; the fill turns red in there.
+  const a0=Math.PI/2,shk=SHANK*Math.PI,low=m.f<SHANK,tn=M.TU*Math.pow(g.fn||1,1/M.EASE),fHi=Math.pow(Math.min(M.TU,tn+w)/M.TU,M.EASE),fLo=Math.min(Math.pow(Math.max(0,tn-w)/M.TU,M.EASE),fHi-.12/Math.PI);
   ctx.lineCap='butt';ctx.strokeStyle='rgba(6,22,17,.72)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,0,TAU);ctx.stroke();
   ctx.strokeStyle='rgba(201,40,58,.55)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0-shk,a0+shk);ctx.stroke();
-  const ha=Math.max(.12,(1-Math.pow(1-w/TU,EASE))*Math.PI);ctx.strokeStyle=K.gold;ctx.globalAlpha=hit?1:.65;ctx.beginPath();ctx.arc(g.ox,g.oy,R,-a0-ha,-a0+ha);ctx.stroke();ctx.globalAlpha=1;
+  ctx.strokeStyle=K.gold;ctx.globalAlpha=hit?1:.65;ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0+fLo*Math.PI,a0+fHi*Math.PI);ctx.stroke();ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0-fHi*Math.PI,a0-fLo*Math.PI);ctx.stroke();ctx.globalAlpha=1;
   if(m.f>.004){ctx.lineCap='round';ctx.strokeStyle=hit?'#fff6c9':low||late?'#ff7d8e':K.cream;ctx.lineWidth=7;const sw=m.f*Math.PI;
     ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0+sw);ctx.stroke();ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0-sw,true);ctx.stroke()}
-  if(hit){ctx.strokeStyle=K.gold;ctx.globalAlpha=.55;ctx.lineWidth=3;ctx.beginPath();ctx.arc(g.ox,g.oy,R+11,0,TAU);ctx.stroke();ctx.globalAlpha=1}
+  if(hit){ctx.strokeStyle=K.gold;ctx.globalAlpha=.55;ctx.lineWidth=3;ctx.beginPath();ctx.arc(g.ox,g.oy,R+11,0,TAU);ctx.stroke();ctx.globalAlpha=1}}
   ctx.fillStyle='rgba(6,22,17,.45)';disc(g.ox,g.oy,R-7);ctx.fillStyle=K.gold;disc(g.ox,g.oy,3.5);
   ctx.fillStyle='rgba(244,236,214,.3)';disc(g.x,g.y,24);
   if(!S.club.putt&&g.power>.04)txt(Math.round(g.power*100)+'%',g.ox,g.oy-R-24,g.power>=1?28:24,g.power>=1?K.gold:K.cream)}
@@ -867,7 +892,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795397155000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795407202000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -943,16 +968,36 @@ function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie=
 function placeMarker(){const h=cur(),b=S.ball,dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy)||1,past=Math.min(.5,d*.25);
   S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode=d<1.4?'stroke':'aim'}
 function setBall(x,y){Object.assign(S.ball,{x,y,z:0,vx:0,vy:0,vz:0,air:false,spin:0,putt:false,gone:false,tree:null,rollK:1});S.trail.length=0}
-function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];placeMarker();aimCam();hud()}
+function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];if(onLab())S.tut.club=S.club;placeMarker();aimCam();hud()}
 
 // ───────── swing
 // Pull back to set aim and power. A ring at the touch point fills in TU ms, slowly at first and quicker toward the top,
 // then drains in TD and fills again. Flick forward through the touch point as it tops out.
 // How full the ring is at the flick decides the strike: the top is pure, the upper part is decent, the bottom third is a shank.
-const DEAD=.045,FLICK_V=.5,TU=1235,TD=450,EASE=1.7,SHANK=.3;
+const DEAD=.045,FLICK_V=.5,SHANK=.3;
+// Ways of striking the ball. Play uses 'classic'. The swing lab on the range lets each be tried, at three levels of strictness.
+//   TU, TD  ms for the ring to fill and to drain; EASE how much the fill quickens toward the top
+//   win     the timing window, as a share of the club's own; dead: how far off line a flick may be and still count as straight
+//   rove    the gold sits somewhere new on the ring every swing, and narrows as the pull lengthens
+//   tempo   no filling ring: a gold ring grows from the ball at the pace of a good backswing. Ride its edge, flick as you stop.
+const METHODS={
+  classic:{name:'Classic',tip:'Flick as the ring tops out.',TU:1235,TD:450,EASE:1.7,win:1,dead:.045},
+  needle:{name:'Needle',tip:'The same ring with a quicker finish and half the window.',TU:1050,TD:380,EASE:2.4,win:.5,dead:.03},
+  rove:{name:'Roving gold',tip:'The gold moves every swing and narrows with power. Flick as the fill reaches it.',TU:1350,TD:420,EASE:1.1,win:.6,dead:.035,rove:true},
+  tempo:{name:'Tempo',tip:'Pull back with the gold ring, riding its edge. Flick the moment you stop.',TB:1000,win:.75,dead:.035,tempo:true}};
+const LEVELS=[['Club',1],['Tour',.7],['Major',.45]],LAB=Object.assign({m:'classic',lvl:0},fetchKey('lab')||{});if(!METHODS[LAB.m])LAB.m='classic';LAB.lvl=clamp(LAB.lvl|0,0,2);
+const onLab=()=>S.round.type==='range'&&!!(S.tut&&S.tut.lab),SWM=()=>onLab()?METHODS[LAB.m]:METHODS.classic,SWK=()=>onLab()?LEVELS[LAB.lvl][1]:1;
 const pullMax=()=>clamp(H*.18,84,132);
-const timingWindow=()=>S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1);
-function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=(t-g.t0)%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
+const timingWindow=()=>{const M=SWM(),w=S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*M.win*SWK()*(M.rove&&S.g?1.3-.6*S.g.power:1);return onLab()?Math.max(18,w):w};
+const ghostAt=(g,t)=>g.t0?Math.min(pullMax(),14+(pullMax()-14)*Math.max(0,t-g.t0)/SWM().TB):0;
+// where the ring stands at time t: f how full it is (or, for tempo, how far the gold ring has grown) and e the timing error in ms
+function meterAt(g,t){const M=SWM();
+  if(M.tempo){if(!g.t0)return{f:0,e:-M.TB};const el=t-g.t0;return{f:Math.min(1,el/M.TB),e:el-M.TB*Math.max(0,g.peak.d-14)/(pullMax()-14)}}
+  if(!g.t0)return{f:0,e:-M.TU};const tau=(t-g.t0)%(M.TU+M.TD),tn=M.TU*Math.pow(g.fn||1,1/M.EASE);return tau<M.TU?{f:Math.pow(tau/M.TU,M.EASE),e:tau-tn}:{f:1-(tau-M.TU)/M.TD,e:tau-tn}}
+// The lab's methods are judged on how many windows off the flick was, not on how full the ring looked.
+function judge(g){const M=SWM();if(M===METHODS.classic)return null;const w=timingWindow(),x=Math.abs(g.e)/w,k=SWK();let q=clamp((x-1)/3.5,0,1),on=x<=1,ride=0;
+  if(M.tempo){ride=g.trkN?g.trk/g.trkN/pullMax():0;const s=clamp((ride-.06*Math.sqrt(k))/.18,0,1);if(s>0)on=false;q=Math.max(q,s*.8)}
+  return{onTime:on,q,shank:g.e<0&&(M.tempo?x>6:g.frozen<SHANK),dead:M.dead*Math.sqrt(k),ride}}
 function gPos(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 cv.addEventListener('pointerdown',e=>{
   ac();
@@ -961,7 +1006,7 @@ cv.addEventListener('pointerdown',e=>{
   try{cv.setPointerCapture(e.pointerId)}catch(_){}
   const p=gPos(e);hintOff();
   if(S.club.putt&&S.pmode==='aim'){S.g={id:e.pointerId,drag:true,x:p.x,y:p.y};return}
-  S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,
+  S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,fn:SWM().rove?lerp(.5,.93,Math.random()):1,trk:0,trkN:0,
     off:Math.abs(performance.now()-e.timeStamp)<3000?0:performance.now()-e.timeStamp}; // timing uses each touch's own timestamp, not when it was processed
   S.mode='aim'});
 cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)return;
@@ -972,13 +1017,14 @@ cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)retu
   for(const ev of(evs.length?evs:[e])){if(!S.g)break;const p=gPos(ev);sample(ev.timeStamp||e.timeStamp,p.x,p.y)}});
 function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14)g.t0=t+g.off}
 function toSwing(g){const k=g.peak,m=meterAt(g,g.ft||performance.now());g.phase='swing';g.slow=0;g.top={x:k.x,y:k.y};g.pull=k.d;g.power=clamp(k.d/pullMax(),0,1);
-  g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f}
+  g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f;g.j=judge(g)}
 // A resting finger sends no events, so the gap before a sample is capped: whatever moved, moved within about a frame.
 function sample(t,x,y){const g=S.g,len=hyp(x-g.ox,y-g.oy),vr=(g.last.d-len)/clamp(t-g.last.t,4,20);
   g.x=x;g.y=y;g.last={t,d:len};
   if(g.phase==='aim'){
     if(vr>FLICK_V&&g.peak.d>pullMax()*.16){if(!g.fast)g.ft=t+g.off;g.fast++;if(g.fast>=2||g.peak.d-len>g.peak.d*.25)toSwing(g)}
-    else{g.fast=0;g.peak={x,y,d:len};aimFrom(g,x,y,len,t)}}
+    else{g.fast=0;g.peak={x,y,d:len};aimFrom(g,x,y,len,t);
+      if(g.t0&&SWM().tempo){const gh=ghostAt(g,t+g.off);if(gh<pullMax()||len<gh-6){g.trk+=Math.abs(len-gh);g.trkN++}}}} // tempo: how closely the thumb rides the gold ring
   if(g.phase==='swing'){g.trail.push({x,y});
     if((x-g.top.x)*g.aim.x+(y-g.top.y)*g.aim.y>=g.pull)commit(x,y);
     else if(vr<.05){if(++g.slow>=3){g.phase='aim';g.fast=0;g.frozen=null;g.peak={x,y,d:len};aimFrom(g,x,y,len,t)}}else g.slow=0}}
@@ -986,7 +1032,7 @@ function commit(x,y){const g=S.g,fx=x-g.top.x,fy=y-g.top.y,b=S.ball;
   const dev=Math.atan2(g.aim.x*fy-g.aim.y*fx,g.aim.x*fx+g.aim.y*fy);let aw=rotv(g.aim.x,g.aim.y,-cam.r),p=g.power;
   if(S.club.putt){const d=markDist()||1;aw={x:(S.mark.x-b.x)/d,y:(S.mark.y-b.y)/d};p=1}
   S.fx.push({type:'swing',pts:g.trail.slice(),t0:performance.now()});
-  const te=g.e,tf=g.frozen;endGesture();fire(p,aw,dev,{x:g.ox,y:g.oy},te,tf)}
+  const te=g.e,tf=g.frozen,j=g.j;endGesture();fire(p,aw,dev,{x:g.ox,y:g.oy},te,tf,j)}
 function endGesture(){const g=S.g;if(!g)return;try{cv.releasePointerCapture(g.id)}catch(_){}S.g=null;if(S.mode==='aim')S.mode='ready'}
 function onUp(e){const g=S.g;if(!g||e.pointerId!==g.id)return;
   if(g.drag){endGesture();aimCam();hud();return}
@@ -999,10 +1045,10 @@ cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 
 // p is power 0..1, aim a world direction, dev the flick's angle off the pull line,
 // te the timing error in ms (early is negative) and tf how full the ring was (1 at the top)
-function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)tf=1;
+function fire(p,aim,dev,at,te,tf,j){const b=S.ball,c=S.club;te=te||0;if(tf==null)tf=1;
   p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};S.shot=null;$('hLast').hidden=true;if(!onRange())S.strokes++;S.hintShots++;save();
-  const onTime=Math.abs(te)<=timingWindow(),ts=Math.sign(te),shank=!onTime&&tf<SHANK,q=onTime?0:clamp((1-tf)/(1-SHANK),0,1);
-  const ad=Math.abs(dev),kf=ad<=DEAD?0:Math.sign(dev)*clamp((ad-DEAD)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-DEAD),pure=onTime&&kf===0;
+  const dead=j?j.dead:DEAD,onTime=j?j.onTime:Math.abs(te)<=timingWindow(),ts=Math.sign(te),shank=j?j.shank:!onTime&&tf<SHANK,q=j?j.q:onTime?0:clamp((1-tf)/(1-SHANK),0,1);
+  const ad=Math.abs(dev),kf=ad<=dead?0:Math.sign(dev)*clamp((ad-dead)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-dead),pure=onTime&&kf===0;
   b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
   b.tree=cur().oaks.find(t=>hyp(b.x-t.x,b.y-t.y)<t.r)||null; // a ball already under an oak can be played out from beneath it
   let word,sub=onTime?'Perfect tempo':shank?(ts<0?'Far too early':'Far too late'):(q<.3?'A touch ':'')+(ts<0?'early':'late');
@@ -1013,7 +1059,7 @@ function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)t
     b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
     word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}
-  S.last={shank,q,early:ts<0,pure,putt:!!c.putt};if(pure)sfx.pure();
+  S.last={shank,q,early:ts<0,pure,putt:!!c.putt,te,dev,word,ride:j?j.ride:0};if(pure)sfx.pure();
   if(at)S.fx.push({type:'word',text:word,sub,good:pure,bad:shank,x:at.x,y:at.y-44,t0:performance.now()});
   try{navigator.vibrate&&navigator.vibrate(pure?[10,40,10]:shank?60:25)}catch(_){}
   S.mode='flight';hud()}
@@ -1075,7 +1121,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
     if((hudTick+=dt)>.1){hudTick=0;hudDist()}}else acc=0;
   // step the picture quality down on a phone that cannot hold thirty frames a second
   if(dt>.034)slowFrames++;else slowFrames=Math.max(0,slowFrames-2);if(slowFrames>70&&Q>0&&!LOCKQ){Q--;slowFrames=0;resize()}
-  const g=S.g;if(g&&!g.drag&&g.t0&&g.phase==='aim'){const tk=Math.floor((performance.now()-g.t0+TD)/(TU+TD));if(tk>g.tick){g.tick=tk;sfx.tick()}}
+  const g=S.g;if(g&&!g.drag&&g.t0&&g.phase==='aim'){const M=SWM(),tk=M.tempo?0:Math.floor((performance.now()-g.t0+M.TD)/(M.TU+M.TD));if(tk>g.tick){g.tick=tk;sfx.tick()}}
   updateCam(dt);
   ctx.setTransform(DPR,0,0,DPR,0,0);
   drawScene(now);drawPreview(now);drawFlag(now);drawBall(dt);drawGesture(now);
@@ -1096,7 +1142,7 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n);
-  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
+  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange()||onLab();$('lab').hidden=!onLab();$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
   // the first few putts name the controls; after that the green is left to be read from its streaks. The range has its own card.
@@ -1406,7 +1452,7 @@ function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>Putting.</b> Drag the marker to where a flat putt should stop. Press Putt, then flick on gold. The streaks run downhill.</p>
 <p class="fine"><b>Trouble.</b> Water: drop at the edge, +1. Out of bounds or lost: replay, +1.</p>
 <p class="fine">© OpenStreetMap contributors.</p>
-<div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button></div>`)}
+<div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button><button class="btn ghost" data-act="lab">Swing lab</button></div>`)}
 function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:HOLE(S.round.ids[S.hi+1]);
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
 ${scoreCard(S.round.ids,S.round.scores)}
@@ -1442,6 +1488,7 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='title')titleCard();
   else if(a==='share')share();
   else if(a==='range')startRange();
+  else if(a==='lab')startLab();
   else if(a==='me')meCard();
   else if(a==='club'){C.tab='today';clubCard()}
   else if(a==='clubform')formCard('club');
@@ -1471,15 +1518,31 @@ function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=[];S.muted=!!
 const RANGE_HOLE=()=>courseIds('lp')[7];   // a wide, straight hole to hit down
 function coach(step,title,text,next,ready){$('coachStep').textContent='Driving range · '+step;$('coachTitle').textContent=title;$('coachText').textContent=text;const n=$('coachNext');n.textContent=next;n.disabled=!ready}
 function rangeSpot(){const h=cur();if(S.tut.step==='swing')return h.tee;const dx=h.tee.x-h.pin.x,dy=h.tee.y-h.pin.y,d=hyp(dx,dy);for(const k of[7,5.5,4,3]){const p={x:h.pin.x+dx/d*k,y:h.pin.y+dy/d*k};if(inSh(h.green,p,-1))return p}return{x:h.green.x,y:h.green.y}}
-function rangeSet(){const p=rangeSpot();setBall(p.x,p.y);S.strokes=0;setupShot();S.mode='ready';aimCam();hud()}
+function rangeSet(){const p=rangeSpot();setBall(p.x,p.y);S.strokes=0;setupShot();if(S.tut.lab&&S.tut.club){const i=S.clubs.indexOf(S.tut.club);if(i>=0){S.ci=i;S.club=S.clubs[i];placeMarker()}}S.mode='ready';aimCam();hud()}
 function startRange(){closeSheet();S.round={type:'range',ids:[RANGE_HOLE()],scores:[],course:null};S.hi=0;S.marks=[];S.tut={step:'swing',good:false};const h=cur();h.wind.x=h.wind.y=0;h.wind.sp=0;
   rangeSet();hintOff();overviewCam(.5,.76,true);aimCam();coach('1 of 2','The swing','Pull back to aim. Flick up when the ring reaches gold.','Putting',false)}
-function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();
+function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();if(t.lab){labShot(l,note);return rangeSet()}
   if(t.step==='swing'){const ok=!note&&!l.shank&&l.q<.5;t.good=t.good||ok;
     coach('1 of 2','The swing',note||(l.shank?'Shank. Wait for the ring to leave the red.':l.pure?'Pure.':ok?'Good strike.':l.early?'Early. Wait for gold.':'Late. Flick as it reaches gold.'),'Putting',t.good)}
   else{const ft=Math.round(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*3),ok=holed||ft<=4;t.good=t.good||ok;
     coach('2 of 2','The putt',holed?'Holed.':ok?'Close: '+ft+' ft.':ft+' ft away. Move the marker to allow for the slope.','Play',t.good)}
   rangeSet()}
+// ───────── the swing lab: the range again, with every way of striking the ball to try and a readout of each swing
+const labKey=()=>LAB.m+LAB.lvl;
+function labDraw(){const t=S.tut,st=t.stats[labKey()]||[],M=METHODS[LAB.m];
+  $('labM').innerHTML=Object.keys(METHODS).map(k=>`<button data-m="${k}" aria-pressed="${k===LAB.m}">${METHODS[k].name}</button>`).join('');
+  $('labL').innerHTML=LEVELS.map((l,i)=>`<button data-l="${i}" aria-pressed="${i===LAB.lvl}">${l[0]}</button>`).join('');
+  $('labTip').textContent=M.tip;$('labOut').textContent=t.out||'';
+  const n=st.length,pure=st.filter(x=>x.pure).length,avg=n?Math.round(st.reduce((a,x)=>a+Math.abs(x.te),0)/n):0;
+  $('labStat').textContent=n?`Last ${n}: ${pure} pure · ${avg} ms off on average`:'No swings yet'}
+function labShot(l,note){const t=S.tut,st=t.stats[labKey()]=t.stats[labKey()]||[],te=Math.round(l.te||0),deg=Math.abs((l.dev||0)/DEG);
+  st.push({pure:!!l.pure,te});if(st.length>10)st.shift();
+  t.out=[l.word||'',te===0?'on time':Math.abs(te)+' ms '+(te<0?'early':'late'),deg<.05?'dead straight':deg.toFixed(1)+'° '+(l.dev>0?'right':'left')].concat(LAB.m==='tempo'?['ride '+Math.round((l.ride||0)*100)+'%']:[],S.shot?[Math.round(S.shot.d)+' yd']:[],note?[note]:[]).join(' · ');labDraw()}
+function startLab(){closeSheet();S.round={type:'range',ids:[RANGE_HOLE()],scores:[],course:null};S.hi=0;S.marks=[];S.shot=null;S.tut={step:'swing',good:true,lab:true,stats:{},out:''};const h=cur();h.wind.x=h.wind.y=0;h.wind.sp=0;
+  rangeSet();hintOff();overviewCam(.5,.76,true);aimCam();labDraw()}
+$('lab').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!onLab())return;ac();
+  if(b.dataset.m){LAB.m=b.dataset.m}else if(b.dataset.l){LAB.lvl=+b.dataset.l}else if(b.id==='labDone'){S.tut=null;$('app').classList.remove('tut');$('lab').hidden=true;return titleCard()}
+  store('lab',{m:LAB.m,lvl:LAB.lvl});S.tut.out='';labDraw()});
 function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard()}
 $('coachSkip').onclick=endRange;
 $('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='swing'){t.step='putt';t.good=false;S.last=null;rangeSet();coach('2 of 2','The putt','Drag the marker to where a flat putt should stop. Press Putt, then flick on gold.','Play',false)}else endRange()};

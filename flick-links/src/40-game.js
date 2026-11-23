@@ -92,16 +92,36 @@ function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie=
 function placeMarker(){const h=cur(),b=S.ball,dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy)||1,past=Math.min(.5,d*.25);
   S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode=d<1.4?'stroke':'aim'}
 function setBall(x,y){Object.assign(S.ball,{x,y,z:0,vx:0,vy:0,vz:0,air:false,spin:0,putt:false,gone:false,tree:null,rollK:1});S.trail.length=0}
-function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];placeMarker();aimCam();hud()}
+function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];if(onLab())S.tut.club=S.club;placeMarker();aimCam();hud()}
 
 // ───────── swing
 // Pull back to set aim and power. A ring at the touch point fills in TU ms, slowly at first and quicker toward the top,
 // then drains in TD and fills again. Flick forward through the touch point as it tops out.
 // How full the ring is at the flick decides the strike: the top is pure, the upper part is decent, the bottom third is a shank.
-const DEAD=.045,FLICK_V=.5,TU=1235,TD=450,EASE=1.7,SHANK=.3;
+const DEAD=.045,FLICK_V=.5,SHANK=.3;
+// Ways of striking the ball. Play uses 'classic'. The swing lab on the range lets each be tried, at three levels of strictness.
+//   TU, TD  ms for the ring to fill and to drain; EASE how much the fill quickens toward the top
+//   win     the timing window, as a share of the club's own; dead: how far off line a flick may be and still count as straight
+//   rove    the gold sits somewhere new on the ring every swing, and narrows as the pull lengthens
+//   tempo   no filling ring: a gold ring grows from the ball at the pace of a good backswing. Ride its edge, flick as you stop.
+const METHODS={
+  classic:{name:'Classic',tip:'Flick as the ring tops out.',TU:1235,TD:450,EASE:1.7,win:1,dead:.045},
+  needle:{name:'Needle',tip:'The same ring with a quicker finish and half the window.',TU:1050,TD:380,EASE:2.4,win:.5,dead:.03},
+  rove:{name:'Roving gold',tip:'The gold moves every swing and narrows with power. Flick as the fill reaches it.',TU:1350,TD:420,EASE:1.1,win:.6,dead:.035,rove:true},
+  tempo:{name:'Tempo',tip:'Pull back with the gold ring, riding its edge. Flick the moment you stop.',TB:1000,win:.75,dead:.035,tempo:true}};
+const LEVELS=[['Club',1],['Tour',.7],['Major',.45]],LAB=Object.assign({m:'classic',lvl:0},fetchKey('lab')||{});if(!METHODS[LAB.m])LAB.m='classic';LAB.lvl=clamp(LAB.lvl|0,0,2);
+const onLab=()=>S.round.type==='range'&&!!(S.tut&&S.tut.lab),SWM=()=>onLab()?METHODS[LAB.m]:METHODS.classic,SWK=()=>onLab()?LEVELS[LAB.lvl][1]:1;
 const pullMax=()=>clamp(H*.18,84,132);
-const timingWindow=()=>S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1);
-function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=(t-g.t0)%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
+const timingWindow=()=>{const M=SWM(),w=S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*M.win*SWK()*(M.rove&&S.g?1.3-.6*S.g.power:1);return onLab()?Math.max(18,w):w};
+const ghostAt=(g,t)=>g.t0?Math.min(pullMax(),14+(pullMax()-14)*Math.max(0,t-g.t0)/SWM().TB):0;
+// where the ring stands at time t: f how full it is (or, for tempo, how far the gold ring has grown) and e the timing error in ms
+function meterAt(g,t){const M=SWM();
+  if(M.tempo){if(!g.t0)return{f:0,e:-M.TB};const el=t-g.t0;return{f:Math.min(1,el/M.TB),e:el-M.TB*Math.max(0,g.peak.d-14)/(pullMax()-14)}}
+  if(!g.t0)return{f:0,e:-M.TU};const tau=(t-g.t0)%(M.TU+M.TD),tn=M.TU*Math.pow(g.fn||1,1/M.EASE);return tau<M.TU?{f:Math.pow(tau/M.TU,M.EASE),e:tau-tn}:{f:1-(tau-M.TU)/M.TD,e:tau-tn}}
+// The lab's methods are judged on how many windows off the flick was, not on how full the ring looked.
+function judge(g){const M=SWM();if(M===METHODS.classic)return null;const w=timingWindow(),x=Math.abs(g.e)/w,k=SWK();let q=clamp((x-1)/3.5,0,1),on=x<=1,ride=0;
+  if(M.tempo){ride=g.trkN?g.trk/g.trkN/pullMax():0;const s=clamp((ride-.06*Math.sqrt(k))/.18,0,1);if(s>0)on=false;q=Math.max(q,s*.8)}
+  return{onTime:on,q,shank:g.e<0&&(M.tempo?x>6:g.frozen<SHANK),dead:M.dead*Math.sqrt(k),ride}}
 function gPos(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 cv.addEventListener('pointerdown',e=>{
   ac();
@@ -110,7 +130,7 @@ cv.addEventListener('pointerdown',e=>{
   try{cv.setPointerCapture(e.pointerId)}catch(_){}
   const p=gPos(e);hintOff();
   if(S.club.putt&&S.pmode==='aim'){S.g={id:e.pointerId,drag:true,x:p.x,y:p.y};return}
-  S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,
+  S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,fn:SWM().rove?lerp(.5,.93,Math.random()):1,trk:0,trkN:0,
     off:Math.abs(performance.now()-e.timeStamp)<3000?0:performance.now()-e.timeStamp}; // timing uses each touch's own timestamp, not when it was processed
   S.mode='aim'});
 cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)return;
@@ -121,13 +141,14 @@ cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)retu
   for(const ev of(evs.length?evs:[e])){if(!S.g)break;const p=gPos(ev);sample(ev.timeStamp||e.timeStamp,p.x,p.y)}});
 function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14)g.t0=t+g.off}
 function toSwing(g){const k=g.peak,m=meterAt(g,g.ft||performance.now());g.phase='swing';g.slow=0;g.top={x:k.x,y:k.y};g.pull=k.d;g.power=clamp(k.d/pullMax(),0,1);
-  g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f}
+  g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f;g.j=judge(g)}
 // A resting finger sends no events, so the gap before a sample is capped: whatever moved, moved within about a frame.
 function sample(t,x,y){const g=S.g,len=hyp(x-g.ox,y-g.oy),vr=(g.last.d-len)/clamp(t-g.last.t,4,20);
   g.x=x;g.y=y;g.last={t,d:len};
   if(g.phase==='aim'){
     if(vr>FLICK_V&&g.peak.d>pullMax()*.16){if(!g.fast)g.ft=t+g.off;g.fast++;if(g.fast>=2||g.peak.d-len>g.peak.d*.25)toSwing(g)}
-    else{g.fast=0;g.peak={x,y,d:len};aimFrom(g,x,y,len,t)}}
+    else{g.fast=0;g.peak={x,y,d:len};aimFrom(g,x,y,len,t);
+      if(g.t0&&SWM().tempo){const gh=ghostAt(g,t+g.off);if(gh<pullMax()||len<gh-6){g.trk+=Math.abs(len-gh);g.trkN++}}}} // tempo: how closely the thumb rides the gold ring
   if(g.phase==='swing'){g.trail.push({x,y});
     if((x-g.top.x)*g.aim.x+(y-g.top.y)*g.aim.y>=g.pull)commit(x,y);
     else if(vr<.05){if(++g.slow>=3){g.phase='aim';g.fast=0;g.frozen=null;g.peak={x,y,d:len};aimFrom(g,x,y,len,t)}}else g.slow=0}}
@@ -135,7 +156,7 @@ function commit(x,y){const g=S.g,fx=x-g.top.x,fy=y-g.top.y,b=S.ball;
   const dev=Math.atan2(g.aim.x*fy-g.aim.y*fx,g.aim.x*fx+g.aim.y*fy);let aw=rotv(g.aim.x,g.aim.y,-cam.r),p=g.power;
   if(S.club.putt){const d=markDist()||1;aw={x:(S.mark.x-b.x)/d,y:(S.mark.y-b.y)/d};p=1}
   S.fx.push({type:'swing',pts:g.trail.slice(),t0:performance.now()});
-  const te=g.e,tf=g.frozen;endGesture();fire(p,aw,dev,{x:g.ox,y:g.oy},te,tf)}
+  const te=g.e,tf=g.frozen,j=g.j;endGesture();fire(p,aw,dev,{x:g.ox,y:g.oy},te,tf,j)}
 function endGesture(){const g=S.g;if(!g)return;try{cv.releasePointerCapture(g.id)}catch(_){}S.g=null;if(S.mode==='aim')S.mode='ready'}
 function onUp(e){const g=S.g;if(!g||e.pointerId!==g.id)return;
   if(g.drag){endGesture();aimCam();hud();return}
@@ -148,10 +169,10 @@ cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 
 // p is power 0..1, aim a world direction, dev the flick's angle off the pull line,
 // te the timing error in ms (early is negative) and tf how full the ring was (1 at the top)
-function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)tf=1;
+function fire(p,aim,dev,at,te,tf,j){const b=S.ball,c=S.club;te=te||0;if(tf==null)tf=1;
   p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};S.shot=null;$('hLast').hidden=true;if(!onRange())S.strokes++;S.hintShots++;save();
-  const onTime=Math.abs(te)<=timingWindow(),ts=Math.sign(te),shank=!onTime&&tf<SHANK,q=onTime?0:clamp((1-tf)/(1-SHANK),0,1);
-  const ad=Math.abs(dev),kf=ad<=DEAD?0:Math.sign(dev)*clamp((ad-DEAD)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-DEAD),pure=onTime&&kf===0;
+  const dead=j?j.dead:DEAD,onTime=j?j.onTime:Math.abs(te)<=timingWindow(),ts=Math.sign(te),shank=j?j.shank:!onTime&&tf<SHANK,q=j?j.q:onTime?0:clamp((1-tf)/(1-SHANK),0,1);
+  const ad=Math.abs(dev),kf=ad<=dead?0:Math.sign(dev)*clamp((ad-dead)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-dead),pure=onTime&&kf===0;
   b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
   b.tree=cur().oaks.find(t=>hyp(b.x-t.x,b.y-t.y)<t.r)||null; // a ball already under an oak can be played out from beneath it
   let word,sub=onTime?'Perfect tempo':shank?(ts<0?'Far too early':'Far too late'):(q<.3?'A touch ':'')+(ts<0?'early':'late');
@@ -162,7 +183,7 @@ function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)t
     b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
     word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}
-  S.last={shank,q,early:ts<0,pure,putt:!!c.putt};if(pure)sfx.pure();
+  S.last={shank,q,early:ts<0,pure,putt:!!c.putt,te,dev,word,ride:j?j.ride:0};if(pure)sfx.pure();
   if(at)S.fx.push({type:'word',text:word,sub,good:pure,bad:shank,x:at.x,y:at.y-44,t0:performance.now()});
   try{navigator.vibrate&&navigator.vibrate(pure?[10,40,10]:shank?60:25)}catch(_){}
   S.mode='flight';hud()}
@@ -224,7 +245,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
     if((hudTick+=dt)>.1){hudTick=0;hudDist()}}else acc=0;
   // step the picture quality down on a phone that cannot hold thirty frames a second
   if(dt>.034)slowFrames++;else slowFrames=Math.max(0,slowFrames-2);if(slowFrames>70&&Q>0&&!LOCKQ){Q--;slowFrames=0;resize()}
-  const g=S.g;if(g&&!g.drag&&g.t0&&g.phase==='aim'){const tk=Math.floor((performance.now()-g.t0+TD)/(TU+TD));if(tk>g.tick){g.tick=tk;sfx.tick()}}
+  const g=S.g;if(g&&!g.drag&&g.t0&&g.phase==='aim'){const M=SWM(),tk=M.tempo?0:Math.floor((performance.now()-g.t0+M.TD)/(M.TU+M.TD));if(tk>g.tick){g.tick=tk;sfx.tick()}}
   updateCam(dt);
   ctx.setTransform(DPR,0,0,DPR,0,0);
   drawScene(now);drawPreview(now);drawFlag(now);drawBall(dt);drawGesture(now);
@@ -245,7 +266,7 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n);
-  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
+  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange()||onLab();$('lab').hidden=!onLab();$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
   // the first few putts name the controls; after that the green is left to be read from its streaks. The range has its own card.

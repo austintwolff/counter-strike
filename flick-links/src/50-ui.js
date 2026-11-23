@@ -39,7 +39,7 @@ function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>Putting.</b> Drag the marker to where a flat putt should stop. Press Putt, then flick on gold. The streaks run downhill.</p>
 <p class="fine"><b>Trouble.</b> Water: drop at the edge, +1. Out of bounds or lost: replay, +1.</p>
 <p class="fine">© OpenStreetMap contributors.</p>
-<div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button></div>`)}
+<div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button><button class="btn ghost" data-act="lab">Swing lab</button></div>`)}
 function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:HOLE(S.round.ids[S.hi+1]);
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
 ${scoreCard(S.round.ids,S.round.scores)}
@@ -75,6 +75,7 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='title')titleCard();
   else if(a==='share')share();
   else if(a==='range')startRange();
+  else if(a==='lab')startLab();
   else if(a==='me')meCard();
   else if(a==='club'){C.tab='today';clubCard()}
   else if(a==='clubform')formCard('club');
@@ -104,15 +105,31 @@ function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=[];S.muted=!!
 const RANGE_HOLE=()=>courseIds('lp')[7];   // a wide, straight hole to hit down
 function coach(step,title,text,next,ready){$('coachStep').textContent='Driving range · '+step;$('coachTitle').textContent=title;$('coachText').textContent=text;const n=$('coachNext');n.textContent=next;n.disabled=!ready}
 function rangeSpot(){const h=cur();if(S.tut.step==='swing')return h.tee;const dx=h.tee.x-h.pin.x,dy=h.tee.y-h.pin.y,d=hyp(dx,dy);for(const k of[7,5.5,4,3]){const p={x:h.pin.x+dx/d*k,y:h.pin.y+dy/d*k};if(inSh(h.green,p,-1))return p}return{x:h.green.x,y:h.green.y}}
-function rangeSet(){const p=rangeSpot();setBall(p.x,p.y);S.strokes=0;setupShot();S.mode='ready';aimCam();hud()}
+function rangeSet(){const p=rangeSpot();setBall(p.x,p.y);S.strokes=0;setupShot();if(S.tut.lab&&S.tut.club){const i=S.clubs.indexOf(S.tut.club);if(i>=0){S.ci=i;S.club=S.clubs[i];placeMarker()}}S.mode='ready';aimCam();hud()}
 function startRange(){closeSheet();S.round={type:'range',ids:[RANGE_HOLE()],scores:[],course:null};S.hi=0;S.marks=[];S.tut={step:'swing',good:false};const h=cur();h.wind.x=h.wind.y=0;h.wind.sp=0;
   rangeSet();hintOff();overviewCam(.5,.76,true);aimCam();coach('1 of 2','The swing','Pull back to aim. Flick up when the ring reaches gold.','Putting',false)}
-function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();
+function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();if(t.lab){labShot(l,note);return rangeSet()}
   if(t.step==='swing'){const ok=!note&&!l.shank&&l.q<.5;t.good=t.good||ok;
     coach('1 of 2','The swing',note||(l.shank?'Shank. Wait for the ring to leave the red.':l.pure?'Pure.':ok?'Good strike.':l.early?'Early. Wait for gold.':'Late. Flick as it reaches gold.'),'Putting',t.good)}
   else{const ft=Math.round(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*3),ok=holed||ft<=4;t.good=t.good||ok;
     coach('2 of 2','The putt',holed?'Holed.':ok?'Close: '+ft+' ft.':ft+' ft away. Move the marker to allow for the slope.','Play',t.good)}
   rangeSet()}
+// ───────── the swing lab: the range again, with every way of striking the ball to try and a readout of each swing
+const labKey=()=>LAB.m+LAB.lvl;
+function labDraw(){const t=S.tut,st=t.stats[labKey()]||[],M=METHODS[LAB.m];
+  $('labM').innerHTML=Object.keys(METHODS).map(k=>`<button data-m="${k}" aria-pressed="${k===LAB.m}">${METHODS[k].name}</button>`).join('');
+  $('labL').innerHTML=LEVELS.map((l,i)=>`<button data-l="${i}" aria-pressed="${i===LAB.lvl}">${l[0]}</button>`).join('');
+  $('labTip').textContent=M.tip;$('labOut').textContent=t.out||'';
+  const n=st.length,pure=st.filter(x=>x.pure).length,avg=n?Math.round(st.reduce((a,x)=>a+Math.abs(x.te),0)/n):0;
+  $('labStat').textContent=n?`Last ${n}: ${pure} pure · ${avg} ms off on average`:'No swings yet'}
+function labShot(l,note){const t=S.tut,st=t.stats[labKey()]=t.stats[labKey()]||[],te=Math.round(l.te||0),deg=Math.abs((l.dev||0)/DEG);
+  st.push({pure:!!l.pure,te});if(st.length>10)st.shift();
+  t.out=[l.word||'',te===0?'on time':Math.abs(te)+' ms '+(te<0?'early':'late'),deg<.05?'dead straight':deg.toFixed(1)+'° '+(l.dev>0?'right':'left')].concat(LAB.m==='tempo'?['ride '+Math.round((l.ride||0)*100)+'%']:[],S.shot?[Math.round(S.shot.d)+' yd']:[],note?[note]:[]).join(' · ');labDraw()}
+function startLab(){closeSheet();S.round={type:'range',ids:[RANGE_HOLE()],scores:[],course:null};S.hi=0;S.marks=[];S.shot=null;S.tut={step:'swing',good:true,lab:true,stats:{},out:''};const h=cur();h.wind.x=h.wind.y=0;h.wind.sp=0;
+  rangeSet();hintOff();overviewCam(.5,.76,true);aimCam();labDraw()}
+$('lab').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!onLab())return;ac();
+  if(b.dataset.m){LAB.m=b.dataset.m}else if(b.dataset.l){LAB.lvl=+b.dataset.l}else if(b.id==='labDone'){S.tut=null;$('app').classList.remove('tut');$('lab').hidden=true;return titleCard()}
+  store('lab',{m:LAB.m,lvl:LAB.lvl});S.tut.out='';labDraw()});
 function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard()}
 $('coachSkip').onclick=endRange;
 $('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='swing'){t.step='putt';t.good=false;S.last=null;rangeSet();coach('2 of 2','The putt','Drag the marker to where a flat putt should stop. Press Putt, then flick on gold.','Play',false)}else endRange()};

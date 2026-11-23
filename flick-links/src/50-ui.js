@@ -15,14 +15,14 @@ function scoreName(s,par){if(s===1)return'Hole in one';const d=s-par;return d<=-
 const emo=(s,par)=>s===1?'🎯':s-par<=-2?'🦅':s-par===-1?'🐦':s===par?'⚪':s-par===1?'🟧':'🟥';
 const mk=(s,par)=>{const d=s-par,c=d<=-2?'eagle':d===-1?'birdie':d===1?'bogey':d>=2?'dbl':'';return`<span class="mk ${c}">${s}</span>`};
 // a round's card. Today's three can mix courses, so it carries a course row; a practice nine carries its tee.
-function scoreCard(ids,scores){const hs=ids.map(INFO),wide=ids.length<=3,all=ids.length>9,n=scores.filter(s=>s!=null).length,c=hs[0].course,d=new Date();
+function scoreCard(ids,scores){const hs=ids.map(INFO),wide=ids.length<=3,one=hs.every(h=>h.course===hs[0].course),all=ids.length>9,n=scores.filter(s=>s!=null).length,c=hs[0].course,d=new Date();
   const toPar=n?rel(sum(scores.slice(0,n))-sum(hs.slice(0,n).map(h=>h.par))):'';
   const row=(cls,label,cells,out)=>`<tr class="${cls}"><th>${label}</th>${cells.map(x=>`<td>${x}</td>`).join('')}<td class="out">${out}</td></tr>`;
   const table=(a,b,label)=>{const H=hs.slice(a,b),sc=scores.slice(a,b),full=H.every((h,i)=>sc[i]!=null);
-    return`<table class="sc${wide?' wide':''}">${wide?row('h','Course',H.map(h=>h.course.club),''):''}${row(wide?'n':'h','Hole',H.map(h=>h.n),label)}
+    return`<table class="sc${wide?' wide':''}">${wide&&!one?row('h','Course',H.map(h=>h.course.club),''):''}${row(wide?'n':'h','Hole',H.map(h=>h.n),label)}
 ${row('g',wide?'Yards':c.tee,H.map(h=>h.yards),sum(H.map(h=>h.yards)))}${row('k','Hcp',H.map(h=>h.hcp),'')}${row('p','Par',H.map(h=>h.par),sum(H.map(h=>h.par)))}
 ${row('s','You',H.map((h,i)=>sc[i]!=null?mk(sc[i],h.par):''),full?sum(sc):'')}</table>`};
-  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":c.club}</b><span>${wide?'No. '+S.day:(all?'Eighteen':hs[0].n>9?'Back nine':'Front nine')+' · practice'}</span></div>
+  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":c.club}</b><span>${wide?(one?c.club+' · ':'')+'No. '+S.day:(all?'Eighteen':hs[0].n>9?'Back nine':'Front nine')+' · practice'}</span></div>
 ${wide?table(0,3,'Total'):all?table(0,9,'Out')+table(9,18,'In'):table(0,9,hs[0].n>9?'In':'Out')}
 <div class="sc-foot"><span>Date <i>${d.getMonth()+1}/${d.getDate()}</i></span><span>${all?'Total':'Scorer'} <i>${all?(n?sum(scores.slice(0,n)):''):'You'}</i></span><span>To par <i>${toPar}</i></span></div></div>`}
 const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
@@ -52,7 +52,7 @@ ${scoreCard(S.round.ids,S.round.scores)}
 <button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
 function shareText(){const r=S.round,hs=r.ids.map(INFO),par=sum(hs.map(h=>h.par)),tot=sum(r.scores),em=(a,b)=>r.scores.slice(a,b).map((s,i)=>emo(s,hs[a+i].par)).join('');
   let t=r.type==='nine'?`⛳ Flick Links · ${hs.length>9?'eighteen':hs[0].n>9?'back nine':'front nine'} at ${hs[0].course.club}\n`+(hs.length>9?em(0,9)+'\n'+em(9,18):em(0,9))+`\n${tot} strokes (${rel(tot-par)})`
-    :`⛳ Flick Links No. ${S.day}\n`+r.scores.map((s,i)=>`${hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
+    :`⛳ Flick Links No. ${S.day}${hs.every(h=>h.course===hs[0].course)?' · '+hs[0].course.club:''}\n`+r.scores.map((s,i)=>`${hs.every(h=>h.course===hs[0].course)?'No. ':hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
   let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname+(Net.remote&&C.code?'?c='+C.code:'')}catch(e){}
   return url?t+'\n'+url:t}
 function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r.scores=sv.scores;
@@ -95,13 +95,13 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
 
 // ───────── flow
 let introT=0;
-function startHole(i,sv){closeSheet();S.hi=i;S.marks=[];S.shot=null;const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
+function startHole(i,sv){closeSheet();S.hi=i;S.marks=[];S.shot=null;S.from=null;S.hs=sv&&sv.strokes&&sv.hs?sv.hs:newHs();const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
   overviewCam(.5,.76,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,h.course.club,1800);
   hintOff();if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
 function begin(type,course,part){const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';if(nine&&(!COURSES.find(c=>c.id===course).more||!/^[fba]$/.test(part||'')))part='f';
-  S.round={type,course:nine?course:null,part:nine?part:null,ids:[],scores:[]};const sv=fetchKey(saveKey());S.round.ids=nine?courseIds(course,part):todaysIds(sv);const ids=S.round.ids;
+  S.round={type,course:nine?course:null,part:nine?part:null,ids:[],scores:[],log:[]};const sv=fetchKey(saveKey());if(sv&&Array.isArray(sv.log))S.round.log=sv.log;S.round.ids=nine?courseIds(course,part):todaysIds(sv);const ids=S.round.ids;
   if(sv&&sv.done&&Array.isArray(sv.scores)){S.round.scores=sv.scores;return resultsCard()}
   if(sv&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length){S.round.scores=sv.scores.slice(0,sv.hi);startHole(sv.hi,sv)}else startHole(0)}
 function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=[];S.muted=!!fetchKey('muted');
@@ -144,4 +144,4 @@ if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==
   try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text(),m=t.match(/BUILD_TS=(\d{10,})/);
     if(m&&+m[1]>BUILD_TS){try{sessionStorage.setItem(KEY+'resume',JSON.stringify(snap()))}catch(e){}location.replace(location.pathname+'?v='+m[1]+location.hash)}}catch(e){}},20000);
 
-if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,INFO,courseIds,C,Net,refresh,startRange};
+if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,INFO,courseIds,dailyIds,gameTable,C,Net,refresh,startRange};

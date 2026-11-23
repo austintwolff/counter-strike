@@ -33,7 +33,7 @@ async function refresh(posted){const code=C.invite||C.code;
       if(C.invite&&(!C.club||C.club.member)){if(C.club)pickClub(C.invite);endInvite()}
       if(!C.invite&&C.code&&(!C.club||!C.club.member)){pickClub(C.me&&C.me.clubs.length?C.me.clubs[0].code:'');C.club=null;if(C.code)return refresh(posted)}
       if(!C.invite&&!C.code&&C.me&&C.me.clubs.length){pickClub(C.me.clubs[0].code);return refresh(posted)}
-      if(!posted&&await postToday())return refresh(true)}}catch(e){}
+      if(!posted&&await postToday())return refresh(true);syncLog()}}catch(e){}
   redraw()}
 
 // ───────── pieces
@@ -72,11 +72,19 @@ function clubCard(){const c=C.club;if(!c||!c.member)return titleCard();const t=C
 ${t==='today'?tabToday(c):t==='standings'?tabStandings(c):tabRecords(c)}
 <div class="row"><button class="btn" data-act="invite">Invite friends</button><button class="btn ghost" data-act="title">Back</button></div>
 <p class="fine" id="shareNote"></p>${others.length?`<p class="eyebrow">Your other clubhouses</p><div class="row">${others.map(x=>`<button class="btn ghost sm" data-act="pick" data-c="${x.code}">${esc(x.name)}</button>`).join('')}</div>`:''}`,clubCard)}
+// what the record of play says about a kind of round ('daily' or 'practice')
+function gameStats(kind){const R=(fetchKey('log')||[]).filter(r=>r.kind===kind),H=R.flatMap(r=>r.holes||[]),n=H.length,pct=(a,b)=>b?Math.round(a/b*100)+'%':'–',fw=H.filter(h=>h.fw!=null);
+  return{rounds:R.length,holes:n,birdies:H.filter(h=>h.s<h.par).length,fw:pct(fw.filter(h=>h.fw).length,fw.length),gir:pct(H.filter(h=>h.gir).length,n),putts:n?(sum(H.map(h=>h.p))/n).toFixed(1):'–',drive:Math.max(0,...H.map(h=>h.dr||0))||'–',pure:sum(H.map(h=>h.pure||0))}}
+const gameTable=()=>{const d=gameStats('daily'),p=gameStats('practice');if(!d.rounds&&!p.rounds)return'';const row=(l,k)=>`<tr><td>${l}</td><td><b>${d[k]}</b></td><td><b>${p[k]}</b></td></tr>`;
+  return`<p class="eyebrow">Your game</p><table class="st"><tr><th></th><th>Daily</th><th>Practice</th></tr>${row('Rounds','rounds')}${row('Birdies','birdies')}${row('Fairways','fw')}${row('Greens','gir')}${row('Putts a hole','putts')}${row('Longest drive','drive')}${row('Pure strikes','pure')}</table>`};
+// rounds not yet on the server go up when there is one to send them to
+async function syncLog(){if(!Net.remote||!C.me)return;const L=fetchKey('log')||[],todo=L.filter(r=>!r.up).slice(0,25);if(!todo.length)return;
+  try{const j=await Net.call('POST','/log',{rounds:todo.map(({up,...r})=>r)});if(j&&j.ok){const ids=new Set(todo.map(r=>r.id)),M=fetchKey('log')||[];M.forEach(r=>{if(ids.has(r.id))r.up=1});store('log',M)}}catch(e){}}
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
   sheet(`<p class="eyebrow">Your card</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
 <p class="fine">${st.hcp==null?'Handicap in '+plural(Math.max(1,3-st.rounds),'round')+'.':''}</p>
-<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
+${gameTable()}<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
   return`<div class="${e?'won':''}"><i class="mono">${mono}</i><b>${name}${e&&e.n>1?' ×'+e.n:''}</b><span>${sw!=null&&!e?sw+' of 9 so far':what}</span></div>`}).join('')}</div>
 ${saveStrip()}<div class="row"><button class="btn ghost" data-act="rename">Change name</button><button class="btn ghost" data-act="title">Back</button></div>
 <p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey.':canSave()?'':'Open in Safari or Chrome to save your player.'}</p>`,meCard)}

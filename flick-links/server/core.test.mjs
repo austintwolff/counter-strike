@@ -45,4 +45,12 @@ assert.match((await solo('POST', '/player', { name: 'Solo' })).session, /^[a-f0-
 for (const [k, sc] of [[-1, [5, 4, 6]], [0, [4, 4, 6]], [1, [4, 3, 6]]]) { const d = new Date(Date.now() + k * 864e5).toISOString().slice(0, 10); assert.ok((await solo('POST', '/round', { day: d, holes, pars, scores: sc })).ok); }
 assert.equal((await solo('GET', '/state?day=' + today)).me.stats.hcp, 6);
 assert.ok((await sam('POST', '/leave', { code })).ok); assert.equal((await sam('GET', '/state?day=' + today + '&club=' + code)).club.count, 2);
+// the full record of play: kept once per round id, refused without a player, and bad shapes are dropped
+const hole = (k, par, sc) => ({ k, par, s: sc, p: 2, pen: 0, sw: sc - 2, pure: 1, fw: par > 3 ? 1 : null, gir: 1, dr: par > 3 ? 255 : null, fp: 22, hf: 3, chip: 0 });
+const rnd = (id, kind, extra = {}) => ({ id, kind, day: today, course: 'mu', part: 'f', holes: [hole('mu10', 4, 4), hole('mu11', 3, 2), hole('mu12', 5, 6)], t: Date.now(), b: 1, ...extra });
+assert.equal((await stranger('POST', '/log', { rounds: [rnd('abcdef01', 'practice')] })).error, 'no_player');
+assert.equal((await solo('POST', '/log', { rounds: [rnd('abcdef01', 'practice'), rnd('abcdef02', 'daily'), rnd('bad id!', 'daily'), rnd('abcdef03', 'cheat'), rnd('abcdef04', 'daily', { holes: [hole('mu10', 4, 40)] })] })).saved, 2);
+assert.equal((await solo('POST', '/log', { rounds: [rnd('abcdef01', 'practice'), rnd('abcdef05', 'event')] })).saved, 1);
+const kept = await st2.get('gi:' + (await solo('GET', '/state?day=' + today)).me.id); assert.deepEqual(kept, ['abcdef01', 'abcdef02', 'abcdef05']);
+assert.equal((await st2.get('g:' + (await solo('GET', '/state?day=' + today)).me.id + ':abcdef01')).tot, 12);
 console.log('server core: all checks passed');

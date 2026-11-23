@@ -23,8 +23,10 @@ function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((D
 function store(k,v){try{v==null?localStorage.removeItem(KEY+k):localStorage.setItem(KEY+k,JSON.stringify(v))}catch(e){}}
 function fetchKey(k){try{return JSON.parse(localStorage.getItem(KEY+k)||'null')}catch(e){return null}}
 // one par 3, one par 4 and one par 5 drawn from every course, played in card order
-function dailyIds(key){const r=mulberry32(hashStr('fl-day:'+key)),by=p=>ALL.map((e,i)=>e.def.par===p?i:-1).filter(i=>i>=0),pick=a=>a[Math.floor(r()*a.length)];
-  return[pick(by(3)),pick(by(4)),pick(by(5))].sort((a,b)=>a-b)}
+// Today's three: the courses take the day in turn, and the day's course gives a par 3, a par 4 and a par 5, played in hole order.
+function dailyIds(key){const r=mulberry32(hashStr('fl-day:'+key)),n=COURSES.length,c=COURSES[((dayNumber(key)-1)%n+n)%n],own=ALL.map((e,i)=>e.c===c?i:-1).filter(i=>i>=0),out=[];
+  for(const p of[3,4,5]){const left=own.filter(i=>!out.includes(i)),a=left.filter(i=>ALL[i].def.par===p),from=a.length?a:left;out.push(from[Math.floor(r()*from.length)])}
+  return out.sort((a,b)=>ALL[a].n-ALL[b].n)}
 
 const S={mode:'title',key:'',day:1,holes:[],round:{type:'daily',ids:[0,1,2],scores:[]},hi:0,strokes:0,lie:'tee',clubs:[],ci:0,club:CLUBS[6],
   ball:{x:0,y:0,z:0,vx:0,vy:0,vz:0,air:false,spin:0,club:null,putt:false,gone:false,tree:null,rollK:1},prev:{x:0,y:0},g:null,trail:[],fx:[],parts:[],hintShots:0,muted:false,mark:{x:0,y:0},pmode:'aim',marks:[]};S.round.course='gr';
@@ -34,7 +36,20 @@ const cur=()=>HOLE(S.round.ids[S.hi]);
 const maxScore=()=>cur().par+MAX_OVER;
 const saveKey=()=>S.round.type==='nine'?S.key+':rd:'+S.round.course+':'+(S.round.part||'f'):S.key;
 const onRange=()=>S.round.type==='range';
-function save(){if(onRange())return;const n=S.round.ids.length;store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n})}
+function save(){if(onRange())return;const n=S.round.ids.length;store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n,hs:S.hs,log:S.round.log||[]})}
+// ───────── the record of play
+// Every finished round, daily or practice, is kept hole by hole, so that any table, record or badge thought of later can be worked
+// out from what was actually played. For each hole (S.hs while it is in play):
+//   s strokes, p putts, pen penalty strokes, sw full swings, pure pure strikes, fw fairway hit from the tee (par 4s and 5s),
+//   gir on the green in regulation, dr the tee shot's length in yards, fp the first putt's length in feet,
+//   hf the length in feet of the shot that went in (chip: 1 when that was not a putt). Not holed means the hole was picked up.
+// Rounds go in the 'log' store with their kind ('daily' or 'practice'), so anything can be shown for either or both.
+const newHs=()=>({p:0,pen:0,sw:0,pure:0,fw:null,gir:0,dr:null,fp:null,hf:null,chip:0,tee:false});
+function noteRest(l){const hs=S.hs,h=cur();if(!hs||onRange())return;if(hs.tee){hs.tee=false;if(h.par>3){hs.dr=S.shot?Math.round(S.shot.d):null;hs.fw=l==='fairway'||l==='green'||l==='fringe'?1:0}}
+  if(l==='green'&&S.strokes<=h.par-2)hs.gir=1}
+function logRound(){const r=S.round,hs=r.log||[];if(hs.filter(Boolean).length<r.ids.length)return;const L=fetchKey('log')||[],c=INFO(r.ids[0]).course.id;
+  L.push({v:1,id:Math.random().toString(36).slice(2,10)+Date.now().toString(36),kind:r.type==='daily'?'daily':'practice',day:S.key,course:c,part:r.part||null,holes:hs,tot:sum(r.scores),par:sum(hs.map(x=>x.par)),t:Date.now(),b:BUILD_TS});
+  while(L.length>400)L.shift();store('log',L)}
 
 // ───────── sound (starts on the first touch)
 let AC=null;
@@ -162,7 +177,9 @@ cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 // p is power 0..1, aim a world direction, dev the flick's angle off the pull line,
 // te the timing error in ms (early is negative) and tf how full the ring was (1 at the top)
 function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)tf=1;
-  p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};S.shot=null;$('hLast').hidden=true;if(!onRange())S.strokes++;S.hintShots++;save();
+  p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};S.shot=null;$('hLast').hidden=true;if(!onRange())S.strokes++;S.hintShots++;
+  if(S.hs&&!onRange()){const hs=S.hs,d=hyp(b.x-cur().pin.x,b.y-cur().pin.y);S.from={d,putt:!!c.putt};if(c.putt){if(!hs.p++)hs.fp=Math.max(1,Math.round(d*3))}else{hs.sw++;hs.tee=S.strokes===1&&S.lie==='tee'}}
+  save();
   const wild=1+.7*reachFor(p),dead=DEAD/(1+.4*reachFor(p)),{onTime,q,shank}=judge(te,tf,p),ts=Math.sign(te);
   const ad=Math.abs(dev),kf=ad<=dead?0:Math.sign(dev)*clamp((ad-dead)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-dead),pure=onTime&&kf===0;
   b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.onGreen=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
@@ -175,6 +192,7 @@ function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)t
     b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
     word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}
+  if(pure&&!c.putt&&S.hs&&!onRange())S.hs.pure++;
   S.last={shank,q,early:ts<0,pure,putt:!!c.putt,te};if(pure)sfx.pure();
   if(at)S.fx.push({type:'word',text:word,sub,good:pure,bad:shank,x:at.x,y:at.y-44,t0:performance.now()});
   try{navigator.vibrate&&navigator.vibrate(pure?[10,40,10]:shank?60:25)}catch(_){}
@@ -212,20 +230,24 @@ function dropSpot(){const h=cur(),d=S.ball.dry,p=S.prev,L=hyp(p.x-d.x,p.y-d.y);i
 const shotLen=()=>({d:hyp(S.ball.x-S.prev.x,S.ball.y-S.prev.y),ft:S.club.putt});
 function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';S.shot=back?null:shotLen();b.gone=true;
   if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water.':'Out of play.'),900)}
-  S.strokes++;
+  S.strokes++;if(S.hs){S.hs.pen++;if(S.hs.tee){S.hs.tee=false;if(cur().par>3)S.hs.fw=0}}
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});
   if(water){sfx.splash();burst(b.x,b.y,'#d8f4f0',22,9,9)}else sfx.bad();
   toast(water?'In the water':kind==='ob'?'Out of bounds':'Lost in the trees',(water&&!back?'Drop':'Replay')+' · +1',1900);hud();
   setTimeout(()=>{setBall(spot.x,spot.y);afterShot()},1500)}
-function atRest(){const l=lieAt(cur(),S.ball);if(!onRange()&&(l==='woods'||l==='ob'))return hazard(l);S.shot=shotLen();afterShot()} // on the range a wild one is just fetched back
+function atRest(){const l=lieAt(cur(),S.ball);if(!onRange()&&(l==='woods'||l==='ob'))return hazard(l);S.shot=shotLen();noteRest(l);afterShot()} // on the range a wild one is just fetched back
 function afterShot(){if(onRange())return rangeAfter(false);if(S.strokes>=maxScore()){toast('Picked up','Max '+maxScore(),1600);return finishHole(maxScore())}
   setupShot();
   S.mode='ready';aimCam();hud();save()}
 function holed(){const b=S.ball,h=cur();b.x=h.pin.x;b.y=h.pin.y;b.vx=b.vy=b.vz=b.z=0;b.air=false;b.gone=true;sfx.cup();burst(b.x,b.y,K.gold,26,5,11);burst(b.x,b.y,'#fff8e0',12,3,8);
-  S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now()});finishHole(S.strokes)}
-function finishHole(score){if(onRange()){S.mode='wait';return setTimeout(()=>rangeAfter(true),700)}S.mode='wait';S.round.scores[S.hi]=score;S.strokes=0;const n=S.round.ids.length,last=S.hi>=n-1;
-  store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last});
-  if(last&&S.round.type==='daily'){bumpStreak();refresh()} // refresh posts the finished card to the clubhouse
+  S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now()});
+  if(S.hs&&!onRange()&&S.from){S.hs.hf=Math.max(1,Math.round(S.from.d*3));S.hs.chip=S.from.putt?0:1;if(S.strokes<=h.par-2)S.hs.gir=1}
+  finishHole(S.strokes)}
+function finishHole(score){if(onRange()){S.mode='wait';return setTimeout(()=>rangeAfter(true),700)}S.mode='wait';S.round.scores[S.hi]=score;S.strokes=0;const n=S.round.ids.length,last=S.hi>=n-1,h=cur(),hs=S.hs||newHs();
+  (S.round.log=S.round.log||[])[S.hi]={k:h.course.id+h.k,par:h.par,s:score,p:hs.p,pen:hs.pen,sw:hs.sw,pure:hs.pure,fw:hs.fw,gir:hs.gir,dr:hs.dr,fp:hs.fp,hf:hs.hf,chip:hs.chip};S.hs=null;
+  store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last,hs:null,log:S.round.log});
+  if(last)logRound();
+  if(last){if(S.round.type==='daily')bumpStreak();refresh()} // refresh posts the finished card to the clubhouse
   setTimeout(()=>holeCard(score),900)}
 function bumpStreak(){const m=fetchKey('meta')||{last:0,streak:0};if(m.last===S.day)return;m.streak=m.last===S.day-1?m.streak+1:1;m.last=S.day;store('meta',m)}
 

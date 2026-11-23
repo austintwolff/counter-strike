@@ -113,6 +113,14 @@ export async function handle(req,store,opts={}){const url=new URL(req.url),path=
         if(!p.every(x=>x===3||x===4||x===5)||!s.every((x,i)=>Number.isInteger(x)&&x>=1&&x<=p[i]+5))return fail('scores');
         const key='r:'+ses.pid+':'+day;if(!(await store.get(key)))await store.put(key,{day,holes:h,pars:p,scores:s,tot:total(s),par:total(p),ts:Date.now()}); // the first card of the day stands
         return done()}
+      // the full record of rounds, daily and practice, hole by hole. Kept as sent (after checking its shape) so that later tables can be built from it.
+      case'/log':{if(!ses)return fail('no_player',401);const rs=b.rounds;if(!Array.isArray(rs)||rs.length>25)return fail('rounds');
+        const num=(v,lo,hi)=>v==null?null:Number.isFinite(+v)?Math.min(hi,Math.max(lo,Math.round(+v))):null,idx=(await store.get('gi:'+ses.pid))||[];let saved=0;
+        for(const r of rs){if(!r||typeof r.id!=='string'||!/^[a-z0-9]{6,24}$/.test(r.id)||!['daily','practice','event'].includes(r.kind)||!validDay(r.day)||!Array.isArray(r.holes)||r.holes.length<1||r.holes.length>18||idx.includes(r.id))continue;
+          const holes=r.holes.map(h=>h&&/^[a-z]{2}([1-9]|1[0-8])$/.test(h.k)&&(h.par===3||h.par===4||h.par===5)&&Number.isInteger(h.s)&&h.s>=1&&h.s<=h.par+5?{k:h.k,par:h.par,s:h.s,p:num(h.p,0,12),pen:num(h.pen,0,10),sw:num(h.sw,0,12),pure:num(h.pure,0,12),fw:h.fw==null?null:h.fw?1:0,gir:h.gir?1:0,dr:num(h.dr,0,450),fp:num(h.fp,0,400),hf:num(h.hf,0,1500),chip:h.chip?1:0}:null);
+          if(holes.some(h=>!h))continue;
+          await store.put('g:'+ses.pid+':'+r.id,{id:r.id,kind:r.kind,day:r.day,course:/^[a-z]{2}$/.test(r.course||'')?r.course:null,part:/^[fba]$/.test(r.part||'')?r.part:null,holes,tot:total(holes.map(h=>h.s)),par:total(holes.map(h=>h.par)),t:num(r.t,0,4e12),b:num(r.b,0,4e12),ts:Date.now()});idx.push(r.id);saved++}
+        if(saved)await store.put('gi:'+ses.pid,idx.slice(-3000));return done({saved})}
       case'/passkey/options':{const challenge=b64u(rand(32));await store.put('ch:'+challenge,{pid:ses?ses.pid:null,t:Date.now()});
         if(b.kind==='create'){if(!ses)return fail('no_player',401);
           return done({publicKey:{challenge,rp:{name:'Flick Links',id:url.hostname},user:{id:b64u(enc.encode(ses.pid)),name:ses.player.name,displayName:ses.player.name},

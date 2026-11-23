@@ -51,8 +51,16 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
   g.water=shapes(m.water,f=>Object.assign(shp(f),{pond:true}));g.dry=[];
   // a river can run for miles past the course: keep only the stretches that pass the holes
   const runs=[];for(const s of m.streams){let run=null;for(const q of pts(s.p)){if(inPlay(q)){if(!run)runs.push(run={...s,P:[]});run.P.push(q)}else run=null}}
-  for(const s of runs){if(s.P.length<2)continue;const r=mkRoute(catmull(s.P,3));if(r.len<8)continue;const n=Math.max(1,Math.round(r.len/22)),prof=[];for(let i=0;i<=n;i++)prof.push([i/n,s.w/2*(.75+rng()*.6)]);
+  for(const s of runs){if(s.P.length<2)continue;const r=mkRoute(catmull(s.P,3));if(r.len<8)continue;const n=Math.max(1,Math.round(r.len/22)),prof=[];for(let i=0;i<=n;i++)prof.push([i/n,s.w/2*(.9+rng()*.3)]);
     const rb=ribbon(r,0,r.len,prof);rb.line=r;rb.x=r.pts[0].x;rb.y=r.pts[0].y;(s.dry?g.dry:g.water).push(rb)}
+  // The map often draws one stretch of water several times over (a creek as a line and as its banks, a pond as water and as a hazard),
+  // and long rivers come in pieces. All of it is merged into clean outlines, one per body of water, so nothing overlaps or shows a seam.
+  if(g.water.length){const rw=mulberry32(hashStr('water:'+c.id+k));g.water=mergeShapes(g.water,g.box).map(o=>{const w=polyShape(o.outer,false,o.holes);
+      let per=0;for(let i=0;i<o.outer.length;i++){const a=o.outer[i],b=o.outer[(i+1)%o.outer.length];per+=hyp(b.x-a.x,b.y-a.y)}
+      for(const h of o.holes)w.area-=Math.abs(ringArea(h));w.per=per;w.wide=2*w.area/per;w.pond=w.wide>9;w.round=w.area/(Math.PI*w.R*w.R)>.3;
+      // a few spots well out from the bank, for lilies, rising fish and ducks
+      w.spots=[];for(let i=0;i<70&&w.spots.length<9;i++){const p={x:lerp(w.bb[0],w.bb[2],rw()),y:lerp(w.bb[1],w.bb[3],rw())};if(inSh(w,p,-Math.min(5,w.wide*.3)))w.spots.push(p)}
+      return w})}
   const wet=(p,d)=>g.water.some(w=>inSh(w,p,d)),line=f=>{const P=pts(f.p),path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;P.forEach((q,i)=>{i?path.lineTo(q.x,q.y):path.moveTo(q.x,q.y);x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)});return{...f,pts:P,path,bb:[x0-9,y0-9,x1+9,y1+9]}};
   g.roads=m.roads.filter(r=>local(r)&&(th.houses||r.w>=9)).map(line);g.paths=shapes(m.paths,line);
   // a bridge wherever a path or road runs over water
@@ -90,11 +98,16 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
   g.trees.sort((a,b)=>a.r-b.r);
   // small things that make it a place
   g.lilies=[];g.reeds=[];g.ducks=[];g.pebbles=[];g.rakes=[];g.blooms=[];
-  for(const w of g.water){if(w.pond){if(w.area<120)continue;const n=w.poly.length,big=Math.sqrt(w.area/Math.PI);
-      for(let i=0,k=Math.round(3+big/6);i<k;i++){const q=w.poly[Math.floor(rng()*n)],f=lerp(.5,.86,rng()),p={x:w.x+(q.x-w.x)*f,y:w.y+(q.y-w.y)*f};if(inSh(w,p,-1.6))g.lilies.push({...p,r:lerp(.7,1.4,rng()),a:rng()*TAU,fl:rng()<.35})}
-      for(let i=0;i<n;i++)if(rng()<.3){const q=w.poly[i],a=Math.atan2(q.y-w.y,q.x-w.x);g.reeds.push({x:q.x+Math.cos(a)*.5,y:q.y+Math.sin(a)*.5,a,s:lerp(.8,1.4,rng())})}
-      if(big>16)for(let i=0,k=1+(rng()<.5?1:0);i<k;i++)g.ducks.push({w,ph:rng()*TAU,f:lerp(.3,.5,rng()),dir:rng()<.5?1:-1})}
-    else for(const q of w.c)for(const sd of[-1,1])if(rng()<.42)g.pebbles.push({x:q.x+q.nx*sd*(q.w+.2+rng()*.9),y:q.y+q.ny*sd*(q.w+.2+rng()*.9),r:lerp(.3,.85,rng())})}
+  // along each bank: reeds round the ponds, pebbles down the creeks. out is the way off the water at that point of the outline.
+  const rd=mulberry32(hashStr('bank:'+c.id+k));
+  for(const w of g.water){const big=Math.sqrt(w.area/Math.PI);
+    for(const ring of[w.poly,...(w.holes||[])])for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],L=hyp(b.x-a.x,b.y-a.y)||1,nx=(b.y-a.y)/L,ny=-(b.x-a.x)/L,sg=inSh(w,{x:(a.x+b.x)/2+nx*.6,y:(a.y+b.y)/2+ny*.6})?-1:1;
+      for(let t=rd()*3;t<L;t+=w.pond?3.4:1.5){const q={x:a.x+(b.x-a.x)*t/L,y:a.y+(b.y-a.y)*t/L},u=rd(),v=rd();
+        if(w.pond){if(u<.22&&w.area>120)g.reeds.push({x:q.x+nx*sg*.3,y:q.y+ny*sg*.3,a:Math.atan2(ny*sg,nx*sg),s:lerp(.8,1.4,v)})}
+        else if(u<.3)g.pebbles.push({x:q.x+nx*sg*(.3+v*.9),y:q.y+ny*sg*(.3+v*.9),r:lerp(.3,.8,rd())})}}
+    if(w.pond&&w.area>120){for(const p of w.spots)if(rd()<.55&&inSh(w,p,-1.6))for(let i=0,n=1+Math.floor(rd()*3);i<n;i++){const q={x:p.x+(rd()-.5)*5,y:p.y+(rd()-.5)*5};if(inSh(w,q,-1.6))g.lilies.push({...q,r:lerp(.7,1.4,rd()),a:rd()*TAU,fl:rd()<.35})}
+      // a duck or two, idling in a small circle well out from the bank
+      if(big>14&&w.spots.length)for(let i=0,n=1+(rd()<.4?1:0);i<n;i++){const p=w.spots[Math.floor(rd()*w.spots.length)];g.ducks.push({w,x:p.x,y:p.y,rad:lerp(1.2,2.2,rd()),T:lerp(50,80,rd())*1000,ph:rd()*TAU,dir:rd()<.5?1:-1})}}}
   for(const w of g.dry)for(const q of w.c)for(let i=0;i<3;i++)if(rng()<.6)g.pebbles.push({x:q.x+q.nx*(rng()*2-1)*(q.w+.6),y:q.y+q.ny*(rng()*2-1)*(q.w+.6),r:lerp(.3,1.1,rng())});
   for(const b of g.bunker){if(b.area<25)continue;const q=b.poly[Math.floor(rng()*b.poly.length)],a=Math.atan2(q.y-b.y,q.x-b.x);g.rakes.push({x:q.x+Math.cos(a)*1.3,y:q.y+Math.sin(a)*1.3,a:a+1.2+rng()})}
   for(let i=0;i<7;i++){const r=R,sd=rng()<.5?-1:1,q=rAt(r,lerp(20,r.len-20,rng())),d=lerp(32,58,rng()),p={x:q.x-q.dy*sd*d,y:q.y+q.dx*sd*d};

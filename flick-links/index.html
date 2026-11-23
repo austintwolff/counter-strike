@@ -337,10 +337,13 @@ function rAt(r,s){const p=r.pts,c=r.cum;let i=1;if(s>0)while(i<p.length-1&&c[i]<
   const a=p[i-1],b=p[i],l=(c[i]-c[i-1])||1,dx=(b.x-a.x)/l,dy=(b.y-a.y)/l,t=s-c[i-1];return{x:a.x+dx*t,y:a.y+dy*t,dx,dy}}
 function rProj(r,q){const p=r.pts;let best=1e9,bs=0;for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy||1,t=clamp(((q.x-a.x)*dx+(q.y-a.y)*dy)/l2,0,1),d=hyp(q.x-a.x-dx*t,q.y-a.y-dy*t);
   if(d<best){best=d;bs=r.cum[i-1]+t*Math.sqrt(l2)}}return bs}
-function fin(sh,smooth){const p=sh.poly,path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of p){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}
-  if(smooth){const n=p.length,m=i=>({x:(p[i%n].x+p[(i+1)%n].x)/2,y:(p[i%n].y+p[(i+1)%n].y)/2}),s=m(0);path.moveTo(s.x,s.y);for(let i=1;i<=n;i++){const c=p[i%n],e=m(i);path.quadraticCurveTo(c.x,c.y,e.x,e.y)}}
-  else{path.moveTo(p[0].x,p[0].y);for(let i=1;i<p.length;i++)path.lineTo(p[i].x,p[i].y)}
-  path.closePath();sh.path=path;sh.bb=[x0,y0,x1,y1];return sh}
+// holes, if any, are wound the other way from the outline, so an ordinary fill leaves them empty
+function fin(sh,smooth){const path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of sh.poly){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}
+  for(const p of sh.holes?[sh.poly,...sh.holes]:[sh.poly]){
+    if(smooth){const n=p.length,m=i=>({x:(p[i%n].x+p[(i+1)%n].x)/2,y:(p[i%n].y+p[(i+1)%n].y)/2}),s=m(0);path.moveTo(s.x,s.y);for(let i=1;i<=n;i++){const c=p[i%n],e=m(i);path.quadraticCurveTo(c.x,c.y,e.x,e.y)}}
+    else{path.moveTo(p[0].x,p[0].y);for(let i=1;i<p.length;i++)path.lineTo(p[i].x,p[i].y)}
+    path.closePath()}
+  sh.path=path;sh.bb=[x0,y0,x1,y1];return sh}
 const profile=prof=>t=>{let i=1;while(i<prof.length-1&&prof[i][0]<t)i++;const a=prof[i-1],b=prof[i],u=clamp((t-a[0])/((b[0]-a[0])||1),0,1);return lerp(a[1],b[1],u*u*(3-2*u))};
 function ribbon(r,s0,s1,prof){const L=s1-s0,wf=profile(prof),n=Math.max(2,Math.ceil(L/3)),c=[],poly=[];
   for(let i=0;i<=n;i++){const q=rAt(r,s0+L*i/n);c.push({x:q.x,y:q.y,nx:-q.dy,ny:q.dx,w:wf(i/n)})}
@@ -355,15 +358,46 @@ function blobPoly(sh,g){const out=[],c=Math.cos(sh.rot),s=Math.sin(sh.rot);for(l
 function blob(x,y,rx,ry,rot,seed,amp=.12){const r=mulberry32(seed*7919+13),wob=[];for(let k=2;k<=5;k++)wob.push([k,amp*(r()*.8+.4)/(k-1),r()*TAU]);
   const sh={kind:'blob',x,y,rx,ry,rot,wob,R:Math.max(rx,ry)*(1+amp*2.4)};sh.poly=blobPoly(sh,0);return fin(sh,true)}
 // a mapped outline, as a list of points. x, y is its centre and R the reach from it.
-function polyShape(pts,straight){const sh=fin({kind:'poly',poly:pts},!straight&&pts.length>6);let a=0,cx=0,cy=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length],c=p.x*q.y-q.x*p.y;a+=c;cx+=(p.x+q.x)*c;cy+=(p.y+q.y)*c}
+function polyShape(pts,straight,holes){const sh=fin(holes&&holes.length?{kind:'poly',poly:pts,holes}:{kind:'poly',poly:pts},!straight&&pts.length>6);let a=0,cx=0,cy=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length],c=p.x*q.y-q.x*p.y;a+=c;cx+=(p.x+q.x)*c;cy+=(p.y+q.y)*c}
   if(Math.abs(a)<1e-6){cx=pts[0].x;cy=pts[0].y}else{cx/=3*a;cy/=3*a}sh.x=cx;sh.y=cy;sh.area=Math.abs(a)/2;sh.R=Math.max(...pts.map(p=>hyp(p.x-cx,p.y-cy)));sh.rx=sh.ry=Math.sqrt(sh.area/Math.PI);sh.rot=0;return sh}
+// Ramer-Douglas-Peucker: drop the points of a closed outline that sit within eps of the line through their neighbours
+function simplifyRing(p,eps){const n=p.length;if(n<8)return p;let far=0,fd=0;for(let i=1;i<n;i++){const d=hyp(p[i].x-p[0].x,p[i].y-p[0].y);if(d>fd){fd=d;far=i}}
+  const keep=new Uint8Array(n+1),q=p.concat([p[0]]),st=[[0,far],[far,n]];keep[0]=keep[far]=1;
+  while(st.length){const[a,b]=st.pop();if(b-a<2)continue;const A=q[a],B=q[b],dx=B.x-A.x,dy=B.y-A.y,l=hyp(dx,dy)||1;let m=-1,md=eps;
+    for(let i=a+1;i<b;i++){const d=Math.abs((q[i].x-A.x)*dy-(q[i].y-A.y)*dx)/l;if(d>md){md=d;m=i}}if(m>0){keep[m]=1;st.push([a,m],[m,b])}}
+  return p.filter((_,i)=>keep[i])}
+const ringArea=p=>{let a=0;for(let i=0;i<p.length;i++){const u=p[i],v=p[(i+1)%p.length];a+=u.x*v.y-v.x*u.y}return a/2};
+const inRing=(p,q)=>{let c=false;for(let i=0,j=p.length-1;i<p.length;j=i++)if((p[i].y>q.y)!==(p[j].y>q.y)&&q.x<(p[j].x-p[i].x)*(q.y-p[i].y)/(p[j].y-p[i].y)+p[i].x)c=!c;return c};
+// Many overlapping or touching shapes become clean outlines of what they cover together: they are painted into a small
+// picture and its edge is traced back out. box limits the area; the result is a list of {outer, holes}, in yards.
+function mergeShapes(list,box){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const s of list){x0=Math.min(x0,s.bb[0]);y0=Math.min(y0,s.bb[1]);x1=Math.max(x1,s.bb[2]);y1=Math.max(y1,s.bb[3])}
+  x0=Math.max(x0-3,box[0]);y0=Math.max(y0-3,box[1]);x1=Math.min(x1+3,box[0]+box[2]);y1=Math.min(y1+3,box[1]+box[3]);if(x1-x0<1||y1-y0<1)return[];
+  const k=Math.min(2,Math.sqrt(1.5e6/((x1-x0)*(y1-y0)))),W=Math.ceil((x1-x0)*k),H=Math.ceil((y1-y0)*k);
+  const d=tex(W,H,c=>{c.setTransform(k,0,0,k,-x0*k,-y0*k);c.fillStyle='#000';for(const s of list)c.fill(s.path)}).getContext('2d').getImageData(0,0,W,H).data;
+  // marching squares over the picture's alpha, with one empty row and column all round so every outline closes
+  const T=128,v=(i,j)=>i<0||j<0||i>=W||j>=H?0:d[(j*W+i)*4+3],key=(i,j,vert)=>((j+1)*(W+2)+i+1)*2+vert,adj=new Map(),pos=new Map(),f=(a,b)=>(T-a)/(b-a);
+  const link=(k1,p1,k2,p2)=>{pos.set(k1,p1);pos.set(k2,p2);(adj.get(k1)||adj.set(k1,[]).get(k1)).push(k2);(adj.get(k2)||adj.set(k2,[]).get(k2)).push(k1)};
+  for(let j=-1;j<H;j++){let a=v(-1,j),e=v(-1,j+1);for(let i=-1;i<W;i++){const b=v(i+1,j),c=v(i+1,j+1),ix=(a>=T?8:0)|(b>=T?4:0)|(c>=T?2:0)|(e>=T?1:0);
+      if(ix&&ix!==15){const t=()=>[key(i,j,0),{x:i+f(a,b),y:j}],r=()=>[key(i+1,j,1),{x:i+1,y:j+f(b,c)}],bo=()=>[key(i,j+1,0),{x:i+f(e,c),y:j+1}],l=()=>[key(i,j,1),{x:i,y:j+f(a,e)}],go=(u,w)=>link(u[0],u[1],w[0],w[1]),mid=(a+b+c+e)/4>=T;
+        if(ix===1||ix===14)go(l(),bo());else if(ix===2||ix===13)go(bo(),r());else if(ix===3||ix===12)go(l(),r());else if(ix===4||ix===11)go(t(),r());else if(ix===6||ix===9)go(t(),bo());else if(ix===7||ix===8)go(t(),l());
+        else if((ix===5)===mid){go(t(),l());go(bo(),r())}else{go(t(),r());go(l(),bo())}}
+      a=b;e=c}}
+  const rings=[],seen=new Set();
+  for(const start of adj.keys()){if(seen.has(start))continue;const ring=[];let prev=-1,cur=start;
+    while(cur!==undefined&&!seen.has(cur)){seen.add(cur);const q=pos.get(cur);ring.push({x:x0+(q.x+.5)/k,y:y0+(q.y+.5)/k});const n=adj.get(cur),nx=n[0]!==prev?n[0]:n[1];prev=cur;cur=nx}
+    const sr=simplifyRing(ring,.28);if(sr.length>=4&&Math.abs(ringArea(sr))>5)rings.push(sr)}
+  // an outline inside an odd number of others is a hole. Outlines are wound one way and holes the other.
+  rings.sort((a,b)=>Math.abs(ringArea(b))-Math.abs(ringArea(a)));const depth=rings.map((r,i)=>rings.slice(0,i).filter(o=>inRing(o,r[0])).length),out=[];
+  rings.forEach((r,i)=>{const hole=depth[i]%2===1;if((ringArea(r)<0)!==hole)r.reverse();if(!hole)out.push({outer:r,holes:[],i})});
+  rings.forEach((r,i)=>{if(depth[i]%2===1){const par=out.filter(o=>o.i<i&&inRing(o.outer,r[0])).pop();if(par)par.holes.push(r)}});
+  return out}
 function edgeDist(pts,q){let m=1e9;for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length],dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy||1,t=clamp(((q.x-a.x)*dx+(q.y-a.y)*dy)/l2,0,1);m=Math.min(m,hyp(q.x-a.x-dx*t,q.y-a.y-dy*t))}return m}
 function grown(sh,g){return sh.kind==='poly'?{kind:'grown',of:sh,g,bb:sh.bb,path:sh.path}:fin({kind:'grown',of:sh,g,poly:blobPoly(sh,g)},true)}
 function inSh(sh,q,g=0){
   if(sh.kind==='grown')return inSh(sh.of,q,sh.g+g);
-  if(sh.kind==='poly'){const b=sh.bb;if(q.x<b[0]-g||q.x>b[2]+g||q.y<b[1]-g||q.y>b[3]+g)return false;const p=sh.poly;let c=false;
-    for(let i=0,j=p.length-1;i<p.length;j=i++)if((p[i].y>q.y)!==(p[j].y>q.y)&&q.x<(p[j].x-p[i].x)*(q.y-p[i].y)/(p[j].y-p[i].y)+p[i].x)c=!c;
-    return g===0?c:g>0?c||edgeDist(p,q)<=g:c&&edgeDist(p,q)>=-g}
+  if(sh.kind==='poly'){const b=sh.bb;if(q.x<b[0]-g||q.x>b[2]+g||q.y<b[1]-g||q.y>b[3]+g)return false;const rs=sh.holes?[sh.poly,...sh.holes]:[sh.poly];let c=false;
+    for(const p of rs)for(let i=0,j=p.length-1;i<p.length;j=i++)if((p[i].y>q.y)!==(p[j].y>q.y)&&q.x<(p[j].x-p[i].x)*(q.y-p[i].y)/(p[j].y-p[i].y)+p[i].x)c=!c;
+    if(g===0)return c;let ed=1e9;for(const p of rs)ed=Math.min(ed,edgeDist(p,q));return g>0?c||ed<=g:c&&ed>=-g}
   if(sh.kind==='blob'){const dx=q.x-sh.x,dy=q.y-sh.y;if(Math.abs(dx)>sh.R+g||Math.abs(dy)>sh.R+g)return false;
     const c=Math.cos(sh.rot),s=Math.sin(sh.rot),u=dx*c+dy*s,v=-dx*s+dy*c,th=Math.atan2(v/sh.ry,u/sh.rx),m=bm(sh,th);return hyp(u,v)<=hyp(Math.cos(th)*sh.rx*m,Math.sin(th)*sh.ry*m)+g}
   const b=sh.bb;if(q.x<b[0]-g||q.x>b[2]+g||q.y<b[1]-g||q.y>b[3]+g)return false;
@@ -422,8 +456,16 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
   g.water=shapes(m.water,f=>Object.assign(shp(f),{pond:true}));g.dry=[];
   // a river can run for miles past the course: keep only the stretches that pass the holes
   const runs=[];for(const s of m.streams){let run=null;for(const q of pts(s.p)){if(inPlay(q)){if(!run)runs.push(run={...s,P:[]});run.P.push(q)}else run=null}}
-  for(const s of runs){if(s.P.length<2)continue;const r=mkRoute(catmull(s.P,3));if(r.len<8)continue;const n=Math.max(1,Math.round(r.len/22)),prof=[];for(let i=0;i<=n;i++)prof.push([i/n,s.w/2*(.75+rng()*.6)]);
+  for(const s of runs){if(s.P.length<2)continue;const r=mkRoute(catmull(s.P,3));if(r.len<8)continue;const n=Math.max(1,Math.round(r.len/22)),prof=[];for(let i=0;i<=n;i++)prof.push([i/n,s.w/2*(.9+rng()*.3)]);
     const rb=ribbon(r,0,r.len,prof);rb.line=r;rb.x=r.pts[0].x;rb.y=r.pts[0].y;(s.dry?g.dry:g.water).push(rb)}
+  // The map often draws one stretch of water several times over (a creek as a line and as its banks, a pond as water and as a hazard),
+  // and long rivers come in pieces. All of it is merged into clean outlines, one per body of water, so nothing overlaps or shows a seam.
+  if(g.water.length){const rw=mulberry32(hashStr('water:'+c.id+k));g.water=mergeShapes(g.water,g.box).map(o=>{const w=polyShape(o.outer,false,o.holes);
+      let per=0;for(let i=0;i<o.outer.length;i++){const a=o.outer[i],b=o.outer[(i+1)%o.outer.length];per+=hyp(b.x-a.x,b.y-a.y)}
+      for(const h of o.holes)w.area-=Math.abs(ringArea(h));w.per=per;w.wide=2*w.area/per;w.pond=w.wide>9;w.round=w.area/(Math.PI*w.R*w.R)>.3;
+      // a few spots well out from the bank, for lilies, rising fish and ducks
+      w.spots=[];for(let i=0;i<70&&w.spots.length<9;i++){const p={x:lerp(w.bb[0],w.bb[2],rw()),y:lerp(w.bb[1],w.bb[3],rw())};if(inSh(w,p,-Math.min(5,w.wide*.3)))w.spots.push(p)}
+      return w})}
   const wet=(p,d)=>g.water.some(w=>inSh(w,p,d)),line=f=>{const P=pts(f.p),path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;P.forEach((q,i)=>{i?path.lineTo(q.x,q.y):path.moveTo(q.x,q.y);x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)});return{...f,pts:P,path,bb:[x0-9,y0-9,x1+9,y1+9]}};
   g.roads=m.roads.filter(r=>local(r)&&(th.houses||r.w>=9)).map(line);g.paths=shapes(m.paths,line);
   // a bridge wherever a path or road runs over water
@@ -461,11 +503,16 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
   g.trees.sort((a,b)=>a.r-b.r);
   // small things that make it a place
   g.lilies=[];g.reeds=[];g.ducks=[];g.pebbles=[];g.rakes=[];g.blooms=[];
-  for(const w of g.water){if(w.pond){if(w.area<120)continue;const n=w.poly.length,big=Math.sqrt(w.area/Math.PI);
-      for(let i=0,k=Math.round(3+big/6);i<k;i++){const q=w.poly[Math.floor(rng()*n)],f=lerp(.5,.86,rng()),p={x:w.x+(q.x-w.x)*f,y:w.y+(q.y-w.y)*f};if(inSh(w,p,-1.6))g.lilies.push({...p,r:lerp(.7,1.4,rng()),a:rng()*TAU,fl:rng()<.35})}
-      for(let i=0;i<n;i++)if(rng()<.3){const q=w.poly[i],a=Math.atan2(q.y-w.y,q.x-w.x);g.reeds.push({x:q.x+Math.cos(a)*.5,y:q.y+Math.sin(a)*.5,a,s:lerp(.8,1.4,rng())})}
-      if(big>16)for(let i=0,k=1+(rng()<.5?1:0);i<k;i++)g.ducks.push({w,ph:rng()*TAU,f:lerp(.3,.5,rng()),dir:rng()<.5?1:-1})}
-    else for(const q of w.c)for(const sd of[-1,1])if(rng()<.42)g.pebbles.push({x:q.x+q.nx*sd*(q.w+.2+rng()*.9),y:q.y+q.ny*sd*(q.w+.2+rng()*.9),r:lerp(.3,.85,rng())})}
+  // along each bank: reeds round the ponds, pebbles down the creeks. out is the way off the water at that point of the outline.
+  const rd=mulberry32(hashStr('bank:'+c.id+k));
+  for(const w of g.water){const big=Math.sqrt(w.area/Math.PI);
+    for(const ring of[w.poly,...(w.holes||[])])for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],L=hyp(b.x-a.x,b.y-a.y)||1,nx=(b.y-a.y)/L,ny=-(b.x-a.x)/L,sg=inSh(w,{x:(a.x+b.x)/2+nx*.6,y:(a.y+b.y)/2+ny*.6})?-1:1;
+      for(let t=rd()*3;t<L;t+=w.pond?3.4:1.5){const q={x:a.x+(b.x-a.x)*t/L,y:a.y+(b.y-a.y)*t/L},u=rd(),v=rd();
+        if(w.pond){if(u<.22&&w.area>120)g.reeds.push({x:q.x+nx*sg*.3,y:q.y+ny*sg*.3,a:Math.atan2(ny*sg,nx*sg),s:lerp(.8,1.4,v)})}
+        else if(u<.3)g.pebbles.push({x:q.x+nx*sg*(.3+v*.9),y:q.y+ny*sg*(.3+v*.9),r:lerp(.3,.8,rd())})}}
+    if(w.pond&&w.area>120){for(const p of w.spots)if(rd()<.55&&inSh(w,p,-1.6))for(let i=0,n=1+Math.floor(rd()*3);i<n;i++){const q={x:p.x+(rd()-.5)*5,y:p.y+(rd()-.5)*5};if(inSh(w,q,-1.6))g.lilies.push({...q,r:lerp(.7,1.4,rd()),a:rd()*TAU,fl:rd()<.35})}
+      // a duck or two, idling in a small circle well out from the bank
+      if(big>14&&w.spots.length)for(let i=0,n=1+(rd()<.4?1:0);i<n;i++){const p=w.spots[Math.floor(rd()*w.spots.length)];g.ducks.push({w,x:p.x,y:p.y,rad:lerp(1.2,2.2,rd()),T:lerp(50,80,rd())*1000,ph:rd()*TAU,dir:rd()<.5?1:-1})}}}
   for(const w of g.dry)for(const q of w.c)for(let i=0;i<3;i++)if(rng()<.6)g.pebbles.push({x:q.x+q.nx*(rng()*2-1)*(q.w+.6),y:q.y+q.ny*(rng()*2-1)*(q.w+.6),r:lerp(.3,1.1,rng())});
   for(const b of g.bunker){if(b.area<25)continue;const q=b.poly[Math.floor(rng()*b.poly.length)],a=Math.atan2(q.y-b.y,q.x-b.x);g.rakes.push({x:q.x+Math.cos(a)*1.3,y:q.y+Math.sin(a)*1.3,a:a+1.2+rng()})}
   for(let i=0;i<7;i++){const r=R,sd=rng()<.5?-1:1,q=rAt(r,lerp(20,r.len-20,rng())),d=lerp(32,58,rng()),p={x:q.x-q.dy*sd*d,y:q.y+q.dx*sd*d};
@@ -558,16 +605,15 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   for(const s of G.pitches)if(seen(s)){const hard=/tennis|basket|pickle/.test(s.sport);ctx.fillStyle=hard?'#3f7f6b':'#5f9f4a';ctx.fill(s.path);if(!hard)texFill(s.path,'stripe',.08,1.2,.2);ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=.35;ctx.stroke(s.path);
     ctx.beginPath();ctx.moveTo((s.bb[0]+s.bb[2])/2,s.y-s.ry*.5);ctx.lineTo((s.bb[0]+s.bb[2])/2,s.y+s.ry*.5);ctx.globalAlpha=.5;ctx.stroke();ctx.globalAlpha=1}
   for(const s of G.pool)if(seen(s)){ctx.fillStyle='#e6e1d2';ctx.strokeStyle='#e6e1d2';ctx.lineWidth=1.6;ctx.stroke(s.path);ctx.fillStyle='#4fb6d8';ctx.fill(s.path)}
-  // water
-  for(const w of G.water)if(seen(w)){ctx.strokeStyle=K.bank;ctx.lineWidth=w.pond?3:2.2;ctx.stroke(w.path);
-    if(w.pond){if(!w.grad){const g=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.R*1.05);g.addColorStop(0,K.deep);g.addColorStop(.62,K.water);g.addColorStop(1,'#2f8686');w.grad=g}ctx.fillStyle=w.grad}
+  // water: a soft shade on the grass, a thin muddy rim, then the water with pale shallows along the bank
+  ctx.strokeStyle='rgba(16,32,12,.2)';for(const w of G.water)if(seen(w)){ctx.lineWidth=w.pond?6:4;ctx.stroke(w.path)}
+  for(const w of G.water)if(seen(w)){ctx.strokeStyle=K.bank;ctx.globalAlpha=.8;ctx.lineWidth=w.pond?1.5:1.1;ctx.stroke(w.path);ctx.globalAlpha=1;
+    if(w.round){if(!w.grad){const g=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.R*1.05);g.addColorStop(0,K.deep);g.addColorStop(.62,K.water);g.addColorStop(1,'#2f8686');w.grad=g}ctx.fillStyle=w.grad}
     else ctx.fillStyle=K.water;
-    ctx.fill(w.path);inner(w.path,0,0,K.shallow,.3,w.pond?7:2.2);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.45,2.6);
-    texFill(w.path,'glint',.6,.2,.3,now*.0016*(1+h.wind.sp/8),Math.sin(now/2300)*3);
-    ctx.save();ctx.clip(w.path);ctx.setLineDash([1.6,2.6]);ctx.lineDashOffset=-now/520;ctx.strokeStyle='#eafffb';ctx.globalAlpha=.3;ctx.lineWidth=w.pond?1.5:.9;ctx.stroke(w.path);ctx.setLineDash([]);
-    if(w.pond&&w.area>150){const Rr=w.rx,sx=w.x-SUN.x*Rr*.3,sy=w.y-SUN.y*Rr*.3,gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rr*.7);gl.addColorStop(0,'rgba(255,250,215,.24)');gl.addColorStop(1,'rgba(255,250,215,0)');
-      ctx.globalAlpha=.8;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr)}
-    ctx.restore()}
+    ctx.fill(w.path);inner(w.path,0,0,K.shallow,.26,w.pond?7:2.6);inner(w.path,0,0,K.shallow,.2,w.pond?2.4:1);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.38,2.4);
+    texFill(w.path,'glint',.6,.2,.3,0,0);inner(w.path,0,0,'#eafffb',.2,.6);
+    if(w.round&&w.area>150){const Rr=w.rx,sx=w.x-SUN.x*Rr*.3,sy=w.y-SUN.y*Rr*.3,gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rr*.7);gl.addColorStop(0,'rgba(255,250,215,.24)');gl.addColorStop(1,'rgba(255,250,215,0)');
+      ctx.save();ctx.clip(w.path);ctx.globalAlpha=.8;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr);ctx.restore()}}
   if(z>1.2)for(const l of G.lilies)if(vis(l)){ctx.fillStyle='#2f6a3a';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.arc(l.x+.08,l.y+.1,l.r,l.a+.4,l.a+TAU);ctx.fill();
     ctx.fillStyle='#5a9f4e';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.arc(l.x,l.y,l.r,l.a+.4,l.a+TAU);ctx.fill();ctx.fillStyle='rgba(215,245,160,.35)';disc(l.x-l.r*.25,l.y-l.r*.25,l.r*.38);
     if(l.fl){ctx.fillStyle='#fff3f7';disc(l.x+Math.cos(l.a)*l.r*.3,l.y+Math.sin(l.a)*l.r*.3,l.r*.34);ctx.fillStyle='#f4c84a';disc(l.x+Math.cos(l.a)*l.r*.3,l.y+Math.sin(l.a)*l.r*.3,l.r*.13)}}
@@ -620,11 +666,12 @@ function fogOf(h){const B=h.geo.box,u=4,w=Math.ceil(B[2]/u),hh=Math.ceil(B[3]/u)
   return tex(w,hh,x=>{x.imageSmoothingQuality='high';x.drawImage(soft,0,0,w,hh);x.drawImage(mist,0,0);rub(x,FADE0,FADE0+46,d=>sm((d-FADE0)/46))})}
 // The few things in the world that move, drawn every frame over the kept scenery.
 function drawLive(h,now){const G=h.geo,z=cam.s;ctx.lineJoin='round';ctx.lineCap='round';
-  for(const w of G.water)if(w.pond&&w.area>150&&seen(w)){const T=5200,tt=now/T+Math.abs(w.x)*.01,k=Math.floor(tt),u=tt%1,rr=mulberry32(k*131+7),q=w.poly[Math.floor(rr()*w.poly.length)],f=.25+rr()*.5,rx=w.x+(q.x-w.x)*f,ry=w.y+(q.y-w.y)*f;
-    if(u<.5){ctx.strokeStyle='#eafffb';ctx.lineWidth=.16;for(const m of[1,.55]){ctx.globalAlpha=(1-u*2)*.5;ctx.beginPath();ctx.arc(rx,ry,(.4+u*9)*m,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
-  for(const d of G.ducks)if(seen(d.w)){const w=d.w,n=w.poly.length,u=((now/14000*d.dir+d.ph/TAU)%1+1)%1*n,i=Math.floor(u),fr=u-i,a=w.poly[i],b=w.poly[(i+1)%n],x=w.x+(lerp(a.x,b.x,fr)-w.x)*d.f,y=w.y+(lerp(a.y,b.y,fr)-w.y)*d.f,
-      hd=Math.atan2((b.y-a.y)*d.dir,(b.x-a.x)*d.dir),sz=Math.max(.55,4.2/z);ctx.save();ctx.translate(x,y);ctx.rotate(hd);
-    ctx.strokeStyle='rgba(234,255,251,.38)';ctx.lineWidth=sz*.14;ctx.beginPath();ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,sz*1.1);ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*3,-sz*1.1);ctx.stroke();
+  // a fish rises now and then
+  for(const w of G.water)if(w.pond&&w.area>150&&w.spots.length&&seen(w)){const T=5200,tt=now/T+Math.abs(w.x)*.01,k=Math.floor(tt),u=tt%1,q=w.spots[Math.floor(mulberry32(k*131+7)()*w.spots.length)];
+    if(u<.5){ctx.strokeStyle='#eafffb';ctx.lineWidth=.16;for(const m of[1,.55]){ctx.globalAlpha=(1-u*2)*.5;ctx.beginPath();ctx.arc(q.x,q.y,(.4+u*9)*m,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
+  // ducks idle round a spot out on the water, a slow turn every minute or so
+  for(const d of G.ducks)if(seen(d.w)){const th=d.ph+now/d.T*TAU*d.dir,x=d.x+Math.cos(th)*d.rad,y=d.y+Math.sin(th)*d.rad*.7,hd=Math.atan2(Math.cos(th)*.7*d.dir,-Math.sin(th)*d.dir),sz=Math.max(.55,4.2/z);ctx.save();ctx.translate(x,y);ctx.rotate(hd);
+    ctx.strokeStyle='rgba(234,255,251,.3)';ctx.lineWidth=sz*.12;ctx.beginPath();ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*2,sz*.7);ctx.moveTo(-sz*.4,0);ctx.lineTo(-sz*2,-sz*.7);ctx.stroke();
     ctx.fillStyle='rgba(3,20,24,.3)';ctx.beginPath();ctx.ellipse(sz*.12,sz*.16,sz,sz*.6,0,0,TAU);ctx.fill();ctx.fillStyle='#f4efe2';ctx.beginPath();ctx.ellipse(0,0,sz,sz*.58,0,0,TAU);ctx.fill();
     ctx.fillStyle='#d9d1bd';ctx.beginPath();ctx.ellipse(-sz*.25,0,sz*.55,sz*.36,0,0,TAU);ctx.fill();ctx.fillStyle='#2f5d3a';disc(sz*.85,0,sz*.36);ctx.fillStyle='#e9a23b';ctx.beginPath();ctx.ellipse(sz*1.25,0,sz*.2,sz*.12,0,0,TAU);ctx.fill();ctx.restore()}
   // the cup keeps its size on screen, so it is drawn here and not into a kept picture that may be magnified
@@ -640,7 +687,7 @@ function drawLive(h,now){const G=h.geo,z=cam.s;ctx.lineJoin='round';ctx.lineCap=
 // Redrawing the whole course every frame is far too much for a phone. So the scenery is kept in two pictures:
 //   far  — the whole hole, drawn once when the hole starts, used while the camera is moving
 //   mid  — the green and its surrounds, sharp enough for putting, laid over the far picture when the camera moves up close
-//   near — exactly what is on screen, drawn crisp each time the camera comes to rest, used while it stays there
+//   near — exactly what will be on screen once the camera arrives, drawn crisp ahead of time and used while it rests there
 // Aiming, the swing ring and putting all happen with the camera at rest, so those frames cost one picture plus the ball.
 const SC={far:null,farHole:null,box:null,mid:null,midHole:null,mbox:null,near:null,key:''};
 function camOn(){ctx.translate(W/2,H*cam.ay);ctx.rotate(cam.r);ctx.scale(cam.s,cam.s);ctx.translate(-cam.x,-cam.y)}
@@ -650,16 +697,20 @@ function ensureFar(h){if(SC.farHole===h)return;const[x0,y0,bw,bh]=h.geo.box,k=Ma
   onCanvas(SC.far,()=>{ctx.setTransform(k,0,0,k,-x0*k,-y0*k);VR=[x0,y0,bw,bh];RZ=k*.6;drawStatic(h)});SC.farHole=h;SC.box=[x0,y0,bw,bh]}
 function ensureMid(h){if(SC.midHole===h)return;const g=h.green,R=g.R+34,x0=g.x-R,y0=g.y-R,k=Math.min(14,Math.sqrt(Q>1?2.2e6:1.2e6)/(2*R));SC.mid=SC.mid||document.createElement('canvas');SC.mid.width=SC.mid.height=Math.ceil(2*R*k);
   onCanvas(SC.mid,()=>{ctx.setTransform(k,0,0,k,-x0*k,-y0*k);VR=[x0,y0,2*R,2*R];RZ=k;drawStatic(h)});SC.midHole=h;SC.mbox=[x0,y0,2*R,2*R]}
-function ensureNear(h){const key=[h.course.id,h.n,cam.x,cam.y,cam.s,cam.r,cam.ay,W,H,DPR,Q].join();if(SC.key===key)return;SC.near=SC.near||document.createElement('canvas');
+const nearKey=(h,c)=>[h.course.id,h.n,c.x,c.y,c.s,c.r,c.ay,W,H,DPR,Q].join();
+function ensureNear(h,c){const key=nearKey(h,c);if(SC.key===key)return;SC.near=SC.near||document.createElement('canvas');const was={...cam};Object.assign(cam,c);
   if(SC.near.width!==cv.width||SC.near.height!==cv.height){SC.near.width=cv.width;SC.near.height=cv.height}
-  onCanvas(SC.near,()=>{ctx.setTransform(DPR,0,0,DPR,0,0);ctx.save();camOn();VR=viewRect();RZ=cam.s;drawStatic(h);ctx.restore();drawLight();drawVignette()});SC.key=key}
+  onCanvas(SC.near,()=>{ctx.setTransform(DPR,0,0,DPR,0,0);ctx.save();camOn();VR=viewRect();RZ=cam.s;drawStatic(h);ctx.restore();drawLight();drawVignette()});Object.assign(cam,was);SC.key=key}
 const camAtRest=()=>cam.x===camT.x&&cam.y===camT.y&&cam.s===camT.s&&cam.r===camT.r&&cam.ay===camT.ay;
-function drawScene(now){const h=cur();
-  if(camAtRest()){ensureNear(h);ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(SC.near,0,0);ctx.setTransform(DPR,0,0,DPR,0,0)}
+// Drawing the crisp picture takes a moment, long enough to make the swing ring stutter. So it is drawn for where the camera
+// is heading as soon as that is known (the ball has just stopped, or a club was changed), never while a swing is being timed.
+function drawScene(now){const h=cur(),rest=camAtRest();
+  if(!S.g&&S.mode!=='flight'&&(S.mode!=='intro'||rest))ensureNear(h,camT);
+  if(rest&&SC.key===nearKey(h,cam)){ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(SC.near,0,0);ctx.setTransform(DPR,0,0,DPR,0,0)}
   else{ensureFar(h);ctx.fillStyle=h.mist;ctx.fillRect(0,0,W,H);ctx.save();camOn();ctx.drawImage(SC.far,SC.box[0],SC.box[1],SC.box[2],SC.box[3]);
     if(cam.s>4.5){const g=h.green,R=hyp(W,H)/cam.s/2;if(hyp(cam.x-g.x,cam.y-g.y)<R+g.R+34){ensureMid(h);ctx.drawImage(SC.mid,SC.mbox[0],SC.mbox[1],SC.mbox[2],SC.mbox[3])}}
     ctx.restore();drawVignette()}
-  ctx.save();camOn();VR=viewRect();drawLive(h,now);ctx.restore()}
+  ctx.save();camOn();VR=viewRect();drawLive(h,now);ctx.restore();drawWind(now,h)}
 const seen2=seen;
 // Bridges. Timber: an arched plank deck between stone footings, with posts and handrails, and piers under a long span.
 // Stone: an old park bridge with a cobbled deck, parapet walls, capped pillars and the dark of an arch on the water either side.
@@ -694,9 +745,13 @@ function drawSky(now,h){const z=cam.s,R=hyp(W,H)/z*.62,T=17000,k=Math.floor(now/
     ctx.lineCap='round';ctx.lineJoin='round';for(let i=0;i<3;i++){const x=bx-ca*i*sz*2.4-sa*(i===1?1:i===2?-1:0)*sz*1.6,y=by-sa*i*sz*2.4+ca*(i===1?1:i===2?-1:0)*sz*1.6,fl=Math.sin(now/95+i*1.7)*.55;
       for(const[ox,oy,col,lw]of[[SUN.x*sz*5,SUN.y*sz*5,'rgba(6,18,8,.22)',.34],[0,0,'#f6f1e2',.26]]){ctx.strokeStyle=col;ctx.lineWidth=sz*lw;ctx.beginPath();
         const wing=sgn=>{const wa=ang+sgn*(1.95+fl);return[x+ox+Math.cos(wa)*sz*1.25,y+oy+Math.sin(wa)*sz*1.25]},L=wing(1),Rr=wing(-1);ctx.moveTo(L[0],L[1]);ctx.lineTo(x+ox,y+oy);ctx.lineTo(Rr[0],Rr[1]);ctx.stroke()}}}
-  if(h.wind.sp){const L=2*R,n=16,len=(5+h.wind.sp)/z,ux=h.wind.x/h.wind.sp,uy=h.wind.y/h.wind.sp,mod=(a,m)=>(a%m+m)%m;ctx.strokeStyle='#fff8e0';ctx.lineWidth=1.2/z;ctx.lineCap='round';
-    for(let i=0;i<n;i++){const x=cam.x-R+mod(i*.618034*L+now/1000*h.wind.x*1.5-(cam.x-R),L),y=cam.y-R+mod(i*.754878*L+now/1000*h.wind.y*1.5-(cam.y-R),L);
-      ctx.globalAlpha=.16+.2*Math.abs(Math.sin(now/700+i));ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-ux*len,y-uy*len);ctx.stroke()}ctx.globalAlpha=1}}
+}
+// The wind, as pale streaks drifting across the screen the way it blows as the camera sees it. Their pace follows the wind
+// alone, not the zoom, and their drift is added up frame by frame so a turning camera or a new hole never makes them jump.
+let windX=0,windY=0,windT=0;
+function drawWind(now,h){const dt=Math.min(.05,(now-windT)/1000||0);windT=now;if(!h.wind.sp)return;const v=rotv(h.wind.x,h.wind.y,cam.r),sp=h.wind.sp,ux=v.x/sp,uy=v.y/sp,len=12+sp*1.5,L=Math.max(W,H)+80,mod=(a,m)=>(a%m+m)%m;
+  windX+=v.x*8*dt;windY+=v.y*8*dt;ctx.strokeStyle='#fff8e0';ctx.lineWidth=1.2;ctx.lineCap='round';
+  for(let i=0;i<14;i++){const x=mod(i*.618034*L+windX,L)-40,y=mod(i*.754878*L+windY,L)-40;ctx.globalAlpha=.14+.18*Math.abs(Math.sin(now/700+i));ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-ux*len,y-uy*len);ctx.stroke()}ctx.globalAlpha=1}
 // late-afternoon light: warm from the sun's side, cool in the far corner
 let GRADE=null;
 function drawLight(){if(Q<2)return;if(!GRADE){GRADE=ctx.createLinearGradient(0,0,W,H);GRADE.addColorStop(0,'rgba(255,216,150,.5)');GRADE.addColorStop(.55,'rgba(255,236,200,.08)');GRADE.addColorStop(1,'rgba(40,70,120,.42)')}
@@ -812,7 +867,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795393267000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795397155000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -870,10 +925,10 @@ function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
   camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.6/view;if(d>.02)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
 function updateCam(dt){
   if(S.mode==='flight'&&!S.ball.putt&&camT.s<5){camT.x=S.ball.x;camT.y=S.ball.y;camT.ay=.6}
-  const k=1-Math.exp(-dt*(S.mode==='flight'?7:4.2));
+  const k=1-Math.exp(-dt*(S.mode==='flight'?7:S.g?13:4.2)); // once a swing has begun the camera hurries to its place: the aim is read off the screen
   cam.x=lerp(cam.x,camT.x,k);cam.y=lerp(cam.y,camT.y,k);cam.s=lerp(cam.s,camT.s,k);cam.ay=lerp(cam.ay,camT.ay,k);cam.r=angTo(cam.r,camT.r,k);
   // once it is as good as there, snap to rest: the scenery can then be drawn crisp once and kept
-  const dr=((camT.r-cam.r+Math.PI)%TAU+TAU)%TAU-Math.PI;if(hyp(cam.x-camT.x,cam.y-camT.y)*cam.s<.6&&Math.abs(cam.s/camT.s-1)<.004&&Math.abs(dr)<.002&&Math.abs(cam.ay-camT.ay)<.002)Object.assign(cam,camT)}
+  const dr=((camT.r-cam.r+Math.PI)%TAU+TAU)%TAU-Math.PI;if(hyp(cam.x-camT.x,cam.y-camT.y)*cam.s<1.5&&Math.abs(cam.s/camT.s-1)<.008&&Math.abs(dr)<.004&&Math.abs(cam.ay-camT.ay)<.003)Object.assign(cam,camT)}
 
 // ───────── shot setup
 function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie='rough';S.lie=lie;
@@ -884,17 +939,9 @@ function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie=
   else if(lie==='fringe'){list=[PUTTER,...long];ci=d<=13?0:pickClub(list)}
   else{list=long;ci=pickClub(list)}
   S.clubs=list;S.ci=ci;S.club=list[ci];placeMarker()}
-// the aim marker starts a foot and a half past the cup on the straight line; tap-ins skip the read
-// roll a ball over the real surface without drawing it; stop(x,y) may end the roll early
-function rollSim(h,x,y,vx,vy,stop){const dt=1/120;for(let t=0;t<14;t+=dt){const q={x,y},lie=lieAt(h,q),mu=MU[lie];if(lie==='green'||lie==='fringe'){const a=slopeAt(h,q);vx+=a.x*dt;vy+=a.y*dt}
-    const sp=hyp(vx,vy);if(sp<=mu*dt)break;const k=(sp-mu*dt)/sp;vx*=k;vy*=k;x+=vx*dt;y+=vy*dt;if(stop&&stop(x,y))break}return{x,y}}
-// rise or fall to the cup, and how far a putt hit straight at it at holing pace would miss, both in inches
-function readPutt(){const h=cur(),b=S.ball,dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy);if(d<.2)return S.read=null;const ux=dx/d,uy=dy/d,v=Math.sqrt(2*MU.green*(d+Math.min(.5,d*.25)));
-  const e=rollSim(h,b.x,b.y,ux*v,uy*v,(x,y)=>(x-b.x)*ux+(y-b.y)*uy>=d);
-  S.read={up:Math.round((phiAt(h,h.pin)-phiAt(h,b))/15.7*36),brk:Math.round(((e.x-b.x)*-uy+(e.y-b.y)*ux)*36)}}
-const readText=()=>{const r=S.read;if(!r)return'';const u=Math.abs(r.up),k=Math.abs(r.brk);return(u<1?'Level':(r.up>0?'Uphill ':'Downhill ')+u+' in')+' · '+(k<1?'straight':'breaks '+k+' in '+(r.brk>0?'right':'left'))};
+// the aim marker starts a little past the cup on the straight line; tap-ins go straight to the stroke
 function placeMarker(){const h=cur(),b=S.ball,dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy)||1,past=Math.min(.5,d*.25);
-  S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode=d<1.4?'stroke':'aim';if(S.club.putt)readPutt()}
+  S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode=d<1.4?'stroke':'aim'}
 function setBall(x,y){Object.assign(S.ball,{x,y,z:0,vx:0,vy:0,vz:0,air:false,spin:0,putt:false,gone:false,tree:null,rollK:1});S.trail.length=0}
 function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];placeMarker();aimCam();hud()}
 
@@ -959,10 +1006,10 @@ function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)t
   b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
   b.tree=cur().oaks.find(t=>hyp(b.x-t.x,b.y-t.y)<t.r)||null; // a ball already under an oak can be played out from beneath it
   let word,sub=onTime?'Perfect tempo':shank?(ts<0?'Far too early':'Far too late'):(q<.3?'A touch ':'')+(ts<0?'early':'late');
-  if(c.putt){const pace=shank?.45:ts<0?1-.22*q:1+.2*q,d=rotv(aim.x,aim.y,over*.5+ts*q*.04),v=Math.sqrt(2*MU.green*markDist()*p*pace);b.vx=d.x*v;b.vy=d.y*v;b.vz=0;b.air=false;b.spin=0;
+  if(c.putt){const pace=shank?.4:onTime?1:ts<0?.95-.27*q:1.05+.25*q,d=rotv(aim.x,aim.y,over*.6+(onTime?0:ts*(.01+q*.06))),v=Math.sqrt(2*MU.green*markDist()*p*pace);b.vx=d.x*v;b.vy=d.y*v;b.vz=0;b.air=false;b.spin=0;
     word=pure?'Pure roll':shank?'Stubbed':kf>0?'Pushed':kf<0?'Pulled':ts<0?'Left short':'Hit firm';sfx.putt();store('putts',(fetchKey('putts')||0)+1)}
-  else{const th=(shank?c.loft*.6:c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.42:pure?c.bomb||1:1-.22*Math.pow(q,1.5)),v=Math.sqrt(carry*G/Math.sin(2*th)),
-      k=shank?0:clamp(kf+ts*q*.8,-1.2,1.2),d=rotv(aim.x,aim.y,shank?.6:over*.3+ts*q*.05); // a shank squirts low and hard right
+  else{const th=(shank?c.loft*.6:c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.38:pure?c.bomb||1:onTime?.985:.955-.3*Math.pow(q,1.3)),v=Math.sqrt(carry*G/Math.sin(2*th)),
+      k=shank?0:clamp(kf*1.15+(onTime?0:ts*(.1+q*.9)),-1.3,1.3),d=rotv(aim.x,aim.y,shank?.6:over*.36+(onTime?0:ts*(.012+q*.07))); // a shank squirts low and hard right
     b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
     word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}
@@ -999,7 +1046,7 @@ function stepBall(dt){const b=S.ball,h=cur();
   b.x+=b.vx*dt;b.y+=b.vy*dt}
 // Where to drop after water: a couple of yards back from the point of entry, on the line toward where the shot was played.
 function dropSpot(){const h=cur(),d=S.ball.dry,p=S.prev,L=hyp(p.x-d.x,p.y-d.y);if(L<4)return p;const ux=(p.x-d.x)/L,uy=(p.y-d.y)/L;
-  for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker')return q}return p}
+  for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker'&&!h.geo.water.some(w=>inSh(w,q,2)))return q}return p} // two clear yards from the bank
 const shotLen=()=>({d:hyp(S.ball.x-S.prev.x,S.ball.y-S.prev.y),ft:S.club.putt});
 function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';S.shot=back?null:shotLen();b.gone=true;
   if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water.':'Out of play.'),900)}
@@ -1052,8 +1099,8 @@ function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready
   $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
-  // on the green the line under the course is the caddie's read; the first few putts name the controls instead. The range has its own card.
-  if(onRange())hintOff();else if(c.putt&&ready)hintOn((fetchKey('putts')||0)<4?(S.pmode==='aim'?'Drag the marker, then press Putt':'Pull back, flick on gold'):readText());else if(c.putt)hintOff()}
+  // the first few putts name the controls; after that the green is left to be read from its streaks. The range has its own card.
+  if(c.putt&&ready&&!onRange()&&(fetchKey('putts')||0)<4)hintOn(S.pmode==='aim'?'Drag the marker, then press Putt':'Pull back, flick on gold');else if(c.putt||onRange())hintOff()}
 let toastT=0;function toast(s,sub,ms){if(typeof sub==='number'){ms=sub;sub=''}const t=$('toast');t.textContent=s;if(sub){const e=document.createElement('small');e.textContent=sub;t.appendChild(e)}
   t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms||1400)}
 function hintOn(s){const e=$('hint');e.textContent=s;e.style.opacity=1}

@@ -74,10 +74,10 @@ function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
   camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.6/view;if(d>.02)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
 function updateCam(dt){
   if(S.mode==='flight'&&!S.ball.putt&&camT.s<5){camT.x=S.ball.x;camT.y=S.ball.y;camT.ay=.6}
-  const k=1-Math.exp(-dt*(S.mode==='flight'?7:4.2));
+  const k=1-Math.exp(-dt*(S.mode==='flight'?7:S.g?13:4.2)); // once a swing has begun the camera hurries to its place: the aim is read off the screen
   cam.x=lerp(cam.x,camT.x,k);cam.y=lerp(cam.y,camT.y,k);cam.s=lerp(cam.s,camT.s,k);cam.ay=lerp(cam.ay,camT.ay,k);cam.r=angTo(cam.r,camT.r,k);
   // once it is as good as there, snap to rest: the scenery can then be drawn crisp once and kept
-  const dr=((camT.r-cam.r+Math.PI)%TAU+TAU)%TAU-Math.PI;if(hyp(cam.x-camT.x,cam.y-camT.y)*cam.s<.6&&Math.abs(cam.s/camT.s-1)<.004&&Math.abs(dr)<.002&&Math.abs(cam.ay-camT.ay)<.002)Object.assign(cam,camT)}
+  const dr=((camT.r-cam.r+Math.PI)%TAU+TAU)%TAU-Math.PI;if(hyp(cam.x-camT.x,cam.y-camT.y)*cam.s<1.5&&Math.abs(cam.s/camT.s-1)<.008&&Math.abs(dr)<.004&&Math.abs(cam.ay-camT.ay)<.003)Object.assign(cam,camT)}
 
 // ───────── shot setup
 function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie='rough';S.lie=lie;
@@ -88,17 +88,9 @@ function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie=
   else if(lie==='fringe'){list=[PUTTER,...long];ci=d<=13?0:pickClub(list)}
   else{list=long;ci=pickClub(list)}
   S.clubs=list;S.ci=ci;S.club=list[ci];placeMarker()}
-// the aim marker starts a foot and a half past the cup on the straight line; tap-ins skip the read
-// roll a ball over the real surface without drawing it; stop(x,y) may end the roll early
-function rollSim(h,x,y,vx,vy,stop){const dt=1/120;for(let t=0;t<14;t+=dt){const q={x,y},lie=lieAt(h,q),mu=MU[lie];if(lie==='green'||lie==='fringe'){const a=slopeAt(h,q);vx+=a.x*dt;vy+=a.y*dt}
-    const sp=hyp(vx,vy);if(sp<=mu*dt)break;const k=(sp-mu*dt)/sp;vx*=k;vy*=k;x+=vx*dt;y+=vy*dt;if(stop&&stop(x,y))break}return{x,y}}
-// rise or fall to the cup, and how far a putt hit straight at it at holing pace would miss, both in inches
-function readPutt(){const h=cur(),b=S.ball,dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy);if(d<.2)return S.read=null;const ux=dx/d,uy=dy/d,v=Math.sqrt(2*MU.green*(d+Math.min(.5,d*.25)));
-  const e=rollSim(h,b.x,b.y,ux*v,uy*v,(x,y)=>(x-b.x)*ux+(y-b.y)*uy>=d);
-  S.read={up:Math.round((phiAt(h,h.pin)-phiAt(h,b))/15.7*36),brk:Math.round(((e.x-b.x)*-uy+(e.y-b.y)*ux)*36)}}
-const readText=()=>{const r=S.read;if(!r)return'';const u=Math.abs(r.up),k=Math.abs(r.brk);return(u<1?'Level':(r.up>0?'Uphill ':'Downhill ')+u+' in')+' · '+(k<1?'straight':'breaks '+k+' in '+(r.brk>0?'right':'left'))};
+// the aim marker starts a little past the cup on the straight line; tap-ins go straight to the stroke
 function placeMarker(){const h=cur(),b=S.ball,dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy)||1,past=Math.min(.5,d*.25);
-  S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode=d<1.4?'stroke':'aim';if(S.club.putt)readPutt()}
+  S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode=d<1.4?'stroke':'aim'}
 function setBall(x,y){Object.assign(S.ball,{x,y,z:0,vx:0,vy:0,vz:0,air:false,spin:0,putt:false,gone:false,tree:null,rollK:1});S.trail.length=0}
 function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];placeMarker();aimCam();hud()}
 
@@ -163,10 +155,10 @@ function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)t
   b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
   b.tree=cur().oaks.find(t=>hyp(b.x-t.x,b.y-t.y)<t.r)||null; // a ball already under an oak can be played out from beneath it
   let word,sub=onTime?'Perfect tempo':shank?(ts<0?'Far too early':'Far too late'):(q<.3?'A touch ':'')+(ts<0?'early':'late');
-  if(c.putt){const pace=shank?.45:ts<0?1-.22*q:1+.2*q,d=rotv(aim.x,aim.y,over*.5+ts*q*.04),v=Math.sqrt(2*MU.green*markDist()*p*pace);b.vx=d.x*v;b.vy=d.y*v;b.vz=0;b.air=false;b.spin=0;
+  if(c.putt){const pace=shank?.4:onTime?1:ts<0?.95-.27*q:1.05+.25*q,d=rotv(aim.x,aim.y,over*.6+(onTime?0:ts*(.01+q*.06))),v=Math.sqrt(2*MU.green*markDist()*p*pace);b.vx=d.x*v;b.vy=d.y*v;b.vz=0;b.air=false;b.spin=0;
     word=pure?'Pure roll':shank?'Stubbed':kf>0?'Pushed':kf<0?'Pulled':ts<0?'Left short':'Hit firm';sfx.putt();store('putts',(fetchKey('putts')||0)+1)}
-  else{const th=(shank?c.loft*.6:c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.42:pure?c.bomb||1:1-.22*Math.pow(q,1.5)),v=Math.sqrt(carry*G/Math.sin(2*th)),
-      k=shank?0:clamp(kf+ts*q*.8,-1.2,1.2),d=rotv(aim.x,aim.y,shank?.6:over*.3+ts*q*.05); // a shank squirts low and hard right
+  else{const th=(shank?c.loft*.6:c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.38:pure?c.bomb||1:onTime?.985:.955-.3*Math.pow(q,1.3)),v=Math.sqrt(carry*G/Math.sin(2*th)),
+      k=shank?0:clamp(kf*1.15+(onTime?0:ts*(.1+q*.9)),-1.3,1.3),d=rotv(aim.x,aim.y,shank?.6:over*.36+(onTime?0:ts*(.012+q*.07))); // a shank squirts low and hard right
     b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
     word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}
@@ -203,7 +195,7 @@ function stepBall(dt){const b=S.ball,h=cur();
   b.x+=b.vx*dt;b.y+=b.vy*dt}
 // Where to drop after water: a couple of yards back from the point of entry, on the line toward where the shot was played.
 function dropSpot(){const h=cur(),d=S.ball.dry,p=S.prev,L=hyp(p.x-d.x,p.y-d.y);if(L<4)return p;const ux=(p.x-d.x)/L,uy=(p.y-d.y)/L;
-  for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker')return q}return p}
+  for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker'&&!h.geo.water.some(w=>inSh(w,q,2)))return q}return p} // two clear yards from the bank
 const shotLen=()=>({d:hyp(S.ball.x-S.prev.x,S.ball.y-S.prev.y),ft:S.club.putt});
 function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';S.shot=back?null:shotLen();b.gone=true;
   if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water.':'Out of play.'),900)}
@@ -256,8 +248,8 @@ function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready
   $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
-  // on the green the line under the course is the caddie's read; the first few putts name the controls instead. The range has its own card.
-  if(onRange())hintOff();else if(c.putt&&ready)hintOn((fetchKey('putts')||0)<4?(S.pmode==='aim'?'Drag the marker, then press Putt':'Pull back, flick on gold'):readText());else if(c.putt)hintOff()}
+  // the first few putts name the controls; after that the green is left to be read from its streaks. The range has its own card.
+  if(c.putt&&ready&&!onRange()&&(fetchKey('putts')||0)<4)hintOn(S.pmode==='aim'?'Drag the marker, then press Putt':'Pull back, flick on gold');else if(c.putt||onRange())hintOff()}
 let toastT=0;function toast(s,sub,ms){if(typeof sub==='number'){ms=sub;sub=''}const t=$('toast');t.textContent=s;if(sub){const e=document.createElement('small');e.textContent=sub;t.appendChild(e)}
   t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms||1400)}
 function hintOn(s){const e=$('hint');e.textContent=s;e.style.opacity=1}

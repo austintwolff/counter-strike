@@ -73,10 +73,13 @@ function rAt(r,s){const p=r.pts,c=r.cum;let i=1;if(s>0)while(i<p.length-1&&c[i]<
   const a=p[i-1],b=p[i],l=(c[i]-c[i-1])||1,dx=(b.x-a.x)/l,dy=(b.y-a.y)/l,t=s-c[i-1];return{x:a.x+dx*t,y:a.y+dy*t,dx,dy}}
 function rProj(r,q){const p=r.pts;let best=1e9,bs=0;for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy||1,t=clamp(((q.x-a.x)*dx+(q.y-a.y)*dy)/l2,0,1),d=hyp(q.x-a.x-dx*t,q.y-a.y-dy*t);
   if(d<best){best=d;bs=r.cum[i-1]+t*Math.sqrt(l2)}}return bs}
-function fin(sh,smooth){const p=sh.poly,path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of p){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}
-  if(smooth){const n=p.length,m=i=>({x:(p[i%n].x+p[(i+1)%n].x)/2,y:(p[i%n].y+p[(i+1)%n].y)/2}),s=m(0);path.moveTo(s.x,s.y);for(let i=1;i<=n;i++){const c=p[i%n],e=m(i);path.quadraticCurveTo(c.x,c.y,e.x,e.y)}}
-  else{path.moveTo(p[0].x,p[0].y);for(let i=1;i<p.length;i++)path.lineTo(p[i].x,p[i].y)}
-  path.closePath();sh.path=path;sh.bb=[x0,y0,x1,y1];return sh}
+// holes, if any, are wound the other way from the outline, so an ordinary fill leaves them empty
+function fin(sh,smooth){const path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of sh.poly){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}
+  for(const p of sh.holes?[sh.poly,...sh.holes]:[sh.poly]){
+    if(smooth){const n=p.length,m=i=>({x:(p[i%n].x+p[(i+1)%n].x)/2,y:(p[i%n].y+p[(i+1)%n].y)/2}),s=m(0);path.moveTo(s.x,s.y);for(let i=1;i<=n;i++){const c=p[i%n],e=m(i);path.quadraticCurveTo(c.x,c.y,e.x,e.y)}}
+    else{path.moveTo(p[0].x,p[0].y);for(let i=1;i<p.length;i++)path.lineTo(p[i].x,p[i].y)}
+    path.closePath()}
+  sh.path=path;sh.bb=[x0,y0,x1,y1];return sh}
 const profile=prof=>t=>{let i=1;while(i<prof.length-1&&prof[i][0]<t)i++;const a=prof[i-1],b=prof[i],u=clamp((t-a[0])/((b[0]-a[0])||1),0,1);return lerp(a[1],b[1],u*u*(3-2*u))};
 function ribbon(r,s0,s1,prof){const L=s1-s0,wf=profile(prof),n=Math.max(2,Math.ceil(L/3)),c=[],poly=[];
   for(let i=0;i<=n;i++){const q=rAt(r,s0+L*i/n);c.push({x:q.x,y:q.y,nx:-q.dy,ny:q.dx,w:wf(i/n)})}
@@ -91,15 +94,46 @@ function blobPoly(sh,g){const out=[],c=Math.cos(sh.rot),s=Math.sin(sh.rot);for(l
 function blob(x,y,rx,ry,rot,seed,amp=.12){const r=mulberry32(seed*7919+13),wob=[];for(let k=2;k<=5;k++)wob.push([k,amp*(r()*.8+.4)/(k-1),r()*TAU]);
   const sh={kind:'blob',x,y,rx,ry,rot,wob,R:Math.max(rx,ry)*(1+amp*2.4)};sh.poly=blobPoly(sh,0);return fin(sh,true)}
 // a mapped outline, as a list of points. x, y is its centre and R the reach from it.
-function polyShape(pts,straight){const sh=fin({kind:'poly',poly:pts},!straight&&pts.length>6);let a=0,cx=0,cy=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length],c=p.x*q.y-q.x*p.y;a+=c;cx+=(p.x+q.x)*c;cy+=(p.y+q.y)*c}
+function polyShape(pts,straight,holes){const sh=fin(holes&&holes.length?{kind:'poly',poly:pts,holes}:{kind:'poly',poly:pts},!straight&&pts.length>6);let a=0,cx=0,cy=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length],c=p.x*q.y-q.x*p.y;a+=c;cx+=(p.x+q.x)*c;cy+=(p.y+q.y)*c}
   if(Math.abs(a)<1e-6){cx=pts[0].x;cy=pts[0].y}else{cx/=3*a;cy/=3*a}sh.x=cx;sh.y=cy;sh.area=Math.abs(a)/2;sh.R=Math.max(...pts.map(p=>hyp(p.x-cx,p.y-cy)));sh.rx=sh.ry=Math.sqrt(sh.area/Math.PI);sh.rot=0;return sh}
+// Ramer-Douglas-Peucker: drop the points of a closed outline that sit within eps of the line through their neighbours
+function simplifyRing(p,eps){const n=p.length;if(n<8)return p;let far=0,fd=0;for(let i=1;i<n;i++){const d=hyp(p[i].x-p[0].x,p[i].y-p[0].y);if(d>fd){fd=d;far=i}}
+  const keep=new Uint8Array(n+1),q=p.concat([p[0]]),st=[[0,far],[far,n]];keep[0]=keep[far]=1;
+  while(st.length){const[a,b]=st.pop();if(b-a<2)continue;const A=q[a],B=q[b],dx=B.x-A.x,dy=B.y-A.y,l=hyp(dx,dy)||1;let m=-1,md=eps;
+    for(let i=a+1;i<b;i++){const d=Math.abs((q[i].x-A.x)*dy-(q[i].y-A.y)*dx)/l;if(d>md){md=d;m=i}}if(m>0){keep[m]=1;st.push([a,m],[m,b])}}
+  return p.filter((_,i)=>keep[i])}
+const ringArea=p=>{let a=0;for(let i=0;i<p.length;i++){const u=p[i],v=p[(i+1)%p.length];a+=u.x*v.y-v.x*u.y}return a/2};
+const inRing=(p,q)=>{let c=false;for(let i=0,j=p.length-1;i<p.length;j=i++)if((p[i].y>q.y)!==(p[j].y>q.y)&&q.x<(p[j].x-p[i].x)*(q.y-p[i].y)/(p[j].y-p[i].y)+p[i].x)c=!c;return c};
+// Many overlapping or touching shapes become clean outlines of what they cover together: they are painted into a small
+// picture and its edge is traced back out. box limits the area; the result is a list of {outer, holes}, in yards.
+function mergeShapes(list,box){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const s of list){x0=Math.min(x0,s.bb[0]);y0=Math.min(y0,s.bb[1]);x1=Math.max(x1,s.bb[2]);y1=Math.max(y1,s.bb[3])}
+  x0=Math.max(x0-3,box[0]);y0=Math.max(y0-3,box[1]);x1=Math.min(x1+3,box[0]+box[2]);y1=Math.min(y1+3,box[1]+box[3]);if(x1-x0<1||y1-y0<1)return[];
+  const k=Math.min(2,Math.sqrt(1.5e6/((x1-x0)*(y1-y0)))),W=Math.ceil((x1-x0)*k),H=Math.ceil((y1-y0)*k);
+  const d=tex(W,H,c=>{c.setTransform(k,0,0,k,-x0*k,-y0*k);c.fillStyle='#000';for(const s of list)c.fill(s.path)}).getContext('2d').getImageData(0,0,W,H).data;
+  // marching squares over the picture's alpha, with one empty row and column all round so every outline closes
+  const T=128,v=(i,j)=>i<0||j<0||i>=W||j>=H?0:d[(j*W+i)*4+3],key=(i,j,vert)=>((j+1)*(W+2)+i+1)*2+vert,adj=new Map(),pos=new Map(),f=(a,b)=>(T-a)/(b-a);
+  const link=(k1,p1,k2,p2)=>{pos.set(k1,p1);pos.set(k2,p2);(adj.get(k1)||adj.set(k1,[]).get(k1)).push(k2);(adj.get(k2)||adj.set(k2,[]).get(k2)).push(k1)};
+  for(let j=-1;j<H;j++){let a=v(-1,j),e=v(-1,j+1);for(let i=-1;i<W;i++){const b=v(i+1,j),c=v(i+1,j+1),ix=(a>=T?8:0)|(b>=T?4:0)|(c>=T?2:0)|(e>=T?1:0);
+      if(ix&&ix!==15){const t=()=>[key(i,j,0),{x:i+f(a,b),y:j}],r=()=>[key(i+1,j,1),{x:i+1,y:j+f(b,c)}],bo=()=>[key(i,j+1,0),{x:i+f(e,c),y:j+1}],l=()=>[key(i,j,1),{x:i,y:j+f(a,e)}],go=(u,w)=>link(u[0],u[1],w[0],w[1]),mid=(a+b+c+e)/4>=T;
+        if(ix===1||ix===14)go(l(),bo());else if(ix===2||ix===13)go(bo(),r());else if(ix===3||ix===12)go(l(),r());else if(ix===4||ix===11)go(t(),r());else if(ix===6||ix===9)go(t(),bo());else if(ix===7||ix===8)go(t(),l());
+        else if((ix===5)===mid){go(t(),l());go(bo(),r())}else{go(t(),r());go(l(),bo())}}
+      a=b;e=c}}
+  const rings=[],seen=new Set();
+  for(const start of adj.keys()){if(seen.has(start))continue;const ring=[];let prev=-1,cur=start;
+    while(cur!==undefined&&!seen.has(cur)){seen.add(cur);const q=pos.get(cur);ring.push({x:x0+(q.x+.5)/k,y:y0+(q.y+.5)/k});const n=adj.get(cur),nx=n[0]!==prev?n[0]:n[1];prev=cur;cur=nx}
+    const sr=simplifyRing(ring,.28);if(sr.length>=4&&Math.abs(ringArea(sr))>5)rings.push(sr)}
+  // an outline inside an odd number of others is a hole. Outlines are wound one way and holes the other.
+  rings.sort((a,b)=>Math.abs(ringArea(b))-Math.abs(ringArea(a)));const depth=rings.map((r,i)=>rings.slice(0,i).filter(o=>inRing(o,r[0])).length),out=[];
+  rings.forEach((r,i)=>{const hole=depth[i]%2===1;if((ringArea(r)<0)!==hole)r.reverse();if(!hole)out.push({outer:r,holes:[],i})});
+  rings.forEach((r,i)=>{if(depth[i]%2===1){const par=out.filter(o=>o.i<i&&inRing(o.outer,r[0])).pop();if(par)par.holes.push(r)}});
+  return out}
 function edgeDist(pts,q){let m=1e9;for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length],dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy||1,t=clamp(((q.x-a.x)*dx+(q.y-a.y)*dy)/l2,0,1);m=Math.min(m,hyp(q.x-a.x-dx*t,q.y-a.y-dy*t))}return m}
 function grown(sh,g){return sh.kind==='poly'?{kind:'grown',of:sh,g,bb:sh.bb,path:sh.path}:fin({kind:'grown',of:sh,g,poly:blobPoly(sh,g)},true)}
 function inSh(sh,q,g=0){
   if(sh.kind==='grown')return inSh(sh.of,q,sh.g+g);
-  if(sh.kind==='poly'){const b=sh.bb;if(q.x<b[0]-g||q.x>b[2]+g||q.y<b[1]-g||q.y>b[3]+g)return false;const p=sh.poly;let c=false;
-    for(let i=0,j=p.length-1;i<p.length;j=i++)if((p[i].y>q.y)!==(p[j].y>q.y)&&q.x<(p[j].x-p[i].x)*(q.y-p[i].y)/(p[j].y-p[i].y)+p[i].x)c=!c;
-    return g===0?c:g>0?c||edgeDist(p,q)<=g:c&&edgeDist(p,q)>=-g}
+  if(sh.kind==='poly'){const b=sh.bb;if(q.x<b[0]-g||q.x>b[2]+g||q.y<b[1]-g||q.y>b[3]+g)return false;const rs=sh.holes?[sh.poly,...sh.holes]:[sh.poly];let c=false;
+    for(const p of rs)for(let i=0,j=p.length-1;i<p.length;j=i++)if((p[i].y>q.y)!==(p[j].y>q.y)&&q.x<(p[j].x-p[i].x)*(q.y-p[i].y)/(p[j].y-p[i].y)+p[i].x)c=!c;
+    if(g===0)return c;let ed=1e9;for(const p of rs)ed=Math.min(ed,edgeDist(p,q));return g>0?c||ed<=g:c&&ed>=-g}
   if(sh.kind==='blob'){const dx=q.x-sh.x,dy=q.y-sh.y;if(Math.abs(dx)>sh.R+g||Math.abs(dy)>sh.R+g)return false;
     const c=Math.cos(sh.rot),s=Math.sin(sh.rot),u=dx*c+dy*s,v=-dx*s+dy*c,th=Math.atan2(v/sh.ry,u/sh.rx),m=bm(sh,th);return hyp(u,v)<=hyp(Math.cos(th)*sh.rx*m,Math.sin(th)*sh.ry*m)+g}
   const b=sh.bb;if(q.x<b[0]-g||q.x>b[2]+g||q.y<b[1]-g||q.y>b[3]+g)return false;

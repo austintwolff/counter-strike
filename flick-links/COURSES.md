@@ -3,6 +3,9 @@
 Every course in the game is a real one. Its hole lines, greens, fairways, tees, bunkers, water, woods,
 single trees, paths, streets and buildings come from OpenStreetMap. The game then draws them in its own style.
 
+Before starting, read `COURSE_LESSONS.md`: what went wrong on earlier courses, how each one is kept distinctive, and the
+checklist for calling a course done.
+
 ## Adding a course
 
 ```
@@ -20,6 +23,17 @@ That writes `data/lm.json` and a check drawing, `data/lm.preview.png`, and print
 
 The daily round draws from every course automatically, and the menu gains a practice button for the new one.
 
+For a back nine, pass `--holes 10-18` and give the entry `first:10`.
+
+Then check it:
+
+```
+./build.sh && node tools/check_course.js lm
+```
+
+That times each hole's build, saves a picture of every hole and its first aiming view, fires a tee shot down each
+hole to catch a tree in the way, and has a bot play all nine. Look at the pictures: some faults only show to the eye.
+
 Two courses on one property (Jimmy Clay and Roy Kizer, say) each have a hole 1. The tool keeps the holes that lie
 inside the course you named, so use the course's name as OpenStreetMap shows it.
 
@@ -36,6 +50,7 @@ and the map together. Re-run with `--refresh` to pick up changes.
 
 ## Files
 
+- `tools/check_course.js` checks a course in the built game.
 - `tools/add_course.py` does the whole job. `tools/import_course.py` is the converter it uses.
 - `tools/aerial.py` stitches map or aerial tiles; `tools/trace_overlay.py` draws the tracing sheet.
 - `data/<id>.json` is the course as the game reads it. `data/<id>.extra.json` holds anything added by hand.

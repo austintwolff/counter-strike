@@ -18,8 +18,8 @@ const mk=(s,par)=>{const d=s-par,c=d<=-2?'eagle':d===-1?'birdie':d===1?'bogey':d
 function scoreCard(ids,scores){const hs=ids.map(HOLE),wide=ids.length<=3,par=sum(hs.map(h=>h.par)),n=scores.filter(s=>s!=null).length,done=n>=ids.length,c=hs[0].course;
   const toPar=n?rel(sum(scores.slice(0,n))-sum(hs.slice(0,n).map(h=>h.par))):'',d=new Date();
   const row=(cls,label,cells,out)=>`<tr class="${cls}"><th>${label}</th>${cells.map(x=>`<td>${x}</td>`).join('')}<td class="out">${out}</td></tr>`;
-  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":c.club}</b><span>${wide?'No. '+S.day:'Front nine · practice'}</span></div>
-<table class="sc${wide?' wide':''}">${wide?row('h','Course',hs.map(h=>h.course.club),''):''}${row(wide?'n':'h','Hole',hs.map(h=>h.n),wide?'Total':'Out')}
+  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":c.club}</b><span>${wide?'No. '+S.day:(c.first>1?'Back':'Front')+' nine · practice'}</span></div>
+<table class="sc${wide?' wide':''}">${wide?row('h','Course',hs.map(h=>h.course.club),''):''}${row(wide?'n':'h','Hole',hs.map(h=>h.n),wide?'Total':c.first>1?'In':'Out')}
 ${row('g',wide?'Yards':c.tee,hs.map(h=>h.yards),sum(hs.map(h=>h.yards)))}${row('k','Hcp',hs.map(h=>h.hcp),'')}${row('p','Par',hs.map(h=>h.par),par)}
 ${row('s','You',hs.map((h,i)=>scores[i]!=null?mk(scores[i],h.par):''),done?sum(scores):'')}</table>
 <div class="sc-foot"><span>Date <i>${d.getMonth()+1}/${d.getDate()}</i></span><span>Scorer <i>You</i></span><span>To par <i>${toPar}</i></span></div></div>`}
@@ -33,7 +33,7 @@ function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('see
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
 ${saveStrip()}${clubStrip()}
-<p class="eyebrow">Practice a front nine</p>
+<p class="eyebrow">Practice nine holes</p>
 <div class="pick">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>`,titleCard)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>Putting.</b> Drag the marker to where a flat putt should stop. Press Putt, then flick on gold. The streaks run downhill.</p>
@@ -45,7 +45,7 @@ function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?n
 ${scoreCard(S.round.ids,S.round.scores)}
 <button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
 function shareText(){const r=S.round,hs=r.ids.map(HOLE),par=sum(hs.map(h=>h.par)),tot=sum(r.scores);
-  let t=r.type==='nine'?`⛳ Flick Links · front nine at ${hs[0].course.club}\n`+r.scores.map((s,i)=>emo(s,hs[i].par)).join('')+`\n${tot} strokes (${rel(tot-par)})`
+  let t=r.type==='nine'?`⛳ Flick Links · ${hs[0].course.first>1?'back':'front'} nine at ${hs[0].course.club}\n`+r.scores.map((s,i)=>emo(s,hs[i].par)).join('')+`\n${tot} strokes (${rel(tot-par)})`
     :`⛳ Flick Links No. ${S.day}\n`+r.scores.map((s,i)=>`${hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
   let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname+(Net.remote&&C.code?'?c='+C.code:'')}catch(e){}
   return url?t+'\n'+url:t}

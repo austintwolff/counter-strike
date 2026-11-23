@@ -113,7 +113,7 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
     hp = [q for l in lines.values() for i in range(len(l) - 1) for q in [(l[i][0] + (l[i + 1][0] - l[i][0]) * k / 8, l[i][1] + (l[i + 1][1] - l[i][1]) * k / 8) for k in range(9)]]
     close_to_holes = lambda p, d: any((q[0] - a[0]) ** 2 + (q[1] - a[1]) ** 2 < d * d for q in p[::max(1, len(p) // 12)] + [p[-1]] for a in hp)
     G = {k: [] for k in ('fair', 'green', 'tee', 'bunker', 'rough', 'water', 'wood', 'scrub', 'rock', 'building', 'pitch', 'pool', 'parking')}
-    streams, roads, paths, boundary, seen = [], [], [], None, set()
+    streams, roads, paths, rails, boundary, seen = [], [], [], [], None, set()
     def add_poly(kind, p, eps=.5, tags=None):
         if len(p) < 4 or not near(p): return
         q = simp_poly(p, eps)
@@ -147,6 +147,7 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
         hw = t.get('highway')
         if (t.get('golf') in ('cartpath', 'path') or hw in PATHS) and len(p) > 1 and near(p) and t.get('footway') != 'sidewalk' and close_to_holes(p, 90):
             paths.append({'p': flat(rdp(p, .6)), 'cart': t.get('golf') == 'cartpath' or t.get('golf') == 'path', 'bridge': t.get('bridge') in ('yes', 'boardwalk', 'viaduct')})
+        elif t.get('railway') in ('rail', 'light_rail') and len(p) > 1 and near(p) and close_to_holes(p, 190): rails.append({'p': flat(rdp(p, .5))})
         elif hw in ROADW and len(p) > 1 and near(p) and close_to_holes(p, 190):
             roads.append({'p': flat(rdp(p, .6)), 'w': ROADW[hw], 'name': t.get('name', ''), 'bridge': t.get('bridge') == 'yes'})
     for members, t in rels:  # multipolygons: take each closed outer ring
@@ -190,7 +191,7 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
             p = [P(tuple(q)) for q in item]
             if k in G: G[k].append(flat(simp_poly(p, .3)))
     out = {'id': cid, 'origin': [round(lat0, 6), round(lon0, 6)], 'lines': {n: flat(rdp(lines[n], .8) if len(lines[n]) > 2 else lines[n]) for n in want}, 'len': {n: round(length(lines[n])) for n in want}, 'card': {n: auto[n] for n in want if n in auto},
-           'boundary': flat(simp_poly(boundary, 1.2)) if boundary else None, 'streams': streams, 'roads': roads, 'paths': paths, 'trees': tr, **G}
+           'boundary': flat(simp_poly(boundary, 1.2)) if boundary else None, 'streams': streams, 'roads': roads, 'paths': paths, 'rails': rails, 'trees': tr, **G}
     return out
 
 def plot(c, path, scale=1.3):

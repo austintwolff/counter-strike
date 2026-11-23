@@ -24,6 +24,9 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   // streets and the neighbourhood
   for(const r of G.roads)if(seen2(r)){ctx.strokeStyle='#3d4038';ctx.lineWidth=r.w+1.6;ctx.stroke(r.path);ctx.strokeStyle='#5d5f58';ctx.lineWidth=r.w;ctx.stroke(r.path);
     if(r.w>=9&&z>1.6){ctx.setLineDash([3,4]);ctx.strokeStyle='rgba(240,214,110,.7)';ctx.lineWidth=.35;ctx.stroke(r.path);ctx.setLineDash([])}}
+  // a railway: a bed of grey ballast, the sleepers as fine cross-strokes, a dark line for the rails
+  for(const r of G.rails)if(seen2(r)){ctx.lineCap='butt';ctx.strokeStyle='rgba(30,26,18,.35)';ctx.lineWidth=5.4;ctx.stroke(r.path);ctx.strokeStyle='#8a8576';ctx.lineWidth=4.2;ctx.stroke(r.path);
+    if(z>1.4){ctx.setLineDash([.45,1.1]);ctx.strokeStyle='#4f4636';ctx.lineWidth=2.5;ctx.stroke(r.path);ctx.setLineDash([])}ctx.strokeStyle='#2b2a27';ctx.lineWidth=.3;for(const o of[-.8,.8]){ctx.save();ctx.translate(o,o*.4);ctx.stroke(r.path);ctx.restore()}ctx.lineCap='round'}
   for(const s of G.parking)if(seen(s)){ctx.fillStyle='#62645d';ctx.fill(s.path);if(z>1.8){const b=s.bb;for(let x=b[0]+3;x<b[2]-3;x+=3.4)for(let y=b[1]+4;y<b[3]-4;y+=11){const q={x,y};if(((x*7+y*3)|0)%5<3&&inSh(s,q,-2.5)){ctx.fillStyle=['#d9d4c7','#7b2f33','#2f4a63','#1f1f1f','#b9b9b4'][((x*13+y*7)|0)%5];rrect(x-1.1,y-2.3,2.2,4.6,.5)}}}}
   // the rough: a mown band around every fairway, tee and green
   if(native){ctx.strokeStyle=th.rough;for(const[list,w]of[[G.fair,50],[G.green,56],[G.tee,24]]){ctx.lineWidth=w;for(const s of list)if(seen(s)){ctx.globalAlpha=.4;ctx.lineWidth=w+12;ctx.stroke(s.path);ctx.globalAlpha=1;ctx.lineWidth=w;ctx.stroke(s.path)}}

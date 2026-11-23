@@ -33,7 +33,13 @@ const COURSES=[
  th:{out:'rough',floor:'#687d3c',rough:'#687d3c',fair:'#74a14a',stripe:.5,outer:'#5c6740',woods:'#2c4724',mix:[['liveoak',.52],['elm',.22],['pecan',.14],['juniper',.12]],marker:'#4f86e8',bloom:'bloom',bridge:'stone',cart:true,clumps:.34,clumpAt:-.5,houses:true},
  holes:[['Enfield',4,287,16],['Tarrytown',4,320,8],['Brackenridge',5,493,4],['Short Carry',3,146,12],['Lake Austin',5,509,10],['Deep Eddy',3,128,14],["Hogan's Hole",4,395,2],['Live Oak',3,166,6],['Clubhouse Turn',4,301,18]],
  // `holes` is the back nine here, since that was built first; `more` is holes 1 to 9
- more:[['Opening Drive',4,359,5],['Exposition',5,495,9],['Old Oak',4,393,3],['West Austin',3,155,15],['The Doke',4,375,7],['The Hard One',4,367,1],['Lions Club',3,157,11],['Long Way Round',5,467,17],['Since 1924',4,312,13]]}];
+ more:[['Opening Drive',4,359,5],['Exposition',5,495,9],['Old Oak',4,393,3],['West Austin',3,155,15],['The Doke',4,375,7],['The Hard One',4,367,1],['Lions Club',3,157,11],['Long Way Round',5,467,17],['Since 1924',4,312,13]]},
+{id:'om',code:'OM',club:'Olmos Basin',tee:'Blue',
+ // San Antonio's flood basin behind Olmos Dam: flat, open parkland of scattered live oak, pecan and mesquite, Olmos Creek and its
+ // drainage washes wandering through, a railroad cutting the course in two, Highway 281 along the east side
+ th:{out:'rough',floor:'#6c8540',rough:'#6c8540',fair:'#70a548',stripe:.6,outer:'#636f40',woods:'#2f4a26',mix:[['liveoak',.4],['pecan',.2],['mesquite',.22],['elm',.18]],marker:'#4f86e8',bloom:'bloomGold',bridge:'wood',cart:true,clumps:.4,clumpAt:-.2,houses:true},
+ holes:[['The Basin',4,410,3],['McCullough',4,434,1],['Mesquite Flat',3,198,5],['Across the Tracks',4,280,11],['Two Eighty-One',5,532,17],['Whistle Stop',3,195,9],['Basse Road',4,376,13],['Huisache',4,400,7],['Green Tank',5,526,15]],
+ more:[['Olmos Creek',4,380,10],['Dam Site',5,381,16],['Channel',3,200,8],['The Terrace',4,366,4],['Long Three',3,221,2],['Floodplain',4,380,6],['Alamo Heights',4,378,14],['San Antonio',4,393,12],['The Quarry',5,518,18]]}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
 // data/<id>.json; its other nine, if it has one, is `more`, drawn from data/<id>2.json. The second nines are added after all the
 // first ones so that the index of a hole never changes once it has been published (saved rounds keep indexes).
@@ -83,7 +89,7 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
       w.spots=[];for(let i=0;i<70&&w.spots.length<9;i++){const p={x:lerp(w.bb[0],w.bb[2],rw()),y:lerp(w.bb[1],w.bb[3],rw())};if(inSh(w,p,-Math.min(5,w.wide*.3)))w.spots.push(p)}
       return w})}
   const wet=(p,d)=>g.water.some(w=>inSh(w,p,d)),line=f=>{const P=pts(f.p),path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;P.forEach((q,i)=>{i?path.lineTo(q.x,q.y):path.moveTo(q.x,q.y);x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)});return{...f,pts:P,path,bb:[x0-9,y0-9,x1+9,y1+9]}};
-  g.roads=m.roads.filter(r=>local(r)&&(th.houses||r.w>=9)).map(line);g.paths=shapes(m.paths,line);
+  g.roads=m.roads.filter(r=>local(r)&&(th.houses||r.w>=9)).map(line);g.rails=shapes(m.rails||[],f=>line({...f,w:4}));g.paths=shapes(m.paths,line);
   // a bridge wherever a path or road runs over water
   g.bridges=[];for(const w of g.paths.concat(g.roads)){const r=mkRoute(w.pts);let a=null;for(let s=0;s<=r.len;s+=1.5){const q=rAt(r,s),in1=wet(q,0);if(in1&&a===null)a=s;if((!in1||s+1.5>r.len)&&a!==null){if(s-a>2&&s-a<70){const p0=rAt(r,a-2.5),p1=rAt(r,s+1);
         g.bridges.push({x:(p0.x+p1.x)/2,y:(p0.y+p1.y)/2,a:Math.atan2(p1.y-p0.y,p1.x-p0.x),len:hyp(p1.x-p0.x,p1.y-p0.y),wide:w.w||0})}a=null}}}
@@ -110,7 +116,7 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
   for(let x=x0-NEAR;x<x1+NEAR;x+=10.5)for(let y=y0-NEAR;y<y1+NEAR;y+=10.5){const p={x:x+rng()*10.5,y:y+rng()*10.5},r=lerp(4.6,9.5,rng()*rng()+.1),u=rng();
     if(!nearHoles(p)||inWay(p,r*.6,50,8))continue;
     if(inWood(p)){if(u<.14||wet(p,r*.5)||!clear(p,r*.45))continue}
-    else{if(wet(p,r*.5)||lineNear(g.roads,p,r*.4)||lineNear(paths,p,r*.2)||any(g.dry,p,2))continue;
+    else{if(wet(p,r*.5)||lineNear(g.roads,p,r*.4)||lineNear(g.rails,p,r*.5+2)||lineNear(paths,p,r*.2)||any(g.dry,p,2))continue;
       if(!inB(p)){if(u>.3||any(g.building,p,r*.35))continue}
       else if(th.belt&&!any(g.fair,p,th.belt)&&!any(g.green,p,th.belt+6)){if(noise(p)<-1.1||any(g.tee,p,16)||any(g.bunker,p,8)||any(g.rough,p,4)||any(g.building,p,r*.35))continue}
       else if(th.belt&&!th.clumps)continue;

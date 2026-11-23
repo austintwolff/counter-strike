@@ -1,7 +1,7 @@
 # Building a course: lessons learned
 
 Read this before adding or reworking a course. It is the record of what went wrong on the first five
-(Grey Rock, Lost Pines, Hancock, Jimmy Clay, Muni; four of them now with both nines) and what each fix became. `COURSES.md` is the how-to;
+(Grey Rock, Lost Pines, Hancock, Jimmy Clay, Muni, Olmos Basin; four of them with both nines) and what each fix became. `COURSES.md` is the how-to;
 this file is the why, and the checklist.
 
 The aim never changes: **true to the real place, consistent with the other courses, and pretty.**
@@ -32,6 +32,7 @@ someone who has played it.
 | A second nine for a course. | Import it on its own as `<id>2` (`--holes 10-18`, or `1-9` where the back nine came first) and list its holes under `more` in the course's entry. It shares the course's look. Second nines are appended after every first nine in the game's hole list, so a published hole never changes its index; never reorder `COURSES` or move holes between `holes` and `more`. |
 | Lost Pines' 16th and 18th greens are tagged as tees in the map, so the pin went to a green 180 yards away. | The importer now takes a tee-tagged shape at the end of a hole line as that hole's green and says so. `check_course.js` flags a pin that is not on a green. |
 | Grey Rock's back nine (south of Highway 45) has almost nothing mapped: two greens, two fairways, no hole lines. The satellite photo is of dormant turf, where fairways cannot be told from rough, and the routing could not be confirmed. | Not built. A course needs either mapped features or imagery clear enough to trace and a way to confirm which hole is which. Do not fill the gap with invented holes. |
+| Olmos Basin's published cards disagree by up to 650 yards, and several describe an older layout: the 4th is listed at 368 to 382 yards but the tee visible in the satellite view makes it 280. | When cards conflict, check the mapped tees against the aerial. If they are where the map says, the map is the course as it is today: use the published figure where the map agrees within 8% and the mapped length otherwise, and say so in the extra file's note. |
 | Lost Pines included the whole Colorado River: 46,000 outline points and 19,000 pebbles. The game crawled. | Water is clipped to the hole at build time, but check anyway: `check_course.js` flags a hole that is slow to build. |
 | The map draws the same water twice (a creek as a line and as its banks; a pond as water and as a hazard) and long rivers come in pieces. This showed as doubled creeks and seams. | All water on a hole is merged into one outline per body automatically. Still look at every creek for forks or doubles. A genuine side channel is fine. |
 | Overpass does not work from the cloud session. | The tool uses `api.openstreetmap.org` and Nominatim. The session's network allowlist must include those, the tile hosts for imagery, and nothing else is needed. |
@@ -58,6 +59,7 @@ someone who has played it.
 | Hancock | A 1899 city park in one block, Waller Creek, old pecans, streets and houses all round | `out:'rough'`, real mapped trees that stop a ball, houses drawn, stone bridges |
 | Jimmy Clay | Open parkland in a creek fork, clumps between holes, thick bottomland woods at the edge | a wide belt (`belt:46`) plus clumps, pecan and elm, the pond green at the 6th |
 | Muni | 1924, short tight holes cut through dense oak woods, open stands of big oaks over dry ground | mapped woods do the work; sparse even scatter (`clumps:.34, clumpAt:-.5`), houses drawn |
+| Olmos Basin | A flat flood basin in San Antonio: open parkland, a railroad through the middle, Olmos Creek and its drainage washes | no woods or belt, an even scatter with mesquite in the mix, the railway drawn (the importer now keeps `railway=rail`), houses drawn |
 
 Rules of thumb that came out of this:
 
@@ -67,7 +69,7 @@ Rules of thumb that came out of this:
 - **Houses.** Draw ordinary houses only where they read as houses and matter to the place (Hancock, Muni). At Grey Rock
   they came out as blobs and were removed; only buildings larger than 650 square yards stay there (the clubhouse).
 - **Ground colour.** Take it from the aerial: straw for prairie, olive for dry parkland, deeper green for irrigated turf.
-- **One or two true landmarks beat any amount of decoration**: the pond green at Jimmy Clay's 6th, Hogan's Hole at
+- **One or two true landmarks beat any amount of decoration**: the railroad through Olmos Basin, the pond green at Jimmy Clay's 6th, Hogan's Hole at
   Muni, the bare limestone of McKinney Falls across Onion Creek, Highway 45 over Grey Rock.
 - **Hole names**: short, from real local features, no repeats across courses. Use real lore where it exists.
 - After any rework, put before and after pictures side by side. "Make sure the holes still look as pretty as they did"

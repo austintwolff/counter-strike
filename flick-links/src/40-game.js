@@ -12,7 +12,7 @@ const CLUBS=[
   {id:'5I',name:'5 Iron',carry:192,loft:35,roll:.07,tw:58},
   {id:'3W',name:'3 Wood',carry:232,loft:30,roll:.09,tw:50,bomb:1.05},
   {id:'DR',name:'Driver',carry:262,loft:27,roll:.11,tw:45,bomb:1.05}]; // bomb: a pure strike with the long clubs flies this much farther
-const PUTTER={id:'PT',name:'Putter',putt:true,tw:100};
+const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
@@ -102,18 +102,19 @@ function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.le
 // Pull back to set aim and power. A ring at the touch point fills in TU ms, slowly at first and quicker toward the top,
 // then drains in TD and fills again. Flick forward through the touch point as it tops out.
 // How full the ring is at the flick decides the strike: the top is pure, the upper part is decent, the bottom third is a shank.
-// The ring finishes fast and the window is small: about a third of each club's nominal figure, never under 18 ms either side.
-// A flick must also come back within a degree and a half of the line it was pulled along to count as straight.
-const DEAD=.025,FLICK_V=.5,TU=1050,TD=380,EASE=2.4,WIN=.35,SHANK=.3;
+// The ring quickens toward the top and the window is small: about six tenths of each club's nominal figure, never under 22 ms
+// either side. A flick must also come back within two degrees of the line it was pulled along to count as straight.
+// (These sit halfway between the first, forgiving ring and a strict one that proved too hard off the tee.)
+const DEAD=.035,FLICK_V=.5,TU=1140,TD=415,EASE=2.05,WIN=.62,SHANK=.25;
 const pullMax=()=>clamp(H*.18,84,132);
 // The woods get wilder the harder they are swung: past 70% power the window narrows, the flick must be straighter, and a miss bends further.
 const reachFor=pw=>S.club.bomb?clamp(((pw==null?(S.g?S.g.power:0):pw)-.7)/.3,0,1):0;
-const timingWindow=pw=>Math.max(18,S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*WIN*(1-.5*reachFor(pw)));
+const timingWindow=pw=>Math.max(22,S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*WIN*(1-.35*reachFor(pw)));
 // where the ring stands at time t: f how full it is, and e the timing error in ms (early is negative)
 function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=(t-g.t0)%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
-// A flick inside the window is on time. Outside it, the strike is judged on how many windows off it was: four and a half is as bad
+// A flick inside the window is on time. Outside it, the strike is judged on how many windows off it was: six is as bad
 // as it gets, and an early one that caught the ring still in the red is a shank.
-function judge(te,tf,pw){const x=Math.abs(te)/timingWindow(pw);return{onTime:x<=1,q:clamp((x-1)/3.5,0,1),shank:te<0&&x>1&&tf<SHANK}}
+function judge(te,tf,pw){const x=Math.abs(te)/timingWindow(pw);return{onTime:x<=1,q:clamp((x-1)/5,0,1),shank:te<0&&x>1&&tf<SHANK}}
 function gPos(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 cv.addEventListener('pointerdown',e=>{
   ac();
@@ -162,15 +163,15 @@ cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 // te the timing error in ms (early is negative) and tf how full the ring was (1 at the top)
 function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)tf=1;
   p=clamp(p,.03,1);S.prev={x:b.x,y:b.y};S.shot=null;$('hLast').hidden=true;if(!onRange())S.strokes++;S.hintShots++;save();
-  const wild=1+1.2*reachFor(p),dead=DEAD/(1+.6*reachFor(p)),{onTime,q,shank}=judge(te,tf,p),ts=Math.sign(te);
+  const wild=1+.7*reachFor(p),dead=DEAD/(1+.4*reachFor(p)),{onTime,q,shank}=judge(te,tf,p),ts=Math.sign(te);
   const ad=Math.abs(dev),kf=ad<=dead?0:Math.sign(dev)*clamp((ad-dead)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-dead),pure=onTime&&kf===0;
   b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.onGreen=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
   b.tree=cur().oaks.find(t=>hyp(b.x-t.x,b.y-t.y)<t.r)||null; // a ball already under an oak can be played out from beneath it
   let word,sub=onTime?'Perfect tempo':shank?(ts<0?'Far too early':'Far too late'):(q<.3?'A touch ':'')+(ts<0?'early':'late');
   if(c.putt){const pace=shank?.4:onTime?1:ts<0?.95-.27*q:1.05+.25*q,d=rotv(aim.x,aim.y,over*.6+(onTime?0:ts*(.01+q*.06))),v=Math.sqrt(2*MU.green*markDist()*p*pace);b.vx=d.x*v;b.vy=d.y*v;b.vz=0;b.air=false;b.spin=0;
     word=pure?'Pure roll':shank?'Stubbed':kf>0?'Pushed':kf<0?'Pulled':ts<0?'Left short':'Hit firm';sfx.putt();store('putts',(fetchKey('putts')||0)+1)}
-  else{const th=(shank?c.loft*.6:c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.38:pure?c.bomb||1:onTime?.985:.955-.3*Math.pow(q,1.3)),v=Math.sqrt(carry*G/Math.sin(2*th)),
-      k=shank?0:clamp((kf*1.15+(onTime?0:ts*(.1+q*.9)))*wild,-1.6,1.6),d=rotv(aim.x,aim.y,shank?.6:(over*.36+(onTime?0:ts*(.012+q*.07)))*(1+.5*(wild-1))); // a shank squirts low and hard right
+  else{const th=(shank?c.loft*.6:c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.4:pure?c.bomb||1:onTime?.985:.965-.28*Math.pow(q,1.3)),v=Math.sqrt(carry*G/Math.sin(2*th)),
+      k=shank?0:clamp((kf*1.1+(onTime?0:ts*(.07+q*.8)))*wild,-1.5,1.5),d=rotv(aim.x,aim.y,shank?.6:(over*.33+(onTime?0:ts*(.01+q*.06)))*(1+.5*(wild-1))); // a shank squirts low and hard right
     b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
     word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}

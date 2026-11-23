@@ -37,7 +37,7 @@ def main():
         curl('https://api.openstreetmap.org/api/0.6/map?bbox=%f,%f,%f,%f' % (w - pad, s - pad, e + pad, n + pad), out=osm)
     place = json.load(open(meta)); extra_path = os.path.join(DATA, a.id + '.extra.json'); extra = json.load(open(extra_path)) if os.path.exists(extra_path) else None
     lo, hi = map(int, a.holes.split('-'))
-    try: c = ic.build(osm, a.id, range(lo, hi + 1), 150, extra)
+    try: c = ic.build(osm, a.id, range(lo, hi + 1), 150, extra, course=place['name'].split(',')[0])
     except ValueError: c = None
     if not c or len(c['lines']) < hi - lo + 1:
         s, w, n, e = place['box']; img = os.path.join(CACHE, a.id + '.aerial.jpg'); out = os.path.join(DATA, a.id + '.trace.jpg')
@@ -46,13 +46,9 @@ def main():
         sys.exit('The map has hole lines for only %d of the holes asked for.\nTrace them on %s (yards east and south of [%f, %f]) into %s, then run this again.' % (len(c['lines']) if c else 0, out, (s + n) / 2, (w + e) / 2, extra_path))
     json.dump(c, open(os.path.join(DATA, a.id + '.json'), 'w'), separators=(',', ':')); ic.plot(c, os.path.join(DATA, a.id + '.preview.png'))
     print('wrote data/%s.json (%d KB). Holes and measured yards: %s' % (a.id, os.path.getsize(os.path.join(DATA, a.id + '.json')) // 1024, c['len']))
-    pars = {}
-    import xml.etree.ElementTree as ET
-    for el in ET.parse(osm).getroot().findall('way'):
-        t = {x.get('k'): x.get('v') for x in el.findall('tag')}
-        if t.get('golf') == 'hole' and (t.get('ref') or '').isdigit(): pars[int(t['ref'])] = t.get('par', '4')
-    card = (extra or {}).get('card', {})
-    print("\nPaste into COURSES in src/20-course.js, then set the names, handicaps and look (th):\n")
+    card = (extra or {}).get('card', {}); auto = c.get('card', {})
+    val = lambda n, k, d: (auto.get(n) or {}).get(k) or d
+    print("\nPaste into COURSES in src/20-course.js, then set the hole names and the look (th). Par, yards and handicap come from the map where it has them:\n")
     print("{id:'%s',code:'%s',club:'%s',tee:'Back',\n th:{out:'rough',floor:'#527c38',rough:'#527c38',fair:'#6ea14b',stripe:1,outer:'#56633f',woods:'#2e4927',mix:[['liveoak',.5],['elm',.3],['juniper',.2]],marker:'#e6cf8a',bloom:'bloom',bridge:'wood',cart:true,houses:false},\n holes:[%s]}," % (
-        a.id, a.id.upper(), a.name.split(',')[0], ','.join("['Hole %d',%s,%s,%d]" % (n, pars.get(n, 4), card.get(str(n), c['len'][n]), n) for n in sorted(c['lines']))))
+        a.id, a.id.upper(), a.name.split(',')[0], ','.join("['Hole %d',%s,%s,%d]" % (n, val(n, 'par', 4), card.get(str(n)) or val(n, 'yd', c['len'][n]), val(n, 'hcp', n)) for n in sorted(c['lines']))))
 if __name__ == '__main__': main()

@@ -43,11 +43,59 @@ def length(p): return sum(math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1
 ROADW = {'motorway': 16, 'trunk': 14, 'primary': 13, 'secondary': 11, 'tertiary': 9, 'residential': 7.5, 'unclassified': 7, 'service': 4.5, 'motorway_link': 8, 'primary_link': 8}
 PATHS = {'footway', 'path', 'cycleway', 'track', 'pedestrian', 'steps'}
 
-def build(path, cid, holes=range(1, 10), margin=150, extra=None):
+def course_rings(nodes, ways, rels, name):
+    """Outlines, in lat/lon, of the mapped golf course whose name best matches. A course is one closed way or a relation of outer ways."""
+    words = lambda s: set(w for w in ''.join(ch.lower() if ch.isalnum() else ' ' for ch in s or '').split() if w not in ('golf', 'course', 'club', 'the', 'municipal', 'country'))
+    want, found = words(name), []
+    def stitch(segs):  # join ways end to end into closed rings
+        segs = [list(s) for s in segs if len(s) > 1]; rings = []
+        while segs:
+            r = segs.pop(0)
+            while r[0] != r[-1]:
+                for i, s2 in enumerate(segs):
+                    if s2[0] == r[-1]: r += s2[1:]; segs.pop(i); break
+                    if s2[-1] == r[-1]: r += s2[-2::-1]; segs.pop(i); break
+                else: break
+            if r[0] == r[-1] and len(r) > 3: rings.append([nodes[i] for i in r if i in nodes])
+        return rings
+    for nd, t in ways.values():
+        if t.get('leisure') == 'golf_course': found.append((len(want & words(t.get('name'))), stitch([nd])))
+    for members, t in rels:
+        if t.get('leisure') == 'golf_course': found.append((len(want & words(t.get('name'))), stitch([ways[ref][0] for typ, ref, role in members if typ == 'way' and role in ('outer', '') and ref in ways])))
+    found = [f for f in found if f[0] and f[1]]
+    return max(found, key=lambda f: f[0])[1] if found else []
+def in_ring(ring, q):
+    c = False
+    for i in range(len(ring)):
+        (y1, x1), (y2, x2) = ring[i], ring[(i + 1) % len(ring)]
+        if (y1 > q[0]) != (y2 > q[0]) and q[1] < (x2 - x1) * (q[0] - y1) / (y2 - y1) + x1: c = not c
+    return c
+
+def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
     nodes, ways, rels, trees = load(path)
-    hole_ways = {}
+    # Two courses that share a property both have a hole 1. Keep the holes that lie inside the course that was asked for;
+    # failing that, the ones that join up with their neighbours (a green sits near the next tee).
+    cands = {}
     for wid, (nd, t) in ways.items():
-        if t.get('golf') == 'hole' and (t.get('ref') or '').isdigit(): hole_ways[int(t['ref'])] = wid
+        if t.get('golf') == 'hole' and (t.get('ref') or '').isdigit() and sum(i in nodes for i in nd) > 1: cands.setdefault(int(t['ref']), []).append(wid)
+    if any(len(v) > 1 for v in cands.values()):
+        rings = course_rings(nodes, ways, rels, course) if course else []
+        ends = lambda wid: (lambda p: (p[0], p[len(p) // 2], p[-1]))([nodes[i] for i in ways[wid][0] if i in nodes])
+        for n, v in cands.items():
+            inside = [w for w in v if any(in_ring(r, ends(w)[1]) for r in rings)]
+            if inside: v[:] = inside
+        gap = lambda a, b: math.hypot(a[0] - b[0], (a[1] - b[1]) * math.cos(math.radians(a[0])))
+        for n in sorted(cands):
+            v = cands[n]
+            if len(v) > 1:
+                prev, nxt = cands.get(n - 1, []), cands.get(n + 1, [])
+                v[:] = [min(v, key=lambda w: (gap(ends(prev[0])[2], ends(w)[0]) if len(prev) == 1 else 0) + (gap(ends(w)[2], ends(nxt[0])[0]) if len(nxt) == 1 else 0))]
+    hole_ways = {n: v[0] for n, v in cands.items()}
+    # the card, where the map carries it: par, handicap and the longest tee
+    auto = {}
+    for n, wid in hole_ways.items():
+        t = ways[wid][1]; yd = [int(float(v.split()[0])) for k, v in t.items() if k.startswith('dist:') and v.split() and v.split()[0].replace('.', '').isdigit()]
+        auto[n] = {'par': int(t['par']) if (t.get('par') or '').isdigit() else None, 'yd': max(yd) if yd else None, 'hcp': int(t['handicap']) if (t.get('handicap') or '').isdigit() else None}
     if extra and extra.get('origin'):  # hand-traced hole lines: yards east and south of a stated origin
         la, lo = extra['origin']; ex = math.cos(math.radians(la)) * 111320 * YD; ey = 110574 * YD
         for h in extra.get('holes', []): hole_ways[h['n']] = {'line': [(la - y / ey, lo + x / ex) for x, y in h['yd']]}
@@ -113,7 +161,7 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None):
                     else: add_poly(k, p, .6, t)
     def centre(f): return (sum(f[0::2]) / (len(f) // 2), sum(f[1::2]) / (len(f) // 2))
     for n, l in lines.items():  # the card is played from the back tee: pick the mapped tee box that makes the hole closest to its card length
-        card = ((extra or {}).get('card') or {}).get(str(n))
+        card = ((extra or {}).get('card') or {}).get(str(n)) or (auto.get(n) or {}).get('yd')
         if not card: continue
         rest = length(l[1:]); best = None
         for t in G['tee']:
@@ -137,7 +185,7 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None):
         for item in v:
             p = [P(tuple(q)) for q in item]
             if k in G: G[k].append(flat(simp_poly(p, .3)))
-    out = {'id': cid, 'origin': [round(lat0, 6), round(lon0, 6)], 'lines': {n: flat(rdp(lines[n], .8) if len(lines[n]) > 2 else lines[n]) for n in want}, 'len': {n: round(length(lines[n])) for n in want},
+    out = {'id': cid, 'origin': [round(lat0, 6), round(lon0, 6)], 'lines': {n: flat(rdp(lines[n], .8) if len(lines[n]) > 2 else lines[n]) for n in want}, 'len': {n: round(length(lines[n])) for n in want}, 'card': {n: auto[n] for n in want if n in auto},
            'boundary': flat(simp_poly(boundary, 1.2)) if boundary else None, 'streams': streams, 'roads': roads, 'paths': paths, 'trees': tr, **G}
     return out
 

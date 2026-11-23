@@ -1,3 +1,4 @@
 flick-links/data/cache/
 flick-links/data/*.trace.jpg
 __pycache__/
+flick-links/data/*.preview.png

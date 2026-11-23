@@ -34,7 +34,7 @@ ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
 ${saveStrip()}${clubStrip()}
 <p class="eyebrow">Practice a front nine</p>
-<div class="row">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>`,titleCard)}
+<div class="pick">${COURSES.map(c=>`<button class="btn green sm" data-act="nine" data-c="${c.id}">${c.club}</button>`).join('')}</div>`,titleCard)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>Putting.</b> Drag the marker to where a flat putt should stop. Press Putt, then flick on gold. The streaks run downhill.</p>
 <p class="fine"><b>Trouble.</b> Water: drop at the edge, +1. Out of bounds or lost: replay, +1.</p>

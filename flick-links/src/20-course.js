@@ -3,6 +3,8 @@
 // fairways, tees, bunkers, water, woods, trees, paths, streets and buildings. Map data © OpenStreetMap contributors.
 // What is written here by hand is only what a map cannot say: the card, the names, and the look of the place.
 // th: the lie beyond the mown rough, ground colours, and the mix of native trees that fills the woods.
+//     belt: trees fill everything further than this many yards from a fairway. clumps, clumpAt: how full and how common the
+//     loose clumps of trees are on open ground (with a belt, clumps only appear when asked for).
 const COURSES=[
 {id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
  // Hill Country south-west of Austin: live oak and Ashe juniper, dry limestone creek beds, holes threaded between neighbourhoods and under Highway 45
@@ -15,7 +17,12 @@ const COURSES=[
 {id:'hk',code:'HK',club:'Hancock',tee:'Blue',
  // a city park since 1899: nine holes side by side in one block of Hyde Park, old pecans and live oaks, Waller Creek through the middle, a trail around the edge
  th:{out:'rough',floor:'#527c38',rough:'#527c38',fair:'#6ea14b',stripe:.55,outer:'#56633f',woods:'#2e4927',mix:[['pecan',.3],['liveoak',.36],['elm',.26],['juniper',.08]],marker:'#4f86e8',bloom:'bloomPink',bridge:'stone',cart:false,houses:true},
- holes:[['First Tee',4,324,11],['Red River',4,335,9],['The Slant',4,346,3],['The Pond',4,264,13],['Limestone',3,152,15],['Waller Creek',5,462,1],['Peck Avenue',4,357,5],['The Corner',3,144,17],['Home',4,249,7]]}];
+ holes:[['First Tee',4,324,11],['Red River',4,335,9],['The Slant',4,346,3],['The Pond',4,264,13],['Limestone',3,152,15],['Waller Creek',5,462,1],['Peck Avenue',4,357,5],['The Corner',3,144,17],['Home',4,249,7]]},
+{id:'jc',code:'JC',club:'Jimmy Clay',tee:'Black',
+ // Austin's 1974 muni in the fork of Onion and Williamson creeks: open parkland, rows and clumps of old pecan, live oak and cedar elm
+ // between the holes, thick bottomland woods all round the edge, a green set in a pond at the 6th, McKinney Falls limestone over the creek
+ th:{out:'rough',floor:'#62803b',rough:'#62803b',fair:'#72a648',stripe:.8,outer:'#5a6a3e',woods:'#2f4a26',mix:[['pecan',.3],['liveoak',.3],['elm',.3],['juniper',.1]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,belt:46,clumps:.8,clumpAt:.45,houses:false},
+ holes:[['Dove Springs',4,408,7],['Nuckols',3,155,15],['Williamson Creek',4,392,3],['The Long Bend',5,564,9],['The Point',3,114,17],['Pond Green',4,316,11],['Onion Creek',5,502,13],['Pecan Row',4,444,1],["Clay's Way",4,407,5]]}];
 // every hole of every course in one list; a round is a set of indexes into it
 const ALL=[];for(const c of COURSES)c.holes.forEach((d,k)=>ALL.push({c,k,def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));
 const courseIds=id=>ALL.map((e,i)=>e.c.id===id?i:-1).filter(i=>i>=0);
@@ -64,8 +71,8 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
   // One pass over the ground near the holes, a tree-sized step at a time. Each spot is asked the cheapest questions first.
   //   mapped woods      filled with the course's native mix
   //   past the fence    leafy yards
-  //   belt courses      everything beyond the rough is a tree belt, with the odd clearing
-  //   open courses      clumps here and there
+  //   belt courses      everything a set distance from the fairways is a tree belt, with the odd clearing
+  //   open ground       clumps here and there
   g.trees=[];const inBox=(w,p,d)=>p.x>w.bb[0]-d&&p.x<w.bb[2]+d&&p.y>w.bb[1]-d&&p.y<w.bb[3]+d,any=(list,p,d)=>{for(const s of list)if(inSh(s,p,d))return true;return false};
   const lineNear=(list,p,d)=>{for(const w of list)if(inBox(w,p,d)&&distLine(w.pts,p)<w.w*.5+d)return true;return false};
   const noise=p=>Math.sin(p.x*.031+c.id.length)+Math.sin(p.y*.027+1.3)+Math.sin((p.x+p.y)*.017);
@@ -76,8 +83,9 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
     if(inWood(p)){if(u<.14||wet(p,r*.5)||!clear(p,r*.45))continue}
     else{if(wet(p,r*.5)||lineNear(g.roads,p,r*.4)||lineNear(paths,p,r*.2)||any(g.dry,p,2))continue;
       if(!inB(p)){if(u>.3||any(g.building,p,r*.35))continue}
-      else if(th.belt){if(noise(p)<-1.1||any(g.fair,p,th.belt)||any(g.green,p,th.belt+6)||any(g.tee,p,16)||any(g.bunker,p,8)||any(g.rough,p,4)||any(g.building,p,r*.35))continue}
-      else{if(u>.5||noise(p)<1.05||any(g.fair,p,14)||any(g.rough,p,0)||!clear(p,7))continue}}
+      else if(th.belt&&!any(g.fair,p,th.belt)&&!any(g.green,p,th.belt+6)){if(noise(p)<-1.1||any(g.tee,p,16)||any(g.bunker,p,8)||any(g.rough,p,4)||any(g.building,p,r*.35))continue}
+      else if(th.belt&&!th.clumps)continue;
+      else{if(u>(th.clumps||.5)||noise(p)<(th.clumpAt||1.05)||any(g.fair,p,14)||any(g.rough,p,0)||!clear(p,7))continue}}
     g.trees.push(tree(p.x,p.y,wet(p,12)&&rng()<.7?'cypress':pick(),r,false))}
   g.trees.sort((a,b)=>a.r-b.r);
   // small things that make it a place

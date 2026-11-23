@@ -13,11 +13,15 @@ python3 tools/add_course.py "Lions Municipal Golf Course, Austin" lm
 That writes `data/lm.json` and a check drawing, `data/lm.preview.png`, and prints an entry to paste into
 `COURSES` in `src/20-course.js`. In that entry you set what a map cannot know:
 
-- the name, par, scorecard yardage and handicap of each hole
+- the name of each hole, and its par, scorecard yardage and handicap where the map does not carry them
+  (many courses have them on the hole lines; the tool then fills them in and sets each tee back to match)
 - `th`, the look of the place: what lies beyond the rough (`out`), ground colours, the mix of native trees
   that fills the woods (`mix`), whether tree belts line the holes (`belt`), and whether ordinary houses are drawn (`houses`)
 
 The daily round draws from every course automatically, and the menu gains a practice button for the new one.
+
+Two courses on one property (Jimmy Clay and Roy Kizer, say) each have a hole 1. The tool keeps the holes that lie
+inside the course you named, so use the course's name as OpenStreetMap shows it.
 
 ## When the map is incomplete
 

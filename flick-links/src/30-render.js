@@ -275,20 +275,15 @@ function drawGesture(now){const g=S.g;
   ctx.lineCap='round';ctx.strokeStyle='rgba(244,236,214,.28)';ctx.lineWidth=2;ctx.setLineDash([3,9]);ctx.beginPath();ctx.arc(g.ox,g.oy,L,0,TAU);ctx.stroke();ctx.setLineDash([]);
   ctx.strokeStyle='rgba(244,236,214,.8)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(g.ox,g.oy);ctx.lineTo(g.x,g.y);ctx.stroke();
   if(g.phase==='swing'&&g.trail.length>1){ctx.strokeStyle=K.gold;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(g.trail[0].x,g.trail[0].y);for(const q of g.trail)ctx.lineTo(q.x,q.y);ctx.stroke()}
-  const M=SWM();
-  if(M.tempo){ // a gold ring grows from the ball at the pace of a good backswing; the thumb rides its edge
-    const gh=ghostAt(g,g.frozen!=null?g.ft:performance.now());ctx.lineCap='butt';ctx.strokeStyle='rgba(6,22,17,.72)';ctx.lineWidth=10;ctx.beginPath();ctx.arc(g.ox,g.oy,R,0,TAU);ctx.stroke();
-    if(gh){ctx.strokeStyle='rgba(6,22,17,.45)';ctx.lineWidth=8;ctx.beginPath();ctx.arc(g.ox,g.oy,gh,0,TAU);ctx.stroke();ctx.strokeStyle=hit?'#fff6c9':K.gold;ctx.lineWidth=hit?5.5:4;ctx.beginPath();ctx.arc(g.ox,g.oy,gh,0,TAU);ctx.stroke()}}
-  else{
-  // the meter: two arcs climb from the bottom of the ring toward the top. The gold marks where to flick: on top, or for the
-  // roving method somewhere lower on both sides. The bottom third is the shank zone, marked red; the fill turns red in there.
-  const a0=Math.PI/2,shk=SHANK*Math.PI,low=m.f<SHANK,tn=M.TU*Math.pow(g.fn||1,1/M.EASE),fHi=Math.pow(Math.min(M.TU,tn+w)/M.TU,M.EASE),fLo=Math.min(Math.pow(Math.max(0,tn-w)/M.TU,M.EASE),fHi-.12/Math.PI);
+  // the meter: two arcs climb from the bottom of the ring and meet at the gold notch on top, which is as wide as the timing window.
+  // The bottom third is the shank zone, marked red; the fill itself turns red while it is in there.
+  const a0=Math.PI/2,shk=SHANK*Math.PI,low=m.f<SHANK,ha=Math.max(.12,(1-Math.pow(1-w/TU,EASE))*Math.PI);
   ctx.lineCap='butt';ctx.strokeStyle='rgba(6,22,17,.72)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,0,TAU);ctx.stroke();
   ctx.strokeStyle='rgba(201,40,58,.55)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0-shk,a0+shk);ctx.stroke();
-  ctx.strokeStyle=K.gold;ctx.globalAlpha=hit?1:.65;ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0+fLo*Math.PI,a0+fHi*Math.PI);ctx.stroke();ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0-fHi*Math.PI,a0-fLo*Math.PI);ctx.stroke();ctx.globalAlpha=1;
+  ctx.strokeStyle=K.gold;ctx.globalAlpha=hit?1:.65;ctx.beginPath();ctx.arc(g.ox,g.oy,R,-a0-ha,-a0+ha);ctx.stroke();ctx.globalAlpha=1;
   if(m.f>.004){ctx.lineCap='round';ctx.strokeStyle=hit?'#fff6c9':low||late?'#ff7d8e':K.cream;ctx.lineWidth=7;const sw=m.f*Math.PI;
     ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0+sw);ctx.stroke();ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0-sw,true);ctx.stroke()}
-  if(hit){ctx.strokeStyle=K.gold;ctx.globalAlpha=.55;ctx.lineWidth=3;ctx.beginPath();ctx.arc(g.ox,g.oy,R+11,0,TAU);ctx.stroke();ctx.globalAlpha=1}}
+  if(hit){ctx.strokeStyle=K.gold;ctx.globalAlpha=.55;ctx.lineWidth=3;ctx.beginPath();ctx.arc(g.ox,g.oy,R+11,0,TAU);ctx.stroke();ctx.globalAlpha=1}
   ctx.fillStyle='rgba(6,22,17,.45)';disc(g.ox,g.oy,R-7);ctx.fillStyle=K.gold;disc(g.ox,g.oy,3.5);
   ctx.fillStyle='rgba(244,236,214,.3)';disc(g.x,g.y,24);
   if(!S.club.putt&&g.power>.04)txt(Math.round(g.power*100)+'%',g.ox,g.oy-R-24,g.power>=1?28:24,g.power>=1?K.gold:K.cream)}

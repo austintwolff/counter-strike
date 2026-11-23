@@ -160,6 +160,10 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
                         if near(p) and (boundary is None or area(p) > area(boundary)): boundary = p
                     else: add_poly(k, p, .6, t)
     def centre(f): return (sum(f[0::2]) / (len(f) // 2), sum(f[1::2]) / (len(f) // 2))
+    for n, l in lines.items():  # a hole line must end on a green: where the map has that green tagged as a tee, treat it as the green
+        if any(math.hypot(centre(g)[0] - l[-1][0], centre(g)[1] - l[-1][1]) < 35 for g in G['green']): continue
+        for i, t in enumerate(G['tee']):
+            if len(t) >= 12 and math.hypot(centre(t)[0] - l[-1][0], centre(t)[1] - l[-1][1]) < 15: G['green'].append(G['tee'].pop(i)); print('hole', n, ': a tee at the end of the line is taken as its green'); break
     for n, l in lines.items():  # the card is played from the back tee: pick the mapped tee box that makes the hole closest to its card length
         card = ((extra or {}).get('card') or {}).get(str(n)) or (auto.get(n) or {}).get('yd')
         if not card: continue

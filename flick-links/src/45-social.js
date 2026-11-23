@@ -3,11 +3,11 @@
 // Anywhere else it runs the same server code in the page, on browser storage: a solo clubhouse.
 const TROPHY={ace:['1','Ace','A hole in one'],eagle:['−2','Eagle','Two under on one hole'],hat:['III','Hat Trick','Three birdies in a round'],clean:['✓','Clean Card','A round without a bogey'],
   red:['−','In the Red','A round under par'],week:['7','Regular','Seven days running'],month:['30','Fixture','Thirty days running']};
-COURSES.forEach(c=>TROPHY['sweep-'+c.id]=[c.code,'Swept '+c.club,'A birdie on all nine']);
+COURSES.forEach(c=>TROPHY['sweep-'+c.id]=[c.code,'Swept '+c.club,'Nine holes birdied']);
 const MSG={name:'Enter a name.',taken:'Someone in this clubhouse already has that name.',full:'This clubhouse is full.',no_club:'That clubhouse no longer exists.',too_many:'You are in the most clubhouses one player can join.'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const hcpStr=h=>h==null?'–':h<0?'+'+(-h).toFixed(1):h.toFixed(1);
-const holeKey=h=>h.course.id+h.k; // always 1 to 9, whichever nine of the course is in the game
+const holeKey=h=>h.course.id+h.k; // the hole's fixed place in its course, 1 to 18, which is not always its number
 const plural=(n,w)=>n+' '+w+(n===1?'':'s');
 const shortDay=d=>{const[y,m,dd]=d.split('-').map(Number);return new Date(y,m-1,dd).toLocaleDateString(undefined,{month:'short',day:'numeric'})};
 const toB64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -26,7 +26,7 @@ const pickClub=code=>{C.code=code||'';store('club',C.code)};
 const endInvite=()=>{C.invite='';try{if(location.search)history.replaceState(null,'',location.pathname+location.hash)}catch(e){}};
 // post today's finished card once; the server keeps the first card of the day
 async function postToday(){if(!C.me||C.me.today)return false;const d=fetchKey(S.key);if(!d||!d.done||!Array.isArray(d.ids)||d.ids.length!==3||!d.ids.every(i=>ALL[i]))return false;
-  const hs=d.ids.map(HOLE),j=await Net.call('POST','/round',{day:S.key,holes:hs.map(holeKey),pars:hs.map(h=>h.par),scores:d.scores.slice(0,3)});return!!(j&&j.ok)}
+  const hs=d.ids.map(INFO),j=await Net.call('POST','/round',{day:S.key,holes:hs.map(holeKey),pars:hs.map(h=>h.par),scores:d.scores.slice(0,3)});return!!(j&&j.ok)}
 async function refresh(posted){const code=C.invite||C.code;
   try{const j=await Net.call('GET','/state?day='+S.key+(code?'&club='+encodeURIComponent(code):''));
     if(j&&j.ok){C.me=j.me;C.club=j.club;
@@ -44,8 +44,8 @@ const tabStandings=c=>`<table class="st"><tr><th>Member</th><th>Hcp</th><th>Roun
   `<tr class="${m.me?'me':''}"><td>${esc(m.nick)}</td><td><b>${hcpStr(m.hcp)}</b></td><td>${m.rounds}</td><td>${m.wins}</td><td>${m.streak}</td></tr>`).join('')}</table>
 <p class="fine">Handicap after three rounds.</p>`;
 function tabRecords(c){const rec=c.records,by={};for(const k in rec.holes)(by[k.slice(0,2)]=by[k.slice(0,2)]||[]).push(k);
-  const courses=COURSES.filter(x=>by[x.id]).map(x=>`<p class="eyebrow">${x.club}</p><ul class="rec">${by[x.id].sort().map(k=>{const r=rec.holes[k];
-    return`<li><span>No. ${+k.slice(2)+(x.first||1)-1}</span>${mk(r.score,r.par)}<span class="nm">${esc(r.nick)}</span><small>${shortDay(r.day)}</small></li>`}).join('')}</ul>`).join('');
+  const courses=COURSES.filter(x=>by[x.id]).map(x=>`<p class="eyebrow">${x.club}</p><ul class="rec">${by[x.id].sort((a,b)=>holeNo(x.id,+a.slice(2))-holeNo(x.id,+b.slice(2))).map(k=>{const r=rec.holes[k];
+    return`<li><span>No. ${holeNo(x.id,+k.slice(2))}</span>${mk(r.score,r.par)}<span class="nm">${esc(r.nick)}</span><small>${shortDay(r.day)}</small></li>`}).join('')}</ul>`).join('');
   return(rec.low?`<div class="stats"><div><b>${rec.low.tot} <small>${rel(rec.low.tot-rec.low.par)}</small></b><span>Low round · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No rounds yet.</p>')
     +(rec.feed.length?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')
     +courses}

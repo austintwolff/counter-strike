@@ -109,7 +109,7 @@ export async function handle(req,store,opts={}){const url=new URL(req.url),path=
         ses.player.clubs=(ses.player.clubs||[]).filter(c=>c!==code);await store.put('p:'+ses.pid,ses.player);return done()}
       case'/round':{if(!ses)return fail('no_player',401);const day=validDay(b.day),h=b.holes,p=b.pars,s=b.scores;
         if(!day||Math.abs(dayNum(day)-Math.floor(Date.now()/864e5))>1)return fail('day');
-        if(![h,p,s].every(a=>Array.isArray(a)&&a.length===3)||!h.every(x=>/^[a-z]{2}[1-9]$/.test(x))||new Set(h).size!==3)return fail('holes');
+        if(![h,p,s].every(a=>Array.isArray(a)&&a.length===3)||!h.every(x=>/^[a-z]{2}([1-9]|1[0-8])$/.test(x))||new Set(h).size!==3)return fail('holes');
         if(!p.every(x=>x===3||x===4||x===5)||!s.every((x,i)=>Number.isInteger(x)&&x>=1&&x<=p[i]+5))return fail('scores');
         const key='r:'+ses.pid+':'+day;if(!(await store.get(key)))await store.put(key,{day,holes:h,pars:p,scores:s,tot:total(s),par:total(p),ts:Date.now()}); // the first card of the day stands
         return done()}

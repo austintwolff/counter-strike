@@ -32,8 +32,7 @@ const S={mode:'title',key:'',day:1,holes:[],round:{type:'daily',ids:[0,1,2],scor
 const HOLE=i=>ALL[i]?S.holes[i]||(S.holes[i]=buildHole(i,S.key)):undefined;
 const cur=()=>HOLE(S.round.ids[S.hi]);
 const maxScore=()=>cur().par+MAX_OVER;
-const nineKey=id=>S.key+':nine'+(id==='gr'?'':':'+id);
-const saveKey=()=>S.round.type==='nine'?nineKey(S.round.course):S.key;
+const saveKey=()=>S.round.type==='nine'?S.key+':rd:'+S.round.course+':'+(S.round.part||'f'):S.key;
 const onRange=()=>S.round.type==='range';
 function save(){if(onRange())return;const n=S.round.ids.length;store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n})}
 

@@ -23,12 +23,19 @@ That writes `data/lm.json` and a check drawing, `data/lm.preview.png`, and print
 
 The daily round draws from every course automatically, and the menu gains a practice button for the new one.
 
-For a back nine, pass `--holes 10-18` and give the entry `first:10`.
+A course's second nine is imported separately, as `<id>2`, and its holes go under `more` in the same entry:
+
+```
+python3 tools/add_course.py "Jimmy Clay Golf Course, Austin" jc2 --holes 10-18
+```
+
+The menu then offers Front, Back and 18 for that course. (Where the back nine was added first, as at Muni, the entry has
+`first:10` and `more` holds holes 1 to 9.)
 
 Then check it:
 
 ```
-./build.sh && node tools/check_course.js lm
+./build.sh && node tools/check_course.js lm f     # and again with b for a back nine
 ```
 
 That times each hole's build, saves a picture of every hole and its first aiming view, fires a tee shot down each

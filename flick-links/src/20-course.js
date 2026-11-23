@@ -3,7 +3,7 @@
 // fairways, tees, bunkers, water, woods, trees, paths, streets and buildings. Map data © OpenStreetMap contributors.
 // What is written here by hand is only what a map cannot say: the card, the names, and the look of the place.
 // th: the lie beyond the mown rough, ground colours, and the mix of native trees that fills the woods.
-//     first: the number of the course's first hole here, 10 for a back nine (the map data is keyed by real hole numbers).
+//     first: the number of the first hole in `holes`: 10 where the back nine was added first (the map data is keyed by real hole numbers).
 //     belt: trees fill everything further than this many yards from a fairway. clumps, clumpAt: how full and how common the
 //     loose clumps of trees are on open ground (with a belt, clumps only appear when asked for).
 const COURSES=[
@@ -14,7 +14,9 @@ const COURSES=[
 {id:'lp',code:'LP',club:'Lost Pines',tee:'Black',
  // prairie ridges above the Colorado River: post oak and cedar elm mottes, loblolly pine, native grass, sprawling white bunkers
  th:{out:'native',floor:'#978a4b',rough:'#557f39',fair:'#6ba748',stripe:1,outer:'#978a4b',woods:'#33502b',mix:[['postoak',.32],['elm',.2],['juniper',.14],['pine',.16],['pecan',.1],['mesquite',.08]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,houses:false},
- holes:[['Loblolly',4,420,17],['Prairie Ridge',4,431,3],['Long Horizon',5,603,1],["Wolf's Den",3,233,5],['Bastrop Run',5,594,7],['Pine Hollow',3,166,15],['Short Grass',4,337,13],['McKinney Roughs',4,483,11],['The Perch',4,428,9]]},
+ holes:[['Loblolly',4,420,17],['Prairie Ridge',4,431,3],['Long Horizon',5,603,1],["Wolf's Den",3,233,5],['Bastrop Run',5,594,7],['Pine Hollow',3,166,15],['Short Grass',4,337,13],['McKinney Roughs',4,483,11],['The Perch',4,428,9]],
+ // the back nine drops off the ridge to the pecan bottoms along the Colorado
+ more:[['River Road',4,473,6],['Colorado',4,352,8],['Pecan Bottom',3,191,16],['The Long Walk',5,636,2],['Lost Pines',4,401,12],['Wilbarger',4,345,14],['Little Wolf',3,155,18],['Wolfdancer',4,470,4],['Riverside',5,586,10]]},
 {id:'hk',code:'HK',club:'Hancock',tee:'Blue',
  // a city park since 1899: nine holes side by side in one block of Hyde Park, old pecans and live oaks, Waller Creek through the middle, a trail around the edge
  th:{out:'rough',floor:'#527c38',rough:'#527c38',fair:'#6ea14b',stripe:.55,outer:'#56633f',woods:'#2e4927',mix:[['pecan',.3],['liveoak',.36],['elm',.26],['juniper',.08]],marker:'#4f86e8',bloom:'bloomPink',bridge:'stone',cart:false,houses:true},
@@ -23,15 +25,28 @@ const COURSES=[
  // Austin's 1974 muni in the fork of Onion and Williamson creeks: open parkland, rows and clumps of old pecan, live oak and cedar elm
  // between the holes, thick bottomland woods all round the edge, a green set in a pond at the 6th, McKinney Falls limestone over the creek
  th:{out:'rough',floor:'#62803b',rough:'#62803b',fair:'#72a648',stripe:.8,outer:'#5a6a3e',woods:'#2f4a26',mix:[['pecan',.3],['liveoak',.3],['elm',.3],['juniper',.1]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,belt:46,clumps:.8,clumpAt:.45,houses:false},
- holes:[['Dove Springs',4,408,7],['Nuckols',3,155,15],['Williamson Creek',4,392,3],['The Long Bend',5,564,9],['The Point',3,114,17],['Pond Green',4,316,11],['Onion Creek',5,502,13],['Pecan Row',4,444,1],["Clay's Way",4,407,5]]},
+ holes:[['Dove Springs',4,408,7],['Nuckols',3,155,15],['Williamson Creek',4,392,3],['The Long Bend',5,564,9],['The Point',3,114,17],['Pond Green',4,316,11],['Onion Creek',5,502,13],['Pecan Row',4,444,1],["Clay's Way",4,407,5]],
+ more:[['The Turn',5,519,8],['Roy Kizer',4,426,10],['Long Iron',3,227,14],['McKinney Falls',4,405,6],['Cedar Elm',3,204,12],['Pleasant Valley',4,378,16],['Three Shotter',5,559,18],['Bottomland',4,437,4],['Last Light',4,474,2]]},
 {id:'mu',code:'MU',club:'Muni',tee:'Blue',first:10,
  // Lions Municipal, Tarrytown, 1924: short, tight holes cut through thick live oak woods, open stands of big oaks over dry ground
  // between the fairways, small dark ponds, hardly a bunker, city streets on three sides. The 16th is Hogan's Hole.
  th:{out:'rough',floor:'#687d3c',rough:'#687d3c',fair:'#74a14a',stripe:.5,outer:'#5c6740',woods:'#2c4724',mix:[['liveoak',.52],['elm',.22],['pecan',.14],['juniper',.12]],marker:'#4f86e8',bloom:'bloom',bridge:'stone',cart:true,clumps:.34,clumpAt:-.5,houses:true},
- holes:[['Enfield',4,287,16],['Tarrytown',4,320,8],['Brackenridge',5,493,4],['Short Carry',3,146,12],['Lake Austin',5,509,10],['Deep Eddy',3,128,14],["Hogan's Hole",4,395,2],['Live Oak',3,166,6],['Clubhouse Turn',4,301,18]]}];
-// every hole of every course in one list; a round is a set of indexes into it
-const ALL=[];for(const c of COURSES)c.holes.forEach((d,k)=>ALL.push({c,k,def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));
-const courseIds=id=>ALL.map((e,i)=>e.c.id===id?i:-1).filter(i=>i>=0);
+ holes:[['Enfield',4,287,16],['Tarrytown',4,320,8],['Brackenridge',5,493,4],['Short Carry',3,146,12],['Lake Austin',5,509,10],['Deep Eddy',3,128,14],["Hogan's Hole",4,395,2],['Live Oak',3,166,6],['Clubhouse Turn',4,301,18]],
+ // `holes` is the back nine here, since that was built first; `more` is holes 1 to 9
+ more:[['Opening Drive',4,359,5],['Exposition',5,495,9],['Old Oak',4,393,3],['West Austin',3,155,15],['The Doke',4,375,7],['The Hard One',4,367,1],['Lions Club',3,157,11],['Long Way Round',5,467,17],['Since 1924',4,312,13]]}];
+// Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
+// data/<id>.json; its other nine, if it has one, is `more`, drawn from data/<id>2.json. The second nines are added after all the
+// first ones so that the index of a hole never changes once it has been published (saved rounds keep indexes).
+//   k  0 to 17, the hole's fixed place in its course (used for seeds and for the key sent to the clubhouse server)
+//   n  the number on the tee sign
+const ALL=[];
+for(const c of COURSES)c.holes.forEach((d,k)=>ALL.push({c,k,n:k+(c.first||1),map:c.id,def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));
+for(const c of COURSES)(c.more||[]).forEach((d,k)=>ALL.push({c,k:k+9,n:k+((c.first||1)===1?10:1),map:c.id+'2',def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));
+// the indexes of a course's holes in playing order: part 'f' the front nine, 'b' the back nine, 'a' all eighteen
+const courseIds=(id,part)=>ALL.map((e,i)=>e.c.id===id&&(part==='a'||(part==='b')===(e.n>9))?i:-1).filter(i=>i>=0).sort((a,b)=>ALL[a].n-ALL[b].n);
+// what a scorecard needs to know about a hole, without building it
+const INFO=i=>{const e=ALL[i];return{course:e.c,n:e.n,k:e.k+1,name:e.def.name,par:e.def.par,yards:e.def.yd,hcp:e.def.hcp}};
+const holeNo=(id,key)=>{const e=ALL.find(e=>e.c.id===id&&e.k+1===key);return e?e.n:key};
 const pts=f=>{const a=[];for(let i=0;i<f.length;i+=2)a.push({x:f[i],y:f[i+1]});return a};
 const SPECIES=[[/quercus|oak/i,'liveoak'],[/carya|pecan/i,'pecan'],[/ulmus|elm/i,'elm'],[/juniper|cedar|needle/i,'juniper'],[/taxodium|cypress/i,'cypress'],[/prosopis|mesquite/i,'mesquite'],[/pinus|pine/i,'pine']];
 
@@ -39,7 +54,7 @@ const SPECIES=[[/quercus|oak/i,'liveoak'],[/carya|pecan/i,'pecan'],[/ulmus|elm/i
 // Only the hole being played is built: its own ground and whatever of the course lies within sight of it.
 // Past FADE0 yards from the line of play the picture fades out, and by FADE1 it is gone (and the ball is off the map).
 const FADE0=94,FADE1=165,PAD=FADE1+30;
-function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('geo:'+c.id+k)),R=g.route=mkRoute(catmull(pts(m.lines[k+(c.first||1)]),3));
+function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32(hashStr('geo:'+c.id+k)),R=g.route=mkRoute(catmull(pts(m.lines[e.n]),3));
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of R.pts){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}
   g.box=[x0-PAD,y0-PAD,x1-x0+2*PAD,y1-y0+2*PAD];
   const local=f=>{const P=f.p||f;let a=1e9,b=1e9,c2=-1e9,d=-1e9;for(let i=0;i<P.length;i+=2){a=Math.min(a,P[i]);b=Math.min(b,P[i+1]);c2=Math.max(c2,P[i]);d=Math.max(d,P[i+1])}return c2>x0-PAD&&a<x1+PAD&&d>y0-PAD&&b<y1+PAD};
@@ -57,7 +72,7 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
   g.water=shapes(m.water,f=>Object.assign(shp(f),{pond:true}));g.dry=[];
   // a river can run for miles past the course: keep only the stretches that pass the holes
   const runs=[];for(const s of m.streams){let run=null;for(const q of pts(s.p)){if(inPlay(q)){if(!run)runs.push(run={...s,P:[]});run.P.push(q)}else run=null}}
-  for(const s of runs){if(s.P.length<2)continue;const r=mkRoute(catmull(s.P,3));if(r.len<8)continue;const n=Math.max(1,Math.round(r.len/22)),prof=[];for(let i=0;i<=n;i++)prof.push([i/n,s.w/2*(.9+rng()*.3)]);
+  for(const s of runs){if(s.P.length<2)continue;const r=mkRoute(catmull(s.P,3));if(r.len<8)continue;const n=Math.max(1,Math.round(r.len/22)),prof=[];for(let i=0;i<=n;i++)prof.push([i/n,s.w/2*(s.dry?1.1+rng()*1.1:.9+rng()*.3)]);
     const rb=ribbon(r,0,r.len,prof);rb.line=r;rb.x=r.pts[0].x;rb.y=r.pts[0].y;(s.dry?g.dry:g.water).push(rb)}
   // The map often draws one stretch of water several times over (a creek as a line and as its banks, a pond as water and as a hazard),
   // and long rivers come in pieces. All of it is merged into clean outlines, one per body of water, so nothing overlaps or shows a seam.
@@ -114,7 +129,7 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
     if(w.pond&&w.area>120){for(const p of w.spots)if(rd()<.55&&inSh(w,p,-1.6))for(let i=0,n=1+Math.floor(rd()*3);i<n;i++){const q={x:p.x+(rd()-.5)*5,y:p.y+(rd()-.5)*5};if(inSh(w,q,-1.6))g.lilies.push({...q,r:lerp(.7,1.4,rd()),a:rd()*TAU,fl:rd()<.35})}
       // a duck or two, idling in a small circle well out from the bank
       if(big>14&&w.spots.length)for(let i=0,n=1+(rd()<.4?1:0);i<n;i++){const p=w.spots[Math.floor(rd()*w.spots.length)];g.ducks.push({w,x:p.x,y:p.y,rad:lerp(1.2,2.2,rd()),T:lerp(50,80,rd())*1000,ph:rd()*TAU,dir:rd()<.5?1:-1})}}}
-  for(const w of g.dry)for(const q of w.c)for(let i=0;i<3;i++)if(rng()<.6)g.pebbles.push({x:q.x+q.nx*(rng()*2-1)*(q.w+.6),y:q.y+q.ny*(rng()*2-1)*(q.w+.6),r:lerp(.3,1.1,rng())});
+  for(const w of g.dry)for(const q of w.c)for(let i=0;i<3;i++)if(rng()<.6)g.pebbles.push({x:q.x+q.nx*(rng()*2-1)*(q.w+.3),y:q.y+q.ny*(rng()*2-1)*(q.w+.3),r:lerp(.35,1.5,Math.pow(rng(),1.6))});
   for(const b of g.bunker){if(b.area<25)continue;const q=b.poly[Math.floor(rng()*b.poly.length)],a=Math.atan2(q.y-b.y,q.x-b.x);g.rakes.push({x:q.x+Math.cos(a)*1.3,y:q.y+Math.sin(a)*1.3,a:a+1.2+rng()})}
   for(let i=0;i<7;i++){const r=R,sd=rng()<.5?-1:1,q=rAt(r,lerp(20,r.len-20,rng())),d=lerp(32,58,rng()),p={x:q.x-q.dy*sd*d,y:q.y+q.dx*sd*d};
     if(clear(p,10)&&!wet(p,6)&&!inWood(p)&&inB(p))g.blooms.push(blob(p.x,p.y,lerp(6,11,rng()),lerp(3.5,6.5,rng()),rng()*TAU,g.blooms.length+7,.22))}
@@ -125,7 +140,7 @@ function buildGeo(c,k){const m=MAPS[c.id],th=c.th,g={},rng=mulberry32(hashStr('g
 function distLine(p,q){let m=1e9;for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy||1,t=clamp(((q.x-a.x)*dx+(q.y-a.y)*dy)/l2,0,1);m=Math.min(m,hyp(q.x-a.x-dx*t,q.y-a.y-dy*t))}return m}
 
 // ───────── one hole, with the day's pin and wind
-function buildHole(i,dayKey){const e=ALL[i],c=e.c,g=buildGeo(c,e.k),n=e.k+(c.first||1),r=g.route,L=r.len,t0=rAt(r,0),end=rAt(r,L);
+function buildHole(i,dayKey){const e=ALL[i],c=e.c,g=buildGeo(e),n=e.n,r=g.route,L=r.len,t0=rAt(r,0),end=rAt(r,L);
   const green=g.green.reduce((b,s)=>hyp(s.x-end.x,s.y-end.y)<hyp(b.x-end.x,b.y-end.y)?s:b);
   const h={course:c,th:c.th,geo:g,n,k:e.k+1,name:e.def.name,par:e.def.par,yards:e.def.yd,hcp:e.def.hcp,route:r,total:L,tee:{x:t0.x,y:t0.y,a:Math.atan2(t0.dy,t0.dx)},axis:Math.atan2(end.dy,end.dx),green,fringe:grown(green,2.4)};
   h.oaks=g.solid.filter(t=>distLine(r.pts,t)<160);

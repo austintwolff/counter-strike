@@ -32,7 +32,9 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   for(const s of G.woods)if(seen(s)){ctx.fillStyle=th.woods;ctx.fill(s.path);texFill(s.path,'mottle',.8,.35,.9)}
   for(const b of G.blooms)if(seen(b)){ctx.fillStyle='#3d6a3c';ctx.globalAlpha=.4;ctx.fill(b.path);ctx.globalAlpha=1;texFill(b.path,th.bloom,.95,.085,b.rot)}
   // dry creek beds and bare limestone
-  for(const w of G.dry)if(seen(w)){ctx.strokeStyle='rgba(60,52,30,.5)';ctx.lineWidth=2;ctx.stroke(w.path);ctx.fillStyle='#cdc4a6';ctx.fill(w.path);texFill(w.path,'rake',.5,.09,.4);inner(w.path,SUN.x,SUN.y,'#7c7150',.5,1.6)}
+  // a dry creek is a rocky wash: darker and rougher than any path, with cut banks, so the two are never mistaken for each other
+  for(const w of G.dry)if(seen(w)){ctx.strokeStyle='rgba(44,36,18,.5)';ctx.lineWidth=3.2;ctx.stroke(w.path);ctx.fillStyle='#989078';ctx.fill(w.path);texFill(w.path,'mottle',.55,.16,.4);texFill(w.path,'grain',.6,.09);
+    inner(w.path,0,0,'#463d24',.42,2.4);inner(w.path,SUN.x*1.2,SUN.y*1.2,'#241e0e',.4,1.5)}
   for(const s of G.rock)if(seen(s)){ctx.fillStyle='#d6d1c2';ctx.fill(s.path);texFill(s.path,'grain',.7,.11);inner(s.path,SUN.x*1.2,SUN.y*1.2,'#7d776a',.5,2.4);inner(s.path,-SUN.x,-SUN.y,'#ffffff',.5,1.4)}
   // paths: cart paths are pale concrete, park trails are crushed granite
   for(const w of G.paths)if(seen2(w)){ctx.strokeStyle='rgba(20,30,10,.28)';ctx.lineWidth=w.cart?3:2.5;ctx.stroke(w.path);ctx.strokeStyle=w.cart?K.path:'#c9b98f';ctx.lineWidth=w.cart?2.1:1.7;ctx.stroke(w.path)}

@@ -1,7 +1,7 @@
 # Building a course: lessons learned
 
 Read this before adding or reworking a course. It is the record of what went wrong on the first five
-(Grey Rock, Lost Pines, Hancock, Jimmy Clay, Muni) and what each fix became. `COURSES.md` is the how-to;
+(Grey Rock, Lost Pines, Hancock, Jimmy Clay, Muni; four of them now with both nines) and what each fix became. `COURSES.md` is the how-to;
 this file is the why, and the checklist.
 
 The aim never changes: **true to the real place, consistent with the other courses, and pretty.**
@@ -29,7 +29,9 @@ someone who has played it.
 | Grey Rock has greens and bunkers mapped but no hole lines. | Trace them on the gridded aerial the tool writes (`data/<id>.trace.jpg`) into `data/<id>.extra.json`. Verify by par pattern and by measured length against the card. |
 | Many courses carry the card on the hole lines (`par`, `handicap`, `dist:<tee>`). | The importer reads them and prints them in the entry to paste. Cross-check one tee's nine-hole total against a published card. For Muni the red-tee totals matched exactly, which confirmed the rest. Published cards disagree with each other by a few yards; do not chase that. |
 | Grey Rock's hand-traced 3rd, 5th and 8th measure 12 to 15% short of the card (170 for 193, 324 for 380, 158 for 187): the back tee boxes are not on the map. Still open. | `check_course.js` flags a line more than 8% off its card. Fix by tracing the back tee from the aerial into the extra file, not by stretching the line. |
-| A back nine. | Give the course `first:10`. The data stays keyed by real hole numbers and the game shows 10 to 18; hole ids sent to the server stay 1 to 9. |
+| A second nine for a course. | Import it on its own as `<id>2` (`--holes 10-18`, or `1-9` where the back nine came first) and list its holes under `more` in the course's entry. It shares the course's look. Second nines are appended after every first nine in the game's hole list, so a published hole never changes its index; never reorder `COURSES` or move holes between `holes` and `more`. |
+| Lost Pines' 16th and 18th greens are tagged as tees in the map, so the pin went to a green 180 yards away. | The importer now takes a tee-tagged shape at the end of a hole line as that hole's green and says so. `check_course.js` flags a pin that is not on a green. |
+| Grey Rock's back nine (south of Highway 45) has almost nothing mapped: two greens, two fairways, no hole lines. The satellite photo is of dormant turf, where fairways cannot be told from rough, and the routing could not be confirmed. | Not built. A course needs either mapped features or imagery clear enough to trace and a way to confirm which hole is which. Do not fill the gap with invented holes. |
 | Lost Pines included the whole Colorado River: 46,000 outline points and 19,000 pebbles. The game crawled. | Water is clipped to the hole at build time, but check anyway: `check_course.js` flags a hole that is slow to build. |
 | The map draws the same water twice (a creek as a line and as its banks; a pond as water and as a hazard) and long rivers come in pieces. This showed as doubled creeks and seams. | All water on a hole is merged into one outline per body automatically. Still look at every creek for forks or doubles. A genuine side channel is fine. |
 | Overpass does not work from the cloud session. | The tool uses `api.openstreetmap.org` and Nominatim. The session's network allowlist must include those, the tile hosts for imagery, and nothing else is needed. |
@@ -42,6 +44,8 @@ someone who has played it.
 - Native Texas trees only (live oak, Ashe juniper, cedar elm, pecan, post oak, mesquite, loblolly pine, bald cypress
   at the water). No ornamental pink trees: the owner had them removed.
 - Soft water: a shade on the grass, a thin rim, pale shallows. No heavy outlines.
+- A dry creek is a rocky wash: darker and rougher than a path, wider, with cut banks. In its first form it was pale and smooth
+  and read as a cart path with rocks on it.
 - The hole in focus with the surroundings dissolving into a blurred haze of the terrain's own colour. Never fade to white.
 - Minimal text. No captions that explain the obvious.
 
@@ -82,6 +86,8 @@ Rules of thumb that came out of this:
 ## Performance rules (learned on a real phone)
 
 - Only the hole being played is built. Keep a hole's build well under 100 ms on a desktop.
+- Menus and scorecards read a hole's par and yardage from the course list (`INFO`), never by building the hole. An
+  eighteen-hole card that built every hole would stall the phone.
 - Scenery is painted once into kept pictures. **Nothing whose size depends on the zoom may be painted into them**:
   the cup was, and became a giant black hole when the camera zoomed in for a putt.
 - No full-screen fills every frame. Drifting cloud shadows cost more than the whole rest of the frame.
@@ -91,7 +97,7 @@ Rules of thumb that came out of this:
 
 - [ ] Preview drawing matches the satellite view: nine lines, each from a tee to a green, in the right order.
 - [ ] Par pattern and yardages match a published card for the tee named in the entry.
-- [ ] `node tools/check_course.js <id>` reports no problems.
+- [ ] `node tools/check_course.js <id> f` and `... <id> b` report no problems (or only ones recorded above).
 - [ ] Every saved picture looked at: no doubled water, no blobs, no bare patches, nothing over a tee.
 - [ ] Side by side with two other courses: same finish, clearly a different place.
 - [ ] The home menu still lays out cleanly with one more button.

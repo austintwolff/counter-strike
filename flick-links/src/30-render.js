@@ -75,7 +75,8 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
     ctx.strokeStyle='#b08a55';ctx.lineWidth=.16;ctx.beginPath();ctx.moveTo(-1.3,0);ctx.lineTo(1.3,0);ctx.stroke();ctx.strokeStyle='#5d4a2c';ctx.lineWidth=.2;ctx.beginPath();ctx.moveTo(1.3,-.5);ctx.lineTo(1.3,.5);ctx.stroke();ctx.restore()}
   for(const s of G.green)if(seen(s)){ctx.fillStyle=K.green;ctx.fill(s.path);if(s!==h.green){texFill(s.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,s.x*.01);ctx.strokeStyle='rgba(20,60,20,.3)';ctx.lineWidth=.3;ctx.stroke(s.path)}}
   const g=h.green;if(!h.relief)h.relief=relief(h);
-  ctx.save();ctx.clip(g.path);ctx.drawImage(h.relief.c,h.relief.x,h.relief.y,h.relief.s,h.relief.s);ctx.restore();
+  ctx.save();ctx.clip(g.path);ctx.drawImage(h.relief.c,h.relief.x,h.relief.y,h.relief.s,h.relief.s);
+  if(CONTOURS){if(!h.contours)h.contours=contours(h);ctx.strokeStyle='rgba(18,52,24,.22)';ctx.lineWidth=clamp(2.6/z,.06,.2);ctx.stroke(h.contours);ctx.strokeStyle='rgba(250,255,236,.3)';ctx.lineWidth=clamp(1.2/z,.035,.11);ctx.stroke(h.contours)}ctx.restore();
   texFill(g.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,h.axis+.5);texFill(g.path,'grain',.3*tG,.05);
   ctx.strokeStyle='rgba(20,60,20,.3)';ctx.lineWidth=.3;ctx.stroke(g.path);
   if(G.cart&&vis(G.cart))drawCart(G.cart.x,G.cart.y,G.cart.a);
@@ -211,6 +212,18 @@ function drawHouse(p){const sv=rotv(SUN.x,SUN.y,-p.a),lit=sv.x>0;ctx.save();ctx.
     ctx.strokeStyle='rgba(30,26,20,.55)';ctx.lineWidth=.5;ctx.strokeRect(x,y,w,hh);ctx.beginPath();ctx.moveTo(x+w/2,y);ctx.lineTo(x+w/2,y+hh);ctx.stroke();
     ctx.fillStyle='rgba(255,255,255,.05)';for(let yy=y+2;yy<y+hh;yy+=3)ctx.fillRect(x,yy,w,.3)}
   ctx.fillStyle='#b9b2a2';ctx.fillRect(12,-20,3.5,3.5);ctx.fillRect(12,14,3.5,3.5);ctx.restore()}
+// Contour lines on the green being played, as in a green-reading book: each line joins ground of one height, eight steps from
+// the lowest point to the highest, so lines that crowd together mark a steep place. Traced by marching squares over the height.
+const CONTOURS=false; // off for now: built to be judged against the plain green, switch on to use
+function contours(h){const g=h.green,R=g.R+2,N=56,st=2*R/N,P=[],path=new Path2D();let lo=1e9,hi=-1e9;
+  for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){const q={x:g.x-R+i*st,y:g.y-R+j*st},v=phiAt(h,q);P.push(v);if(inSh(g,q)){lo=Math.min(lo,v);hi=Math.max(hi,v)}}
+  if(hi-lo<.05)return path;
+  for(let k=1;k<8;k++){const T=lo+(hi-lo)*k/8;
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=P[j*(N+1)+i],b=P[j*(N+1)+i+1],c=P[(j+1)*(N+1)+i+1],e=P[(j+1)*(N+1)+i],ix=(a>=T?8:0)|(b>=T?4:0)|(c>=T?2:0)|(e>=T?1:0);if(!ix||ix===15)continue;
+      const x=g.x-R+i*st,y=g.y-R+j*st,f=(u,v)=>(T-u)/(v-u),t=()=>[x+f(a,b)*st,y],r=()=>[x+st,y+f(b,c)*st],bo=()=>[x+f(e,c)*st,y+st],l=()=>[x,y+f(a,e)*st],seg=(p,q)=>{path.moveTo(p[0],p[1]);path.lineTo(q[0],q[1])};
+      if(ix===1||ix===14)seg(l(),bo());else if(ix===2||ix===13)seg(bo(),r());else if(ix===3||ix===12)seg(l(),r());else if(ix===4||ix===11)seg(t(),r());else if(ix===6||ix===9)seg(t(),bo());else if(ix===7||ix===8)seg(t(),l());
+      else{seg(t(),ix===5?l():r());seg(bo(),ix===5?r():l())}}}
+  return path}
 // Hillshade of the green: slopes that face the sun are lit, slopes that fall away from it are shaded.
 function relief(h){const g=h.green,R=g.R+3,N=128;return{x:g.x-R,y:g.y-R,s:2*R,c:tex(N,N,x2=>{const im=x2.createImageData(N,N),d=im.data;
   for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=slopeAt(h,{x:g.x-R+(i+.5)/N*2*R,y:g.y-R+(j+.5)/N*2*R}),v=-(a.x*SUN.x+a.y*SUN.y)*.62,k=(j*N+i)*4;
@@ -218,7 +231,7 @@ function relief(h){const g=h.green,R=g.R+3,N=128;return{x:g.x-R,y:g.y-R,s:2*R,c:
 // The read. From each point of a grid a line runs down the fall line, curving as the ground does.
 // Its pace is the sideways drift a rolling ball would pick up there: still on flat ground, quick on a slope.
 function drawFlow(h,now){const g=h.green,z=cam.s,putting=S.club.putt,sp=z>26?1:z>12?2:3,n=Math.ceil((g.R+2)/sp),al=clamp((z-6)/5,0,1)*(putting?1:.5),lw=clamp(1.7/z,.03,.15),LIFE=1.7,K=7,PACE=2.3;
-  if(putting&&z>10){ctx.save();ctx.clip(g.path);ctx.strokeStyle='#fffbe6';ctx.globalAlpha=.07;ctx.lineWidth=clamp(1/z,.02,.08);ctx.beginPath(); // one-yard squares for scale
+  if(putting&&z>10&&!CONTOURS){ctx.save();ctx.clip(g.path);ctx.strokeStyle='#fffbe6';ctx.globalAlpha=.07;ctx.lineWidth=clamp(1/z,.02,.08);ctx.beginPath(); // one-yard squares for scale
     for(let i=-Math.ceil(g.R);i<=g.R;i++){ctx.moveTo(g.x+i,g.y-g.R);ctx.lineTo(g.x+i,g.y+g.R);ctx.moveTo(g.x-g.R,g.y+i);ctx.lineTo(g.x+g.R,g.y+i)}ctx.stroke();ctx.restore()}
   ctx.lineCap='round';ctx.lineJoin='round';
   for(let i=-n;i<=n;i++)for(let j=-n;j<=n;j++){const q={x:g.x+i*sp,y:g.y+j*sp};

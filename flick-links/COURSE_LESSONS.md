@@ -1,7 +1,7 @@
 # Building a course: lessons learned
 
 Read this before adding or reworking a course. It is the record of what went wrong on the first five
-(Grey Rock, Lost Pines, Hancock, Jimmy Clay, Muni, Olmos Basin; four of them with both nines) and what each fix became. `COURSES.md` is the how-to;
+(Grey Rock, Lost Pines, Hancock, Jimmy Clay, Lions, Olmos Basin; four of them with both nines) and what each fix became. `COURSES.md` is the how-to;
 this file is the why, and the checklist.
 
 The aim never changes: **true to the real place, consistent with the other courses, and pretty.**
@@ -58,7 +58,7 @@ someone who has played it.
 | Lost Pines | Prairie ridges above the Colorado, native grass, sprawling white bunkers, pine | `out:'native'`, straw-coloured ground, post oak and pine in the mix, no belt |
 | Hancock | A 1899 city park in one block, Waller Creek, old pecans, streets and houses all round | `out:'rough'`, real mapped trees that stop a ball, houses drawn, stone bridges |
 | Jimmy Clay | Open parkland in a creek fork, clumps between holes, thick bottomland woods at the edge | a wide belt (`belt:46`) plus clumps, pecan and elm, the pond green at the 6th |
-| Muni | 1924, short tight holes cut through dense oak woods, open stands of big oaks over dry ground | mapped woods do the work; sparse even scatter (`clumps:.34, clumpAt:-.5`), houses drawn |
+| Lions (Lions Municipal, "Muny") | 1924, short tight holes cut through dense oak woods, open stands of big oaks over dry ground | mapped woods do the work; sparse even scatter (`clumps:.34, clumpAt:-.5`), houses drawn |
 | Olmos Basin | A flat flood basin in San Antonio: open parkland, a railroad through the middle, Olmos Creek and its drainage washes | no woods or belt, an even scatter with mesquite in the mix, the railway drawn (the importer now keeps `railway=rail`), houses drawn |
 
 Rules of thumb that came out of this:

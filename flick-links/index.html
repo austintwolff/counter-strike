@@ -219,6 +219,15 @@ table.st{width:100%;border-collapse:collapse;border:1.5px solid var(--rule);back
 .rec small{font:italic 600 12px/1 var(--display);color:var(--ink-2)}
 .mono{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;font:800 12px/1 var(--display);font-style:normal;color:var(--club-deep);
   background:radial-gradient(circle at 35% 30%,var(--gold-hi),var(--gold));box-shadow:inset 0 0 0 1.5px rgba(86,62,10,.5)}
+.chip.two{border-radius:12px;padding:6px 12px 6px;text-align:center}
+.chip small{display:block;margin-bottom:3px;font:400 9px/1 var(--caps);letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2)}
+.balls{display:grid;gap:6px}
+.balls>div{display:grid;grid-template-columns:1fr 22px 22px 22px 46px;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--rule);border-radius:5px;background:var(--paper)}
+.balls b{font:700 14px/1.1 var(--display)}
+.balls small{font:600 11.5px/1 var(--display);color:var(--ink-2);text-align:right}
+.ball{width:22px;height:22px;border-radius:50%;opacity:.2;background:radial-gradient(circle at 35% 30%,#fff 0,var(--c) 55%,var(--d) 100%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.28)}
+.ball.on{opacity:1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.28),0 1px 3px rgba(0,0,0,.3)}
+.ball.bz{--c:#d79a5c;--d:#7a4a1e}.ball.sv{--c:#cfd5da;--d:#79828a}.ball.gd{--c:#ecc94b;--d:#93720e}
 .tro{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .tro div{display:grid;grid-template-columns:auto 1fr;column-gap:9px;row-gap:3px;align-items:center;padding:8px;border:1px solid var(--rule);border-radius:5px;background:var(--paper);opacity:.5;min-width:0}
 .tro div.won{opacity:1;box-shadow:inset 0 0 0 1px var(--gold)}
@@ -445,7 +454,7 @@ const COURSES=[
  th:{out:'rough',floor:'#62803b',rough:'#62803b',fair:'#72a648',stripe:.8,outer:'#5a6a3e',woods:'#2f4a26',mix:[['pecan',.3],['liveoak',.3],['elm',.3],['juniper',.1]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,belt:46,clumps:.8,clumpAt:.45,houses:false},
  holes:[['Dove Springs',4,408,7],['Nuckols',3,155,15],['Williamson Creek',4,392,3],['The Long Bend',5,564,9],['The Point',3,114,17],['Pond Green',4,316,11],['Onion Creek',5,502,13],['Pecan Row',4,444,1],["Clay's Way",4,407,5]],
  more:[['The Turn',5,519,8],['Roy Kizer',4,426,10],['Long Iron',3,227,14],['McKinney Falls',4,405,6],['Cedar Elm',3,204,12],['Pleasant Valley',4,378,16],['Three Shotter',5,559,18],['Bottomland',4,437,4],['Last Light',4,474,2]]},
-{id:'mu',code:'MU',club:'Muni',tee:'Blue',first:10,
+{id:'mu',code:'MU',club:'Lions',tee:'Blue',first:10,
  // Lions Municipal, Tarrytown, 1924: short, tight holes cut through thick live oak woods, open stands of big oaks over dry ground
  // between the fairways, small dark ponds, hardly a bunker, city streets on three sides. The 16th is Hogan's Hole.
  th:{out:'rough',floor:'#687d3c',rough:'#687d3c',fair:'#74a14a',stripe:.5,outer:'#5c6740',woods:'#2c4724',mix:[['liveoak',.52],['elm',.22],['pecan',.14],['juniper',.12]],marker:'#4f86e8',bloom:'bloom',bridge:'stone',cart:true,clumps:.34,clumpAt:-.5,houses:true},
@@ -859,6 +868,8 @@ function drawFlag(now){const h=cur(),p=toScreen(h.pin.x,h.pin.y),ph=clamp(18+cam
   const w2=Math.sin(now/200+1.3)*fl*.09*(h.wind.sp/14+.3),tx=p.x+dir*fl,ty=p.y-ph+fl*.3+wav,flag=()=>{ctx.beginPath();ctx.moveTo(p.x,p.y-ph);ctx.quadraticCurveTo(p.x+dir*fl*.5,p.y-ph-fl*.06+w2,tx,ty);ctx.quadraticCurveTo(p.x+dir*fl*.5,p.y-ph+fl*.52-w2,p.x,p.y-ph+fl*.62);ctx.closePath()};
   flag();ctx.fillStyle='#c9283a';ctx.fill();ctx.save();flag();ctx.clip();ctx.fillStyle='rgba(255,255,255,.2)';ctx.fillRect(p.x-fl,p.y-ph-fl*.2,fl*2,fl*.42);ctx.fillStyle='rgba(60,0,10,.22)';ctx.fillRect(p.x+dir*fl*.45-fl*.09,p.y-ph-fl*.2,fl*.18,fl);ctx.restore();
   ctx.fillStyle=K.gold;disc(p.x,p.y-ph,1.8);ctx.globalAlpha=1}
+// a player who holds a ball at the course in play plays with it: bronze, silver or gold
+const BALLC={'':['#ffffff','#eef0ea','#b9c0b6'],b:['#fbe6cf','#dba066','#8a5524'],s:['#ffffff','#d3d9de','#7f8890'],g:['#fff6c9','#ecc94b','#9a7810']};
 function drawBall(dt){const b=S.ball,sd=rotv(SUN.x,SUN.y,cam.r);
   for(const q of S.parts){q.vz-=G*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.z=Math.max(0,q.z+q.vz*dt);q.life-=dt;const p=toScreen(q.x,q.y);ctx.globalAlpha=clamp(q.life/q.max,0,1);ctx.fillStyle=q.col;disc(p.x,p.y-q.z*cam.s*.55,q.sz)}
   S.parts=S.parts.filter(q=>q.life>0);ctx.globalAlpha=1;
@@ -866,7 +877,7 @@ function drawBall(dt){const b=S.ball,sd=rotv(SUN.x,SUN.y,cam.r);
   for(let i=1;i<S.trail.length;i++){const q=S.trail[i],p=toScreen(q.x,q.y);ctx.globalAlpha=i/S.trail.length*.5;ctx.fillStyle='#fff';disc(p.x,p.y-q.z*cam.s*.55,rb*.45*(1+q.z/45))}
   ctx.globalAlpha=1;const p=toScreen(b.x,b.y),lift=b.z*cam.s*.55,r=rb*(1+b.z/45),so=rb*.45+lift*.55,sr=rb*(1.5+b.z/60);
   ctx.globalAlpha=clamp(1-b.z/70,.35,1);ctx.drawImage(SPR.shadow,p.x+sd.x*so-sr,p.y+sd.y*so-sr,sr*2,sr*2);ctx.globalAlpha=1;
-  const gr=ctx.createRadialGradient(p.x-r*.35,p.y-lift-r*.4,r*.1,p.x,p.y-lift,r);gr.addColorStop(0,'#ffffff');gr.addColorStop(.7,'#eef0ea');gr.addColorStop(1,'#b9c0b6');
+  const gr=ctx.createRadialGradient(p.x-r*.35,p.y-lift-r*.4,r*.1,p.x,p.y-lift,r);const bc=BALLC[S.tier]||BALLC[''];gr.addColorStop(0,bc[0]);gr.addColorStop(.7,bc[1]);gr.addColorStop(1,bc[2]);
   ctx.fillStyle=gr;disc(p.x,p.y-lift,r);ctx.strokeStyle='rgba(6,22,17,.5)';ctx.lineWidth=1;ctx.stroke()}
 function drawGesture(now){const g=S.g;
   for(const f of S.fx){const a=(now-f.t0)/1500;if(a>=1)continue;
@@ -912,7 +923,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795491180000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795492654000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -1217,15 +1228,31 @@ function handicap(rs){const d=rs.slice(0,20).map(r=>r.tot-r.par),n=d.length;if(n
   const use=n<6?1:n<9?2:n<12?3:n<15?4:n<17?5:n<19?6:n<20?7:8;d.sort((a,b)=>a-b);return Math.round(total(d.slice(0,use))/use*6*10)/10}
 function streakOf(rs,day){const set=new Set(rs.map(r=>r.day));let d=dayNum(day),n=0;if(!set.has(day))d--;while(set.has(numDay(d))){n++;d--}return n}
 function maxStreak(rs){const ds=[...new Set(rs.map(r=>dayNum(r.day)))].sort((a,b)=>a-b);let best=0,run=0,prev=null;for(const d of ds){run=prev!==null&&d===prev+1?run+1:1;best=Math.max(best,run);prev=d}return best}
-function personal(rs,day){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{id,n:0,day:d}).n++},sweep={};
-  for(const r of[...rs].reverse()){const rel=r.scores.map((s,i)=>s-r.pars[i]);
-    r.scores.forEach((s,i)=>{if(s===1)add('ace',r.day);else if(rel[i]<=-2)add('eagle',r.day);
-      if(rel[i]<=-1){const c=r.holes[i].slice(0,2),a=sweep[c]=sweep[c]||[];if(!a.includes(r.holes[i]))a.push(r.holes[i])}});
-    if(rel.every(x=>x<=-1))add('hat',r.day);if(rel.every(x=>x<=0))add('clean',r.day);if(r.tot<r.par)add('red',r.day)}
+// A course here is nine or eighteen holes; the ball and tour awards need to know which. Keep in step with COURSES in src/20-course.js.
+const SIZE={gr:9,lp:18,hk:9,jc:18,mu:18,om:18};
+// rs: the daily cards (handicap, streak and best come from these alone, since everyone plays the same holes once).
+// logs: the full record of play, daily and practice. Trophies and balls count all of it.
+//   balls, per course: b bronze, a full round under par; s silver, a birdie or better on every hole (n so far, over any
+//   number of rounds); g gold, a full round ten under or better (five on a nine-hole course).
+function personal(rs,day,logs=[]){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{id,n:0,day:d}).n++},bird={},balls={},full={};
+  const logged=new Set(logs.filter(l=>l.kind==='daily').map(l=>l.day)); // a daily card that came in without its log still counts
+  const plays=logs.map(l=>({day:l.day,kind:l.kind,holes:l.holes})).concat(rs.filter(r=>!logged.has(r.day)).map(r=>({day:r.day,kind:'daily',holes:r.holes.map((k,i)=>({k,par:r.pars[i],s:r.scores[i]}))})))
+    .filter(p=>p.holes&&p.holes.length).sort((a,b)=>a.day<b.day?-1:a.day>b.day?1:0);
+  for(const p of plays){const H=p.holes,c=H[0].k.slice(0,2),n=H.length,tot=total(H.map(h=>h.s)),par=total(H.map(h=>h.par));let run=0,best=0;
+    for(const h of H){if(h.s===1)add('ace',p.day);if(h.s-h.par<=-3)add('alb',p.day);
+      if(h.s<h.par){best=Math.max(best,++run);const cc=h.k.slice(0,2);(bird[cc]=bird[cc]||new Set()).add(h.k)}else run=0;
+      if(!h.chip&&h.hf>=120)add('snake',p.day);if(h.chip&&h.hf>=150&&h.s>1)add('bomb',p.day)}
+    if(best>=5)add('five',p.day);
+    if(p.kind==='daily'&&n>=3&&H.every(h=>h.s<h.par))add('hat',p.day);
+    if(n>=9&&H.every(h=>h.gir))add('green',p.day);
+    if(n>=18&&H.every(h=>h.s<=h.par))add('clean',p.day);
+    if(n>=18){const f=H.filter(h=>h.fw!=null);if(f.length>=10&&f.every(h=>h.fw))add('fair',p.day)}
+    if(SIZE[c]===n&&H.every(h=>h.k.slice(0,2)===c)&&new Set(H.map(h=>h.k)).size===n){full[c]=1;const b=balls[c]=balls[c]||{b:0,s:0,g:0,n:0};if(tot<par)b.b=1;if(tot-par<=(n>9?-10:-5))b.g=1}}
+  for(const c in SIZE){const b=balls[c]=balls[c]||{b:0,s:0,g:0,n:0};b.n=bird[c]?bird[c].size:0;if(b.n>=SIZE[c])b.s=1}
+  if(Object.keys(SIZE).every(c=>full[c]))tro.tour={id:'tour',n:1};
   const ms=maxStreak(rs);if(ms>=7)tro.week={id:'week',n:1};if(ms>=30)tro.month={id:'month',n:1};
-  for(const c in sweep)if(sweep[c].length>=9)tro['sweep-'+c]={id:'sweep-'+c,n:1};
   const best=rs.reduce((b,r)=>!b||r.tot-r.par<b.tot-b.par?r:b,null);
-  return{rounds:rs.length,hcp:handicap(rs),best:best&&{tot:best.tot,par:best.par,day:best.day},streak:streakOf(rs,day),trophies:Object.values(tro),sweep}}
+  return{rounds:rs.length,hcp:handicap(rs),best:best&&{tot:best.tot,par:best.par,day:best.day},streak:streakOf(rs,day),trophies:Object.values(tro),balls}}
 
 // ───────── storage helpers
 const roundsOf=async(store,pid)=>(await store.list('r:'+pid+':')).map(x=>x.v).sort((a,b)=>a.day<b.day?1:-1);
@@ -1248,13 +1275,13 @@ async function clubView(store,club,pid,day){const ms=await store.list('m:'+club.
   const holes={},feed=[];let low=null;const all=[];for(const m of members)for(const r of m.rounds)all.push({m,r});
   all.sort((a,b)=>a.r.day<b.r.day?-1:a.r.day>b.r.day?1:a.r.ts-b.r.ts);
   for(const{m,r}of all){r.holes.forEach((h,i)=>{const s=r.scores[i];if(!holes[h]||s<holes[h].score)holes[h]={score:s,par:r.pars[i],nick:m.nick,day:r.day};
-      if(s===1)feed.push({id:'ace',nick:m.nick,day:r.day,hole:h});else if(s-r.pars[i]<=-2)feed.push({id:'eagle',nick:m.nick,day:r.day,hole:h})});
+      if(s===1)feed.push({id:'ace',nick:m.nick,day:r.day,hole:h});else if(s-r.pars[i]<=-3)feed.push({id:'alb',nick:m.nick,day:r.day,hole:h})});
     if(r.scores.every((s,i)=>s<r.pars[i]))feed.push({id:'hat',nick:m.nick,day:r.day});
     if(!low||r.tot-r.par<low.tot-low.par)low={tot:r.tot,par:r.par,nick:m.nick,day:r.day}}
   return{code:club.code,name:club.name,founder:club.owner===pid,member:members.some(m=>m.id===pid),count:members.length,today,standings,records:{holes,low,feed:feed.reverse().slice(0,12)}}}
 async function state(store,ses,day,code){const out={me:null,club:null};
-  if(ses){const rs=await roundsOf(store,ses.pid),clubs=[];for(const c of ses.player.clubs||[]){const cl=await store.get('c:'+c);if(cl)clubs.push({code:c,name:cl.name})}
-    out.me={id:ses.pid,user:ses.player.user||null,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day),today:rs.find(r=>r.day===day)||null}}
+  if(ses){const rs=await roundsOf(store,ses.pid),logs=(await store.list('g:'+ses.pid+':')).map(x=>x.v),clubs=[];for(const c of ses.player.clubs||[]){const cl=await store.get('c:'+c);if(cl)clubs.push({code:c,name:cl.name})}
+    out.me={id:ses.pid,user:ses.player.user||null,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day,logs),today:rs.find(r=>r.day===day)||null}}
   if(code){const club=await store.get('c:'+String(code).toUpperCase());if(club)out.club=await clubView(store,club,ses&&ses.pid,day)}
   return out}
 
@@ -1349,13 +1376,14 @@ class D1Store{constructor(db){this.db=db}
   async put(k,v){await this.db.prepare('INSERT INTO kv (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').bind(k,JSON.stringify(v)).run()}
   async del(k){await this.db.prepare('DELETE FROM kv WHERE k=?').bind(k).run()}
   async list(p){const r=await this.db.prepare('SELECT k,v FROM kv WHERE k>=? AND k<? ORDER BY k').bind(p,p+'￿').all();return(r.results||[]).map(x=>({k:x.k,v:JSON.parse(x.v)}))}}
-return{handle,MemStore}})();
+return{handle,MemStore,SIZE}})();
 // ───────── the clubhouse
 // The page talks to the clubhouse server over /api when the game is on its own web address.
 // Anywhere else it runs the same server code in the page, on browser storage: a solo clubhouse.
-const TROPHY={ace:['1','Ace','A hole in one'],eagle:['−2','Eagle','Two under on one hole'],hat:['III','Hat Trick','Three birdies in a round'],clean:['✓','Clean Card','A round without a bogey'],
-  red:['−','In the Red','A round under par'],week:['7','Regular','Seven days running'],month:['30','Fixture','Thirty days running']};
-COURSES.forEach(c=>TROPHY['sweep-'+c.id]=[c.code,'Swept '+c.club,'Nine holes birdied']);
+// Trophies are earned in any round, daily or practice (Three for Three is the daily's own; the two streaks count days played).
+const TROPHY={ace:['1','Ace','A hole in one'],alb:['−3','Albatross','Three under on one hole'],five:['V','Five in a Row','Five birdies running'],hat:['III','Three for Three','Birdie all of the daily three'],
+  clean:['✓','Clean Card','Eighteen holes, no bogeys'],fair:['↑','Fairway Finder','Every fairway in eighteen'],green:['◉','Dance Floor','Every green in a round'],snake:['S','Snake','A putt holed from 40 feet'],
+  bomb:['◎','Holed Out','Holed from 50 yards out'],week:['7','Regular','Seven days running'],month:['30','Fixture','Thirty days running'],tour:[String(COURSES.length),'Grand Tour','A full round on every course']};
 const MSG={name:'Enter a name.',taken:'Someone in this clubhouse already has that name.',full:'This clubhouse is full.',no_club:'That clubhouse no longer exists.',too_many:'You are in the most clubhouses one player can join.',user:'Usernames are 3 to 16 letters, numbers or underscores.',user_taken:'That username is taken.'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const hcpStr=h=>h==null?'–':h<0?'+'+(-h).toFixed(1):h.toFixed(1);
@@ -1379,13 +1407,13 @@ const endInvite=()=>{C.invite='';try{if(location.search)history.replaceState(nul
 // post today's finished card once; the server keeps the first card of the day
 async function postToday(){if(!C.me||C.me.today)return false;const d=fetchKey(S.key);if(!d||!d.done||!Array.isArray(d.ids)||d.ids.length!==3||!d.ids.every(i=>ALL[i]))return false;
   const hs=d.ids.map(INFO),j=await Net.call('POST','/round',{day:S.key,holes:hs.map(holeKey),pars:hs.map(h=>h.par),scores:d.scores.slice(0,3)});return!!(j&&j.ok)}
-async function refresh(posted){const code=C.invite||C.code;
+async function refresh(posted,synced){const code=C.invite||C.code;
   try{const j=await Net.call('GET','/state?day='+S.key+(code?'&club='+encodeURIComponent(code):''));
     if(j&&j.ok){C.me=j.me;C.club=j.club;
       if(C.invite&&(!C.club||C.club.member)){if(C.club)pickClub(C.invite);endInvite()}
-      if(!C.invite&&C.code&&(!C.club||!C.club.member)){pickClub(C.me&&C.me.clubs.length?C.me.clubs[0].code:'');C.club=null;if(C.code)return refresh(posted)}
-      if(!C.invite&&!C.code&&C.me&&C.me.clubs.length){pickClub(C.me.clubs[0].code);return refresh(posted)}
-      if(!posted&&await postToday())return refresh(true);syncLog()}}catch(e){}
+      if(!C.invite&&C.code&&(!C.club||!C.club.member)){pickClub(C.me&&C.me.clubs.length?C.me.clubs[0].code:'');C.club=null;if(C.code)return refresh(posted,synced)}
+      if(!C.invite&&!C.code&&C.me&&C.me.clubs.length){pickClub(C.me.clubs[0].code);return refresh(posted,synced)}
+      if(!posted&&await postToday())return refresh(true,synced);if(!synced&&await syncLog())return refresh(posted,true)}}catch(e){} // then once more, so the stats shown include what was just sent
   redraw()}
 
 // ───────── pieces
@@ -1399,14 +1427,14 @@ function tabRecords(c){const rec=c.records,by={};for(const k in rec.holes)(by[k.
   const courses=COURSES.filter(x=>by[x.id]).map(x=>`<p class="eyebrow">${x.club}</p><ul class="rec">${by[x.id].sort((a,b)=>holeNo(x.id,+a.slice(2))-holeNo(x.id,+b.slice(2))).map(k=>{const r=rec.holes[k];
     return`<li><span>No. ${holeNo(x.id,+k.slice(2))}</span>${mk(r.score,r.par)}<span class="nm">${esc(r.nick)}</span><small>${shortDay(r.day)}</small></li>`}).join('')}</ul>`).join('');
   return(rec.low?`<div class="stats"><div><b>${rec.low.tot} <small>${rel(rec.low.tot-rec.low.par)}</small></b><span>Low round · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No rounds yet.</p>')
-    +(rec.feed.length?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')
+    +(rec.feed.some(f=>TROPHY[f.id])?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.filter(f=>TROPHY[f.id]).map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')
     +courses}
 function clubStrip(){const c=C.club;
   if(C.invite&&c&&!c.member)return`<button class="strip" data-act="joinform"><span><b>${esc(c.name)}</b><i>You are invited · ${plural(c.count,'member')}</i></span><em>Join</em></button>`;
   if(c&&c.member){const played=c.today.filter(t=>t.round),lead=played[0];
     return`<button class="strip" data-act="club"><span><b>${esc(c.name)}</b><i>${lead?esc(lead.nick)+' leads at '+rel(lead.round.tot-lead.round.par)+' · '+played.length+' of '+c.count+' in':'Nobody has played yet today'}</i></span><em>Open</em></button>`}
   return`<button class="strip" data-act="clubform"><span><b>Start a clubhouse</b><i>A daily leaderboard with friends</i></span><em>New</em></button>`}
-const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your stats'}</button>`;
+const meChip=()=>C.me?`<button class="chip two" data-act="me"><small>Your stats</small>${esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):'')}</button>`:'<button class="chip" data-act="me">Your stats</button>';
 
 // ───────── sheets
 // kind: 'join' a clubhouse, start a 'club', change a 'name', or 'welcome' a new player straight after the practice range
@@ -1435,14 +1463,17 @@ function gameStats(kind){const R=(fetchKey('log')||[]).filter(r=>r.kind===kind),
 const gameTable=()=>{const d=gameStats('daily'),p=gameStats('practice');if(!d.rounds&&!p.rounds)return'';const row=(l,k)=>`<tr><td>${l}</td><td><b>${d[k]}</b></td><td><b>${p[k]}</b></td></tr>`;
   return`<p class="eyebrow">Your game</p><table class="st"><tr><th></th><th>Daily</th><th>Practice</th></tr>${row('Rounds','rounds')}${row('Birdies','birdies')}${row('Fairways','fw')}${row('Greens','gir')}${row('Putts a hole','putts')}${row('Longest drive','drive')}${row('Pure strikes','pure')}</table>`};
 // rounds not yet on the server go up when there is one to send them to
-async function syncLog(){if(!Net.remote||!C.me)return;const L=fetchKey('log')||[],todo=L.filter(r=>!r.up).slice(0,25);if(!todo.length)return;
-  try{const j=await Net.call('POST','/log',{rounds:todo.map(({up,...r})=>r)});if(j&&j.ok){const ids=new Set(todo.map(r=>r.id)),M=fetchKey('log')||[];M.forEach(r=>{if(ids.has(r.id))r.up=1});store('log',M)}}catch(e){}}
+async function syncLog(){if(!C.me)return false;const L=fetchKey('log')||[],todo=L.filter(r=>!r.up).slice(0,25);if(!todo.length)return false;
+  try{const j=await Net.call('POST','/log',{rounds:todo.map(({up,...r})=>r)});if(j&&j.ok){const ids=new Set(todo.map(r=>r.id)),M=fetchKey('log')||[];M.forEach(r=>{if(ids.has(r.id))r.up=1});store('log',M);return true}}catch(e){}return false}
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
   sheet(`<p class="eyebrow">Your stats${m.user?' · @'+esc(m.user):''}</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
 <p class="fine">${st.hcp==null?'Handicap in '+plural(Math.max(1,3-st.rounds),'round')+'.':''}</p>
-${gameTable()}<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
-  return`<div class="${e?'won':''}"><i class="mono">${mono}</i><b>${name}${e&&e.n>1?' ×'+e.n:''}</b><span>${sw!=null&&!e?sw+' of 9 so far':what}</span></div>`}).join('')}</div>
+${gameTable()}<p class="eyebrow">Balls</p><div class="balls">${COURSES.map(c=>{const b=(st.balls||{})[c.id]||{},n=courseIds(c.id,'a').length;
+  return`<div><b>${c.club}</b><i class="ball bz${b.b?' on':''}"></i><i class="ball sv${b.s?' on':''}"></i><i class="ball gd${b.g?' on':''}"></i><small>${b.n||0}/${n}</small></div>`}).join('')}</div>
+<p class="fine">Bronze: a full round under par. Silver: a birdie on every hole. Gold: ten under.</p>
+<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id];
+  return`<div class="${e?'won':''}"><i class="mono">${mono}</i><b>${name}${e&&e.n>1?' ×'+e.n:''}</b><span>${what}</span></div>`}).join('')}</div>
 ${saveStrip()}<div class="row"><button class="btn ghost" data-act="rename">Change name</button><button class="btn ghost" data-act="title">Back</button></div>
 <p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey.':canSave()?'':'Open in Safari or Chrome to save your player.'}</p>`,meCard)}
 const canSave=()=>Net.remote&&!!window.PublicKeyCredential;
@@ -1493,7 +1524,7 @@ function scoreCard(ids,scores){const hs=ids.map(INFO),wide=ids.length<=3,one=hs.
     return`<table class="sc${wide?' wide':''}">${wide&&!one?row('h','Course',H.map(h=>h.course.club),''):''}${row(wide?'n':'h','Hole',H.map(h=>h.n),label)}
 ${row('g',wide?'Yards':c.tee,H.map(h=>h.yards),sum(H.map(h=>h.yards)))}${row('k','Hcp',H.map(h=>h.hcp),'')}${row('p','Par',H.map(h=>h.par),sum(H.map(h=>h.par)))}
 ${row('s','You',H.map((h,i)=>sc[i]!=null?mk(sc[i],h.par):''),full?sum(sc):'')}</table>`};
-  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":c.club}</b><span>${wide?(one?c.club+' · ':'')+'No. '+S.day:(all?'Eighteen':hs[0].n>9?'Back nine':'Front nine')+' · practice'}</span></div>
+  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":c.club}</b><span>${wide?(one?c.club+' · ':'')+'No. '+S.day:(all?'Eighteen':!c.more?'Nine holes':hs[0].n>9?'Back nine':'Front nine')+' · practice'}</span></div>
 ${wide?table(0,3,'Total'):all?table(0,9,'Out')+table(9,18,'In'):table(0,9,hs[0].n>9?'In':'Out')}
 <div class="sc-foot"><span>Date <i>${d.getMonth()+1}/${d.getDate()}</i></span><span>${all?'Total':'Scorer'} <i>${all?(n?sum(scores.slice(0,n)):''):'You'}</i></span><span>To par <i>${toPar}</i></span></div></div>`}
 const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
@@ -1521,9 +1552,10 @@ function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?n
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
 ${scoreCard(S.round.ids,S.round.scores)}
 <button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
-function shareText(){const r=S.round,hs=r.ids.map(INFO),par=sum(hs.map(h=>h.par)),tot=sum(r.scores),em=(a,b)=>r.scores.slice(a,b).map((s,i)=>emo(s,hs[a+i].par)).join('');
-  let t=r.type==='nine'?`⛳ Breakfast Ball · ${hs.length>9?'eighteen':hs[0].n>9?'back nine':'front nine'} at ${hs[0].course.club}\n`+(hs.length>9?em(0,9)+'\n'+em(9,18):em(0,9))+`\n${tot} strokes (${rel(tot-par)})`
-    :`⛳ Breakfast Ball No. ${S.day}${hs.every(h=>h.course===hs[0].course)?' · '+hs[0].course.club:''}\n`+r.scores.map((s,i)=>`${hs.every(h=>h.course===hs[0].course)?'No. ':hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
+// What goes in the group chat: the name and number, a mark for each hole, and the score against par in words.
+function shareText(){const r=S.round,hs=r.ids.map(INFO),d=sum(r.scores)-sum(hs.map(h=>h.par)),em=(a,b,j)=>r.scores.slice(a,b).map((s,i)=>emo(s,hs[a+i].par)).join(j),par=d===0?'Even':d<0?-d+' under':d+' over';
+  let t=r.type==='nine'?`Breakfast Ball · ${hs[0].course.club}${hs.length>9||!hs[0].course.more?'':hs[0].n>9?' back nine':' front nine'}\n`+(hs.length>9?em(0,9,'')+'\n'+em(9,18,''):em(0,9,''))+`\n${par}`
+    :`Daily Breakfast Ball #${S.day}\n${em(0,3,' ')}  ${par}`;
   let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname+(Net.remote&&C.code?'?c='+C.code:'')}catch(e){}
   return url?t+'\n'+url:t}
 function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r.scores=sv.scores;
@@ -1567,7 +1599,7 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
 
 // ───────── flow
 let introT=0;
-function startHole(i,sv){closeSheet();S.hi=i;S.marks=[];S.shot=null;S.from=null;S.hs=sv&&sv.strokes&&sv.hs?sv.hs:newHs();const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
+function startHole(i,sv){closeSheet();S.hi=i;S.marks=[];S.shot=null;S.from=null;{const bl=C.me&&C.me.stats.balls&&C.me.stats.balls[INFO(S.round.ids[i]).course.id];S.tier=bl?(bl.g?'g':bl.s?'s':bl.b?'b':''):''}S.hs=sv&&sv.strokes&&sv.hs?sv.hs:newHs();const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
   overviewCam(.5,.76,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,h.course.club,1800);
   hintOff();if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
@@ -1619,6 +1651,7 @@ if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==
   try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text(),m=t.match(/BUILD_TS=(\d{10,})/);
     if(m&&+m[1]>BUILD_TS){try{sessionStorage.setItem(KEY+'resume',JSON.stringify(snap()))}catch(e){}location.replace(location.pathname+'?v='+m[1]+location.hash)}}catch(e){}},20000);
 
+if(location.hash==='#dev')for(const c of COURSES)if(LocalServer.SIZE[c.id]!==courseIds(c.id,'a').length)console.error('server/core.js SIZE is out of step for course '+c.id);
 if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,INFO,courseIds,dailyIds,gameTable,C,Net,refresh,startRange};
 })();
 </script>

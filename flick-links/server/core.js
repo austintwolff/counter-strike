@@ -25,15 +25,31 @@ function handicap(rs){const d=rs.slice(0,20).map(r=>r.tot-r.par),n=d.length;if(n
   const use=n<6?1:n<9?2:n<12?3:n<15?4:n<17?5:n<19?6:n<20?7:8;d.sort((a,b)=>a-b);return Math.round(total(d.slice(0,use))/use*6*10)/10}
 function streakOf(rs,day){const set=new Set(rs.map(r=>r.day));let d=dayNum(day),n=0;if(!set.has(day))d--;while(set.has(numDay(d))){n++;d--}return n}
 function maxStreak(rs){const ds=[...new Set(rs.map(r=>dayNum(r.day)))].sort((a,b)=>a-b);let best=0,run=0,prev=null;for(const d of ds){run=prev!==null&&d===prev+1?run+1:1;best=Math.max(best,run);prev=d}return best}
-function personal(rs,day){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{id,n:0,day:d}).n++},sweep={};
-  for(const r of[...rs].reverse()){const rel=r.scores.map((s,i)=>s-r.pars[i]);
-    r.scores.forEach((s,i)=>{if(s===1)add('ace',r.day);else if(rel[i]<=-2)add('eagle',r.day);
-      if(rel[i]<=-1){const c=r.holes[i].slice(0,2),a=sweep[c]=sweep[c]||[];if(!a.includes(r.holes[i]))a.push(r.holes[i])}});
-    if(rel.every(x=>x<=-1))add('hat',r.day);if(rel.every(x=>x<=0))add('clean',r.day);if(r.tot<r.par)add('red',r.day)}
+// A course here is nine or eighteen holes; the ball and tour awards need to know which. Keep in step with COURSES in src/20-course.js.
+export const SIZE={gr:9,lp:18,hk:9,jc:18,mu:18,om:18};
+// rs: the daily cards (handicap, streak and best come from these alone, since everyone plays the same holes once).
+// logs: the full record of play, daily and practice. Trophies and balls count all of it.
+//   balls, per course: b bronze, a full round under par; s silver, a birdie or better on every hole (n so far, over any
+//   number of rounds); g gold, a full round ten under or better (five on a nine-hole course).
+function personal(rs,day,logs=[]){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{id,n:0,day:d}).n++},bird={},balls={},full={};
+  const logged=new Set(logs.filter(l=>l.kind==='daily').map(l=>l.day)); // a daily card that came in without its log still counts
+  const plays=logs.map(l=>({day:l.day,kind:l.kind,holes:l.holes})).concat(rs.filter(r=>!logged.has(r.day)).map(r=>({day:r.day,kind:'daily',holes:r.holes.map((k,i)=>({k,par:r.pars[i],s:r.scores[i]}))})))
+    .filter(p=>p.holes&&p.holes.length).sort((a,b)=>a.day<b.day?-1:a.day>b.day?1:0);
+  for(const p of plays){const H=p.holes,c=H[0].k.slice(0,2),n=H.length,tot=total(H.map(h=>h.s)),par=total(H.map(h=>h.par));let run=0,best=0;
+    for(const h of H){if(h.s===1)add('ace',p.day);if(h.s-h.par<=-3)add('alb',p.day);
+      if(h.s<h.par){best=Math.max(best,++run);const cc=h.k.slice(0,2);(bird[cc]=bird[cc]||new Set()).add(h.k)}else run=0;
+      if(!h.chip&&h.hf>=120)add('snake',p.day);if(h.chip&&h.hf>=150&&h.s>1)add('bomb',p.day)}
+    if(best>=5)add('five',p.day);
+    if(p.kind==='daily'&&n>=3&&H.every(h=>h.s<h.par))add('hat',p.day);
+    if(n>=9&&H.every(h=>h.gir))add('green',p.day);
+    if(n>=18&&H.every(h=>h.s<=h.par))add('clean',p.day);
+    if(n>=18){const f=H.filter(h=>h.fw!=null);if(f.length>=10&&f.every(h=>h.fw))add('fair',p.day)}
+    if(SIZE[c]===n&&H.every(h=>h.k.slice(0,2)===c)&&new Set(H.map(h=>h.k)).size===n){full[c]=1;const b=balls[c]=balls[c]||{b:0,s:0,g:0,n:0};if(tot<par)b.b=1;if(tot-par<=(n>9?-10:-5))b.g=1}}
+  for(const c in SIZE){const b=balls[c]=balls[c]||{b:0,s:0,g:0,n:0};b.n=bird[c]?bird[c].size:0;if(b.n>=SIZE[c])b.s=1}
+  if(Object.keys(SIZE).every(c=>full[c]))tro.tour={id:'tour',n:1};
   const ms=maxStreak(rs);if(ms>=7)tro.week={id:'week',n:1};if(ms>=30)tro.month={id:'month',n:1};
-  for(const c in sweep)if(sweep[c].length>=9)tro['sweep-'+c]={id:'sweep-'+c,n:1};
   const best=rs.reduce((b,r)=>!b||r.tot-r.par<b.tot-b.par?r:b,null);
-  return{rounds:rs.length,hcp:handicap(rs),best:best&&{tot:best.tot,par:best.par,day:best.day},streak:streakOf(rs,day),trophies:Object.values(tro),sweep}}
+  return{rounds:rs.length,hcp:handicap(rs),best:best&&{tot:best.tot,par:best.par,day:best.day},streak:streakOf(rs,day),trophies:Object.values(tro),balls}}
 
 // ───────── storage helpers
 const roundsOf=async(store,pid)=>(await store.list('r:'+pid+':')).map(x=>x.v).sort((a,b)=>a.day<b.day?1:-1);
@@ -56,13 +72,13 @@ async function clubView(store,club,pid,day){const ms=await store.list('m:'+club.
   const holes={},feed=[];let low=null;const all=[];for(const m of members)for(const r of m.rounds)all.push({m,r});
   all.sort((a,b)=>a.r.day<b.r.day?-1:a.r.day>b.r.day?1:a.r.ts-b.r.ts);
   for(const{m,r}of all){r.holes.forEach((h,i)=>{const s=r.scores[i];if(!holes[h]||s<holes[h].score)holes[h]={score:s,par:r.pars[i],nick:m.nick,day:r.day};
-      if(s===1)feed.push({id:'ace',nick:m.nick,day:r.day,hole:h});else if(s-r.pars[i]<=-2)feed.push({id:'eagle',nick:m.nick,day:r.day,hole:h})});
+      if(s===1)feed.push({id:'ace',nick:m.nick,day:r.day,hole:h});else if(s-r.pars[i]<=-3)feed.push({id:'alb',nick:m.nick,day:r.day,hole:h})});
     if(r.scores.every((s,i)=>s<r.pars[i]))feed.push({id:'hat',nick:m.nick,day:r.day});
     if(!low||r.tot-r.par<low.tot-low.par)low={tot:r.tot,par:r.par,nick:m.nick,day:r.day}}
   return{code:club.code,name:club.name,founder:club.owner===pid,member:members.some(m=>m.id===pid),count:members.length,today,standings,records:{holes,low,feed:feed.reverse().slice(0,12)}}}
 async function state(store,ses,day,code){const out={me:null,club:null};
-  if(ses){const rs=await roundsOf(store,ses.pid),clubs=[];for(const c of ses.player.clubs||[]){const cl=await store.get('c:'+c);if(cl)clubs.push({code:c,name:cl.name})}
-    out.me={id:ses.pid,user:ses.player.user||null,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day),today:rs.find(r=>r.day===day)||null}}
+  if(ses){const rs=await roundsOf(store,ses.pid),logs=(await store.list('g:'+ses.pid+':')).map(x=>x.v),clubs=[];for(const c of ses.player.clubs||[]){const cl=await store.get('c:'+c);if(cl)clubs.push({code:c,name:cl.name})}
+    out.me={id:ses.pid,user:ses.player.user||null,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day,logs),today:rs.find(r=>r.day===day)||null}}
   if(code){const club=await store.get('c:'+String(code).toUpperCase());if(club)out.club=await clubView(store,club,ses&&ses.pid,day)}
   return out}
 

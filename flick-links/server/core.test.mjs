@@ -34,8 +34,8 @@ const forged = await handle(new Request('https://golf.test/api/state?day=' + tod
 // a cross-site post is refused
 const xs = await handle(new Request('https://golf.test/api/player', { method: 'POST', headers: { origin: 'https://evil.test', 'content-type': 'application/json' }, body: '{"name":"x"}' }), store); assert.equal(xs.status, 403);
 const s = await austin('GET', '/state?day=' + today + '&club=' + code);
-assert.equal(s.me.name, 'Austin b'); assert.equal(s.me.today.tot, 10); assert.deepEqual(s.me.stats.trophies.map(t => t.id).sort(), ['ace', 'clean', 'red']);
-assert.equal(s.me.stats.hcp, null); assert.equal(s.me.stats.streak, 2); assert.deepEqual(s.me.stats.sweep, { lp: ['lp6'] });
+assert.equal(s.me.name, 'Austin b'); assert.equal(s.me.today.tot, 10); assert.deepEqual(s.me.stats.trophies.map(t => t.id).sort(), ['ace']);
+assert.equal(s.me.stats.hcp, null); assert.equal(s.me.stats.streak, 2); assert.equal(s.me.stats.balls.lp.n, 1); assert.equal(s.me.stats.balls.lp.s, 0);
 assert.equal(s.club.count, 3); assert.equal(s.club.member, true); assert.equal(s.club.founder, true);
 assert.deepEqual(s.club.today.map(t => [t.nick, t.round && t.round.tot]), [['Austin b', 10], ['Sam', 13], ['Kim', null]]);
 assert.equal(s.club.standings.find(x => x.nick === 'Sam').wins, 1); assert.equal(s.club.standings.find(x => x.nick === 'Austin b').wins, 0);
@@ -56,4 +56,20 @@ assert.equal((await solo('POST', '/log', { rounds: [rnd('abcdef01', 'practice'),
 assert.equal((await solo('POST', '/log', { rounds: [rnd('abcdef01', 'practice'), rnd('abcdef05', 'event')] })).saved, 1);
 const kept = await st2.get('gi:' + (await solo('GET', '/state?day=' + today)).me.id); assert.deepEqual(kept, ['abcdef01', 'abcdef02', 'abcdef05']);
 assert.equal((await st2.get('g:' + (await solo('GET', '/state?day=' + today)).me.id + ':abcdef01')).tot, 12);
+// trophies and balls come from the whole record of play, practice included
+const st3 = new MemStore(), pro = (() => { let c = ''; return async (m, pth, b) => { const r = await handle(new Request('https://golf.test/api' + pth, { method: m, headers: { cookie: c, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }), st3, { local: true }); const j = await r.json(); if (j.session) c = 'fl=' + j.session; return j; }; })();
+await pro('POST', '/player', { name: 'Pro', user: 'pro' });
+const H18 = (c, f) => Array.from({ length: 18 }, (_, i) => { const par = [4, 3, 4, 5, 3, 4, 5, 4, 4][i % 9]; return { k: c + (i + 1), par, s: f(par, i), p: 1, pen: 0, sw: 2, pure: 2, fw: par > 3 ? 1 : null, gir: 1, dr: par > 3 ? 270 : null, fp: 10, hf: 10, chip: 0 }; });
+const full = (id, c, f, n = 18) => ({ id, kind: 'practice', day: today, course: c, part: n > 9 ? 'a' : 'f', holes: H18(c, f).slice(0, n), t: 1, b: 1 });
+assert.equal((await pro('POST', '/log', { rounds: [full('roundaa1', 'jc', (par, i) => i < 9 ? par - 1 : par), full('roundaa2', 'hk', par => par, 9), full('roundaa3', 'mu', (par, i) => i === 3 ? par + 1 : par)] })).saved, 3);
+let ps = (await pro('GET', '/state?day=' + today)).me.stats;
+assert.deepEqual(ps.balls.jc, { b: 1, s: 0, g: 0, n: 9 }, 'nine under for eighteen: bronze, and nine holes toward silver');
+assert.deepEqual(ps.balls.hk, { b: 0, s: 0, g: 0, n: 0 }, 'level par earns nothing'); assert.deepEqual(ps.balls.mu, { b: 0, s: 0, g: 0, n: 0 });
+assert.deepEqual(ps.trophies.map(t => t.id).sort(), ['clean', 'fair', 'five', 'green'], 'jc: five running, no bogeys, every fairway and green; hk adds another green round; mu has a bogey');
+assert.equal(ps.trophies.find(t => t.id === 'green').n, 3); assert.equal(ps.rounds, 0, 'practice does not count as a daily round');
+await pro('POST', '/log', { rounds: [full('roundaa4', 'jc', (par, i) => i < 9 ? par : par - 1), full('roundaa5', 'hk', par => par - 1, 9), { ...full('roundaa6', 'lp', par => par, 18), holes: H18('lp', par => par).map((h, i) => i === 4 ? { ...h, s: 2, hf: 480, chip: 1 } : i === 7 ? { ...h, hf: 150 } : h) }] });
+ps = (await pro('GET', '/state?day=' + today)).me.stats;
+assert.deepEqual(ps.balls.jc, { b: 1, s: 1, g: 0, n: 18 }, 'the other nine birdied in a second round completes silver');
+assert.deepEqual(ps.balls.hk, { b: 1, s: 1, g: 1, n: 9 }, 'nine under on a nine-hole course is gold');
+assert.ok(ps.trophies.some(t => t.id === 'bomb') && ps.trophies.some(t => t.id === 'snake') && !ps.trophies.some(t => t.id === 'tour'));
 console.log('server core: all checks passed');

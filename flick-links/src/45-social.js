@@ -1,9 +1,10 @@
 // ───────── the clubhouse
 // The page talks to the clubhouse server over /api when the game is on its own web address.
 // Anywhere else it runs the same server code in the page, on browser storage: a solo clubhouse.
-const TROPHY={ace:['1','Ace','A hole in one'],eagle:['−2','Eagle','Two under on one hole'],hat:['III','Hat Trick','Three birdies in a round'],clean:['✓','Clean Card','A round without a bogey'],
-  red:['−','In the Red','A round under par'],week:['7','Regular','Seven days running'],month:['30','Fixture','Thirty days running']};
-COURSES.forEach(c=>TROPHY['sweep-'+c.id]=[c.code,'Swept '+c.club,'Nine holes birdied']);
+// Trophies are earned in any round, daily or practice (Three for Three is the daily's own; the two streaks count days played).
+const TROPHY={ace:['1','Ace','A hole in one'],alb:['−3','Albatross','Three under on one hole'],five:['V','Five in a Row','Five birdies running'],hat:['III','Three for Three','Birdie all of the daily three'],
+  clean:['✓','Clean Card','Eighteen holes, no bogeys'],fair:['↑','Fairway Finder','Every fairway in eighteen'],green:['◉','Dance Floor','Every green in a round'],snake:['S','Snake','A putt holed from 40 feet'],
+  bomb:['◎','Holed Out','Holed from 50 yards out'],week:['7','Regular','Seven days running'],month:['30','Fixture','Thirty days running'],tour:[String(COURSES.length),'Grand Tour','A full round on every course']};
 const MSG={name:'Enter a name.',taken:'Someone in this clubhouse already has that name.',full:'This clubhouse is full.',no_club:'That clubhouse no longer exists.',too_many:'You are in the most clubhouses one player can join.',user:'Usernames are 3 to 16 letters, numbers or underscores.',user_taken:'That username is taken.'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const hcpStr=h=>h==null?'–':h<0?'+'+(-h).toFixed(1):h.toFixed(1);
@@ -27,13 +28,13 @@ const endInvite=()=>{C.invite='';try{if(location.search)history.replaceState(nul
 // post today's finished card once; the server keeps the first card of the day
 async function postToday(){if(!C.me||C.me.today)return false;const d=fetchKey(S.key);if(!d||!d.done||!Array.isArray(d.ids)||d.ids.length!==3||!d.ids.every(i=>ALL[i]))return false;
   const hs=d.ids.map(INFO),j=await Net.call('POST','/round',{day:S.key,holes:hs.map(holeKey),pars:hs.map(h=>h.par),scores:d.scores.slice(0,3)});return!!(j&&j.ok)}
-async function refresh(posted){const code=C.invite||C.code;
+async function refresh(posted,synced){const code=C.invite||C.code;
   try{const j=await Net.call('GET','/state?day='+S.key+(code?'&club='+encodeURIComponent(code):''));
     if(j&&j.ok){C.me=j.me;C.club=j.club;
       if(C.invite&&(!C.club||C.club.member)){if(C.club)pickClub(C.invite);endInvite()}
-      if(!C.invite&&C.code&&(!C.club||!C.club.member)){pickClub(C.me&&C.me.clubs.length?C.me.clubs[0].code:'');C.club=null;if(C.code)return refresh(posted)}
-      if(!C.invite&&!C.code&&C.me&&C.me.clubs.length){pickClub(C.me.clubs[0].code);return refresh(posted)}
-      if(!posted&&await postToday())return refresh(true);syncLog()}}catch(e){}
+      if(!C.invite&&C.code&&(!C.club||!C.club.member)){pickClub(C.me&&C.me.clubs.length?C.me.clubs[0].code:'');C.club=null;if(C.code)return refresh(posted,synced)}
+      if(!C.invite&&!C.code&&C.me&&C.me.clubs.length){pickClub(C.me.clubs[0].code);return refresh(posted,synced)}
+      if(!posted&&await postToday())return refresh(true,synced);if(!synced&&await syncLog())return refresh(posted,true)}}catch(e){} // then once more, so the stats shown include what was just sent
   redraw()}
 
 // ───────── pieces
@@ -47,14 +48,14 @@ function tabRecords(c){const rec=c.records,by={};for(const k in rec.holes)(by[k.
   const courses=COURSES.filter(x=>by[x.id]).map(x=>`<p class="eyebrow">${x.club}</p><ul class="rec">${by[x.id].sort((a,b)=>holeNo(x.id,+a.slice(2))-holeNo(x.id,+b.slice(2))).map(k=>{const r=rec.holes[k];
     return`<li><span>No. ${holeNo(x.id,+k.slice(2))}</span>${mk(r.score,r.par)}<span class="nm">${esc(r.nick)}</span><small>${shortDay(r.day)}</small></li>`}).join('')}</ul>`).join('');
   return(rec.low?`<div class="stats"><div><b>${rec.low.tot} <small>${rel(rec.low.tot-rec.low.par)}</small></b><span>Low round · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No rounds yet.</p>')
-    +(rec.feed.length?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')
+    +(rec.feed.some(f=>TROPHY[f.id])?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.filter(f=>TROPHY[f.id]).map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')
     +courses}
 function clubStrip(){const c=C.club;
   if(C.invite&&c&&!c.member)return`<button class="strip" data-act="joinform"><span><b>${esc(c.name)}</b><i>You are invited · ${plural(c.count,'member')}</i></span><em>Join</em></button>`;
   if(c&&c.member){const played=c.today.filter(t=>t.round),lead=played[0];
     return`<button class="strip" data-act="club"><span><b>${esc(c.name)}</b><i>${lead?esc(lead.nick)+' leads at '+rel(lead.round.tot-lead.round.par)+' · '+played.length+' of '+c.count+' in':'Nobody has played yet today'}</i></span><em>Open</em></button>`}
   return`<button class="strip" data-act="clubform"><span><b>Start a clubhouse</b><i>A daily leaderboard with friends</i></span><em>New</em></button>`}
-const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your stats'}</button>`;
+const meChip=()=>C.me?`<button class="chip two" data-act="me"><small>Your stats</small>${esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):'')}</button>`:'<button class="chip" data-act="me">Your stats</button>';
 
 // ───────── sheets
 // kind: 'join' a clubhouse, start a 'club', change a 'name', or 'welcome' a new player straight after the practice range
@@ -83,14 +84,17 @@ function gameStats(kind){const R=(fetchKey('log')||[]).filter(r=>r.kind===kind),
 const gameTable=()=>{const d=gameStats('daily'),p=gameStats('practice');if(!d.rounds&&!p.rounds)return'';const row=(l,k)=>`<tr><td>${l}</td><td><b>${d[k]}</b></td><td><b>${p[k]}</b></td></tr>`;
   return`<p class="eyebrow">Your game</p><table class="st"><tr><th></th><th>Daily</th><th>Practice</th></tr>${row('Rounds','rounds')}${row('Birdies','birdies')}${row('Fairways','fw')}${row('Greens','gir')}${row('Putts a hole','putts')}${row('Longest drive','drive')}${row('Pure strikes','pure')}</table>`};
 // rounds not yet on the server go up when there is one to send them to
-async function syncLog(){if(!Net.remote||!C.me)return;const L=fetchKey('log')||[],todo=L.filter(r=>!r.up).slice(0,25);if(!todo.length)return;
-  try{const j=await Net.call('POST','/log',{rounds:todo.map(({up,...r})=>r)});if(j&&j.ok){const ids=new Set(todo.map(r=>r.id)),M=fetchKey('log')||[];M.forEach(r=>{if(ids.has(r.id))r.up=1});store('log',M)}}catch(e){}}
+async function syncLog(){if(!C.me)return false;const L=fetchKey('log')||[],todo=L.filter(r=>!r.up).slice(0,25);if(!todo.length)return false;
+  try{const j=await Net.call('POST','/log',{rounds:todo.map(({up,...r})=>r)});if(j&&j.ok){const ids=new Set(todo.map(r=>r.id)),M=fetchKey('log')||[];M.forEach(r=>{if(ids.has(r.id))r.up=1});store('log',M);return true}}catch(e){}return false}
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
   sheet(`<p class="eyebrow">Your stats${m.user?' · @'+esc(m.user):''}</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
 <p class="fine">${st.hcp==null?'Handicap in '+plural(Math.max(1,3-st.rounds),'round')+'.':''}</p>
-${gameTable()}<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
-  return`<div class="${e?'won':''}"><i class="mono">${mono}</i><b>${name}${e&&e.n>1?' ×'+e.n:''}</b><span>${sw!=null&&!e?sw+' of 9 so far':what}</span></div>`}).join('')}</div>
+${gameTable()}<p class="eyebrow">Balls</p><div class="balls">${COURSES.map(c=>{const b=(st.balls||{})[c.id]||{},n=courseIds(c.id,'a').length;
+  return`<div><b>${c.club}</b><i class="ball bz${b.b?' on':''}"></i><i class="ball sv${b.s?' on':''}"></i><i class="ball gd${b.g?' on':''}"></i><small>${b.n||0}/${n}</small></div>`}).join('')}</div>
+<p class="fine">Bronze: a full round under par. Silver: a birdie on every hole. Gold: ten under.</p>
+<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id];
+  return`<div class="${e?'won':''}"><i class="mono">${mono}</i><b>${name}${e&&e.n>1?' ×'+e.n:''}</b><span>${what}</span></div>`}).join('')}</div>
 ${saveStrip()}<div class="row"><button class="btn ghost" data-act="rename">Change name</button><button class="btn ghost" data-act="title">Back</button></div>
 <p class="fine" id="shareNote">${!Net.remote?'':m.passkey?'Saved with a passkey.':canSave()?'':'Open in Safari or Chrome to save your player.'}</p>`,meCard)}
 const canSave=()=>Net.remote&&!!window.PublicKeyCredential;

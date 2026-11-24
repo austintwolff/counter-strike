@@ -260,6 +260,8 @@ function drawFlag(now){const h=cur(),p=toScreen(h.pin.x,h.pin.y),ph=clamp(18+cam
   const w2=Math.sin(now/200+1.3)*fl*.09*(h.wind.sp/14+.3),tx=p.x+dir*fl,ty=p.y-ph+fl*.3+wav,flag=()=>{ctx.beginPath();ctx.moveTo(p.x,p.y-ph);ctx.quadraticCurveTo(p.x+dir*fl*.5,p.y-ph-fl*.06+w2,tx,ty);ctx.quadraticCurveTo(p.x+dir*fl*.5,p.y-ph+fl*.52-w2,p.x,p.y-ph+fl*.62);ctx.closePath()};
   flag();ctx.fillStyle='#c9283a';ctx.fill();ctx.save();flag();ctx.clip();ctx.fillStyle='rgba(255,255,255,.2)';ctx.fillRect(p.x-fl,p.y-ph-fl*.2,fl*2,fl*.42);ctx.fillStyle='rgba(60,0,10,.22)';ctx.fillRect(p.x+dir*fl*.45-fl*.09,p.y-ph-fl*.2,fl*.18,fl);ctx.restore();
   ctx.fillStyle=K.gold;disc(p.x,p.y-ph,1.8);ctx.globalAlpha=1}
+// a player who holds a ball at the course in play plays with it: bronze, silver or gold
+const BALLC={'':['#ffffff','#eef0ea','#b9c0b6'],b:['#fbe6cf','#dba066','#8a5524'],s:['#ffffff','#d3d9de','#7f8890'],g:['#fff6c9','#ecc94b','#9a7810']};
 function drawBall(dt){const b=S.ball,sd=rotv(SUN.x,SUN.y,cam.r);
   for(const q of S.parts){q.vz-=G*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.z=Math.max(0,q.z+q.vz*dt);q.life-=dt;const p=toScreen(q.x,q.y);ctx.globalAlpha=clamp(q.life/q.max,0,1);ctx.fillStyle=q.col;disc(p.x,p.y-q.z*cam.s*.55,q.sz)}
   S.parts=S.parts.filter(q=>q.life>0);ctx.globalAlpha=1;
@@ -267,7 +269,7 @@ function drawBall(dt){const b=S.ball,sd=rotv(SUN.x,SUN.y,cam.r);
   for(let i=1;i<S.trail.length;i++){const q=S.trail[i],p=toScreen(q.x,q.y);ctx.globalAlpha=i/S.trail.length*.5;ctx.fillStyle='#fff';disc(p.x,p.y-q.z*cam.s*.55,rb*.45*(1+q.z/45))}
   ctx.globalAlpha=1;const p=toScreen(b.x,b.y),lift=b.z*cam.s*.55,r=rb*(1+b.z/45),so=rb*.45+lift*.55,sr=rb*(1.5+b.z/60);
   ctx.globalAlpha=clamp(1-b.z/70,.35,1);ctx.drawImage(SPR.shadow,p.x+sd.x*so-sr,p.y+sd.y*so-sr,sr*2,sr*2);ctx.globalAlpha=1;
-  const gr=ctx.createRadialGradient(p.x-r*.35,p.y-lift-r*.4,r*.1,p.x,p.y-lift,r);gr.addColorStop(0,'#ffffff');gr.addColorStop(.7,'#eef0ea');gr.addColorStop(1,'#b9c0b6');
+  const gr=ctx.createRadialGradient(p.x-r*.35,p.y-lift-r*.4,r*.1,p.x,p.y-lift,r);const bc=BALLC[S.tier]||BALLC[''];gr.addColorStop(0,bc[0]);gr.addColorStop(.7,bc[1]);gr.addColorStop(1,bc[2]);
   ctx.fillStyle=gr;disc(p.x,p.y-lift,r);ctx.strokeStyle='rgba(6,22,17,.5)';ctx.lineWidth=1;ctx.stroke()}
 function drawGesture(now){const g=S.g;
   for(const f of S.fx){const a=(now-f.t0)/1500;if(a>=1)continue;

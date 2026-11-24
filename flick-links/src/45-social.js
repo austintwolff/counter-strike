@@ -57,15 +57,18 @@ function clubStrip(){const c=C.club;
 const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your stats'}</button>`;
 
 // ───────── sheets
-function formCard(kind){const c=C.club,join=kind==='join',club=kind==='club';
-  sheet(`<p class="eyebrow">${join?'Join the clubhouse':club?'A new clubhouse':'Your player'}</p><h2>${join?esc(c.name):club?'Name your clubhouse':'What should we call you?'}</h2>
+// kind: 'join' a clubhouse, start a 'club', change a 'name', or 'welcome' a new player straight after the practice range
+function formCard(kind){const c=C.club,join=kind==='join',club=kind==='club',hi=kind==='welcome';
+  sheet(`<p class="eyebrow">${join?'Join the clubhouse':club?'A new clubhouse':hi?'Welcome':'Your player'}</p><h2>${join?esc(c.name):club?'Name your clubhouse':'What should we call you?'}</h2>
 <form id="socialForm" data-kind="${kind}" class="field" novalidate>
 ${club?'<label for="houseName">Clubhouse name</label><input id="houseName" maxlength="24" autocomplete="off" placeholder="Sunday Skins">':''}
-<label for="nickName">${kind==='name'?'Your name':'Your name in this clubhouse'}</label><input id="nickName" maxlength="16" autocomplete="nickname" value="${esc(C.me?C.me.name:'')}">
+<label for="nickName">${kind==='name'||hi?'Your name':'Your name in this clubhouse'}</label><input id="nickName" maxlength="16" autocomplete="nickname" value="${esc(C.me?C.me.name:'')}">
 <p class="fine err" id="formErr" role="alert"></p>
-<div class="row"><button class="btn" type="submit">${join?'Join':club?'Open the doors':'Save'}</button><button class="btn ghost" type="button" data-act="title">Back</button></div>
+<div class="row"><button class="btn" type="submit">${join?'Join':club?'Open the doors':'Save'}</button>${hi?'<button class="btn ghost" type="button" data-act="guest">Not now</button>':'<button class="btn ghost" type="button" data-act="title">Back</button>'}</div>
 ${!C.me&&Net.remote&&window.PublicKeyCredential?'<button class="link" type="button" data-act="signin">Played before on another phone? Sign in</button>':''}</form>
 <p class="fine">${Net.remote?(C.me?'':'Your phone will ask to save a passkey. That is your account.'):'On this device only for now.'}</p>`)}
+// Someone who would rather not give a name yet still gets a player, so that their rounds are kept from the first one.
+async function guest(){try{if(!C.me)await Net.call('POST','/player',{name:'Guest'});await refresh()}catch(e){}titleCard()}
 function clubCard(){const c=C.club;if(!c||!c.member)return titleCard();const t=C.tab,others=(C.me?C.me.clubs:[]).filter(x=>x.code!==c.code);
   sheet(`<p class="eyebrow">Clubhouse · ${plural(c.count,'member')}${Net.remote?'':' · this device only'}</p><h2>${esc(c.name)}</h2>
 <div class="tabs" role="tablist">${[['today','Today'],['standings','Standings'],['records','Records']].map(([k,l])=>`<button role="tab" aria-selected="${t===k}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
@@ -105,10 +108,10 @@ async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.
 $('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),btn=f.querySelector('[type=submit]');
   const cname=kind==="club"?$("houseName").value.trim():"";if(!nick)return say(MSG.name);if(kind==='club'&&cname.length<2)return say('Give the clubhouse a name.');
   btn.disabled=true;
-  try{const fresh=!C.me;if(fresh||kind==='name'){const j=await Net.call('POST','/player',{name:nick});if(!j.ok)throw j}
+  try{const fresh=!C.me;if(fresh||kind==='name'||kind==='welcome'){const j=await Net.call('POST','/player',{name:nick});if(!j.ok)throw j}
     // a new player is saved to the phone's passkey straight away, so two weeks of rounds never hang on a cookie
     if(fresh&&await canPrompt()){btn.textContent='Saving your player';await savePasskey()}
     if(kind==='club'){const j=await Net.call('POST','/club',{name:cname,nick});if(!j.ok)throw j;endInvite();pickClub(j.code)}
     if(kind==='join'){const j=await Net.call('POST','/join',{code:C.invite||C.code,nick});if(!j.ok)throw j;endInvite();pickClub(j.code)}
-    await refresh();kind==='name'?meCard():(C.tab='today',clubCard())}
+    await refresh();kind==='welcome'?titleCard():kind==='name'?meCard():(C.tab='today',clubCard())}
   catch(x){btn.disabled=false;say(MSG[x&&x.error]||'That did not go through. Try again.')}});

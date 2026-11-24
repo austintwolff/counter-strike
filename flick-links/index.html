@@ -900,7 +900,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795481133000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795485715000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -1394,15 +1394,18 @@ function clubStrip(){const c=C.club;
 const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your stats'}</button>`;
 
 // ───────── sheets
-function formCard(kind){const c=C.club,join=kind==='join',club=kind==='club';
-  sheet(`<p class="eyebrow">${join?'Join the clubhouse':club?'A new clubhouse':'Your player'}</p><h2>${join?esc(c.name):club?'Name your clubhouse':'What should we call you?'}</h2>
+// kind: 'join' a clubhouse, start a 'club', change a 'name', or 'welcome' a new player straight after the practice range
+function formCard(kind){const c=C.club,join=kind==='join',club=kind==='club',hi=kind==='welcome';
+  sheet(`<p class="eyebrow">${join?'Join the clubhouse':club?'A new clubhouse':hi?'Welcome':'Your player'}</p><h2>${join?esc(c.name):club?'Name your clubhouse':'What should we call you?'}</h2>
 <form id="socialForm" data-kind="${kind}" class="field" novalidate>
 ${club?'<label for="houseName">Clubhouse name</label><input id="houseName" maxlength="24" autocomplete="off" placeholder="Sunday Skins">':''}
-<label for="nickName">${kind==='name'?'Your name':'Your name in this clubhouse'}</label><input id="nickName" maxlength="16" autocomplete="nickname" value="${esc(C.me?C.me.name:'')}">
+<label for="nickName">${kind==='name'||hi?'Your name':'Your name in this clubhouse'}</label><input id="nickName" maxlength="16" autocomplete="nickname" value="${esc(C.me?C.me.name:'')}">
 <p class="fine err" id="formErr" role="alert"></p>
-<div class="row"><button class="btn" type="submit">${join?'Join':club?'Open the doors':'Save'}</button><button class="btn ghost" type="button" data-act="title">Back</button></div>
+<div class="row"><button class="btn" type="submit">${join?'Join':club?'Open the doors':'Save'}</button>${hi?'<button class="btn ghost" type="button" data-act="guest">Not now</button>':'<button class="btn ghost" type="button" data-act="title">Back</button>'}</div>
 ${!C.me&&Net.remote&&window.PublicKeyCredential?'<button class="link" type="button" data-act="signin">Played before on another phone? Sign in</button>':''}</form>
 <p class="fine">${Net.remote?(C.me?'':'Your phone will ask to save a passkey. That is your account.'):'On this device only for now.'}</p>`)}
+// Someone who would rather not give a name yet still gets a player, so that their rounds are kept from the first one.
+async function guest(){try{if(!C.me)await Net.call('POST','/player',{name:'Guest'});await refresh()}catch(e){}titleCard()}
 function clubCard(){const c=C.club;if(!c||!c.member)return titleCard();const t=C.tab,others=(C.me?C.me.clubs:[]).filter(x=>x.code!==c.code);
   sheet(`<p class="eyebrow">Clubhouse · ${plural(c.count,'member')}${Net.remote?'':' · this device only'}</p><h2>${esc(c.name)}</h2>
 <div class="tabs" role="tablist">${[['today','Today'],['standings','Standings'],['records','Records']].map(([k,l])=>`<button role="tab" aria-selected="${t===k}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
@@ -1442,12 +1445,12 @@ async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.
 $('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),btn=f.querySelector('[type=submit]');
   const cname=kind==="club"?$("houseName").value.trim():"";if(!nick)return say(MSG.name);if(kind==='club'&&cname.length<2)return say('Give the clubhouse a name.');
   btn.disabled=true;
-  try{const fresh=!C.me;if(fresh||kind==='name'){const j=await Net.call('POST','/player',{name:nick});if(!j.ok)throw j}
+  try{const fresh=!C.me;if(fresh||kind==='name'||kind==='welcome'){const j=await Net.call('POST','/player',{name:nick});if(!j.ok)throw j}
     // a new player is saved to the phone's passkey straight away, so two weeks of rounds never hang on a cookie
     if(fresh&&await canPrompt()){btn.textContent='Saving your player';await savePasskey()}
     if(kind==='club'){const j=await Net.call('POST','/club',{name:cname,nick});if(!j.ok)throw j;endInvite();pickClub(j.code)}
     if(kind==='join'){const j=await Net.call('POST','/join',{code:C.invite||C.code,nick});if(!j.ok)throw j;endInvite();pickClub(j.code)}
-    await refresh();kind==='name'?meCard():(C.tab='today',clubCard())}
+    await refresh();kind==='welcome'?titleCard():kind==='name'?meCard():(C.tab='today',clubCard())}
   catch(x){btn.disabled=false;say(MSG[x&&x.error]||'That did not go through. Try again.')}});
 // ───────── clubhouse stationery
 const CREST='<svg viewBox="0 0 54 62" aria-hidden="true"><path d="M4 4h46v30c0 13-10 21-23 25C14 55 4 47 4 34z" fill="#14493a" stroke="#b9933b" stroke-width="2.5"/><path d="M9.500 9.500h35v24.500c0 9.500-7.500 16-17.500 19.500-10-3.500-17.500-10-17.500-19.500z" fill="none" stroke="#e6cf8a" stroke-width=".9"/><path d="M14 42l6-10 6 3 5-8 9 15z" fill="#cfcabb"/><path d="M20 32l6 3 5-8 2 3-6 9z" fill="#8f8a7b"/><path d="M27 13v14" stroke="#f4ecd6" stroke-width="1.6" stroke-linecap="round"/><path d="M27.500 13.500l9 3.200-9 3.200z" fill="#c9283a"/></svg>';
@@ -1542,7 +1545,8 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='pick'){pickClub(b.dataset.c);refresh()}
   else if(a==='invite')invite();
   else if(a==='passkey')savePasskey();
-  else if(a==='signin')signIn()});
+  else if(a==='signin')signIn();
+  else if(a==='guest')guest()});
 
 // ───────── flow
 let introT=0;
@@ -1572,7 +1576,10 @@ function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();
   else{const ft=Math.round(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*3),ok=holed||ft<=4;t.good=t.good||ok;
     coach('2 of 2','The putt',holed?'Holed.':ok?'Close: '+ft+' ft.':ft+' ft away. Move the marker to allow for the slope.','Play',t.good)}
   rangeSet()}
-function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard()}
+// After the range a new player is asked their name (or, arriving by an invite, to join that clubhouse), so play is recorded
+// under a player from the first real round. Someone already known goes straight to the menu.
+function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard();
+  Net.loaded.then(()=>{if(C.me||S.mode!=='title')return;C.invite&&C.club&&!C.club.member?formCard('join'):formCard('welcome')})}
 $('coachSkip').onclick=endRange;
 $('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='swing'){t.step='putt';t.good=false;S.last=null;rangeSet();coach('2 of 2','The putt','Drag the marker to where a flat putt should stop. Press Putt, then flick on gold.','Play',false)}else endRange()};
 
@@ -1587,7 +1594,7 @@ const hot=window.claude&&window.claude.hot;
 try{if(hot&&hot.snapshot)hot.snapshot(snap)}catch(e){}
 if(hot&&hot.ready)hot.ready(start);else start(hot&&hot.data||{});
 try{const q=new URLSearchParams(location.search).get('c');if(q&&/^[A-Za-z0-9]{6}$/.test(q))C.invite=q.toUpperCase()}catch(e){}
-Net.ready=Net.init();Net.ready.then(()=>refresh());
+Net.ready=Net.init();Net.loaded=Net.ready.then(()=>refresh()).catch(()=>{});
 requestAnimationFrame(frame);
 // On its own web address the page checks for a newer build every 20 seconds and reloads between shots.
 let standalone=false;try{standalone=window.top===window.self&&/^https?:$/.test(location.protocol)}catch(e){}

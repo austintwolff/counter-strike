@@ -91,7 +91,8 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='pick'){pickClub(b.dataset.c);refresh()}
   else if(a==='invite')invite();
   else if(a==='passkey')savePasskey();
-  else if(a==='signin')signIn()});
+  else if(a==='signin')signIn();
+  else if(a==='guest')guest()});
 
 // ───────── flow
 let introT=0;
@@ -121,7 +122,10 @@ function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();
   else{const ft=Math.round(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*3),ok=holed||ft<=4;t.good=t.good||ok;
     coach('2 of 2','The putt',holed?'Holed.':ok?'Close: '+ft+' ft.':ft+' ft away. Move the marker to allow for the slope.','Play',t.good)}
   rangeSet()}
-function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard()}
+// After the range a new player is asked their name (or, arriving by an invite, to join that clubhouse), so play is recorded
+// under a player from the first real round. Someone already known goes straight to the menu.
+function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard();
+  Net.loaded.then(()=>{if(C.me||S.mode!=='title')return;C.invite&&C.club&&!C.club.member?formCard('join'):formCard('welcome')})}
 $('coachSkip').onclick=endRange;
 $('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='swing'){t.step='putt';t.good=false;S.last=null;rangeSet();coach('2 of 2','The putt','Drag the marker to where a flat putt should stop. Press Putt, then flick on gold.','Play',false)}else endRange()};
 
@@ -136,7 +140,7 @@ const hot=window.claude&&window.claude.hot;
 try{if(hot&&hot.snapshot)hot.snapshot(snap)}catch(e){}
 if(hot&&hot.ready)hot.ready(start);else start(hot&&hot.data||{});
 try{const q=new URLSearchParams(location.search).get('c');if(q&&/^[A-Za-z0-9]{6}$/.test(q))C.invite=q.toUpperCase()}catch(e){}
-Net.ready=Net.init();Net.ready.then(()=>refresh());
+Net.ready=Net.init();Net.loaded=Net.ready.then(()=>refresh()).catch(()=>{});
 requestAnimationFrame(frame);
 // On its own web address the page checks for a newer build every 20 seconds and reloads between shots.
 let standalone=false;try{standalone=window.top===window.self&&/^https?:$/.test(location.protocol)}catch(e){}

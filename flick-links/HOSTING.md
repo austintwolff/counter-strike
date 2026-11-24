@@ -6,17 +6,20 @@ Cloudflare Pages runs both for free and redeploys on every push.
 ## One-time setup (about ten minutes)
 
 1. Create a free account at cloudflare.com.
-2. In the dashboard go to **Workers & Pages → Create → Pages → Connect to Git** and pick this repository.
+2. In the dashboard go to **Workers & Pages → Create**. The screen opens on Workers; use the link
+   **"Need to use the legacy Pages workflow? Continue to Pages"**, then **Import an existing Git repository**, and pick this repository.
+   When GitHub asks, choose **Only select repositories** and pick this one.
    - Production branch: the branch the game lives on (`claude/flick-links-golf` at the time of writing)
    - Framework preset: None
    - Root directory: `flick-links`
    - Build command: leave empty
    - Build output directory: `.`
-3. Go to **Storage & Databases → D1 → Create database**. Name it `flick-links`.
+3. Go to **Storage & databases → D1 SQLite Database → Create database**. Name it `flick-links`.
 4. Open the Pages project, then **Settings → Bindings → Add → D1 database**.
-   Variable name `DB`, database `flick-links`. Save, then redeploy once from the **Deployments** tab.
+   Variable name `DB`, database `flick-links`, for Production and Preview. Save, then in the **Deployments** tab use the
+   three-dot menu on the latest row under **All deployments** and choose **Retry deployment**.
 
-The game is then at `https://<project>.pages.dev`. Clubhouses, invites and passkeys switch on by themselves:
+The game is then at `https://<project>.pages.dev`. (It is live at https://breakfast-ball.pages.dev, set up this way in November 2026.) Clubhouses, invites and passkeys switch on by themselves:
 the page asks `/api/ping`, and if the server answers it uses it. If not, it falls back to a solo clubhouse
 kept on the device.
 

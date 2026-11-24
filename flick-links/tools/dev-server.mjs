@@ -16,4 +16,4 @@ http.createServer(async (req, res) => {
   try { const f = url.pathname === '/' ? '/index.html' : url.pathname; if (f.includes('..')) throw 0;
     res.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'text/plain', 'cache-control': 'no-store' }); res.end(await readFile(path.join(root, f)));
   } catch (e) { res.writeHead(404); res.end('not found'); }
-}).listen(port, () => console.log('Flick Links on http://localhost:' + port));
+}).listen(port, () => console.log('Breakfast Ball on http://localhost:' + port));

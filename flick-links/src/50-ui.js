@@ -30,7 +30,7 @@ const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{w
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
 function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(cur().tee.x,cur().tee.y);setupShot();overviewCam(.2,.3,true);hud();hintOff();
-  sheet(`<div class="mast">${CREST}<h1>Flick Links</h1>${meChip()}</div>
+  sheet(`<div class="mast">${CREST}<h1>Breakfast<br>Ball</h1>${meChip()}</div>
 <div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
@@ -51,8 +51,8 @@ function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?n
 ${scoreCard(S.round.ids,S.round.scores)}
 <button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
 function shareText(){const r=S.round,hs=r.ids.map(INFO),par=sum(hs.map(h=>h.par)),tot=sum(r.scores),em=(a,b)=>r.scores.slice(a,b).map((s,i)=>emo(s,hs[a+i].par)).join('');
-  let t=r.type==='nine'?`⛳ Flick Links · ${hs.length>9?'eighteen':hs[0].n>9?'back nine':'front nine'} at ${hs[0].course.club}\n`+(hs.length>9?em(0,9)+'\n'+em(9,18):em(0,9))+`\n${tot} strokes (${rel(tot-par)})`
-    :`⛳ Flick Links No. ${S.day}${hs.every(h=>h.course===hs[0].course)?' · '+hs[0].course.club:''}\n`+r.scores.map((s,i)=>`${hs.every(h=>h.course===hs[0].course)?'No. ':hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
+  let t=r.type==='nine'?`⛳ Breakfast Ball · ${hs.length>9?'eighteen':hs[0].n>9?'back nine':'front nine'} at ${hs[0].course.club}\n`+(hs.length>9?em(0,9)+'\n'+em(9,18):em(0,9))+`\n${tot} strokes (${rel(tot-par)})`
+    :`⛳ Breakfast Ball No. ${S.day}${hs.every(h=>h.course===hs[0].course)?' · '+hs[0].course.club:''}\n`+r.scores.map((s,i)=>`${hs.every(h=>h.course===hs[0].course)?'No. ':hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
   let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname+(Net.remote&&C.code?'?c='+C.code:'')}catch(e){}
   return url?t+'\n'+url:t}
 function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r.scores=sv.scores;

@@ -1,4 +1,4 @@
-# Flick Links
+# Breakfast Ball (the folder is still `flick-links`)
 
 A daily three-hole golf game for a group chat. Everything lives in `flick-links/`.
 

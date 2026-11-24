@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a21">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta property="og:title" content="Flick Links">
-<meta property="og:description" content="Three holes a day on the front nine. Same holes for everyone. Fewest strokes wins the group chat.">
+<meta property="og:title" content="Breakfast Ball">
+<meta property="og:description" content="Three holes a day on a real course. Same holes for everyone. Fewest strokes wins the group chat.">
 <style>:root{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>
-<title>Flick Links</title>
+<title>Breakfast Ball</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Marcellus+SC&family=Playfair+Display:ital,wght@0,600;0,800;1,700&display=swap">
 <style>
@@ -94,7 +94,7 @@ button.plate,.plate button{pointer-events:auto}
 
 .mast{display:flex;align-items:center;gap:12px}
 .mast svg{width:54px;height:62px;flex:none}
-.mast h1{margin:0;font:italic 700 40px/0.95 var(--display);letter-spacing:-.01em;color:var(--club)}
+.mast h1{margin:0;font:italic 700 34px/0.95 var(--display);letter-spacing:-.01em;color:var(--club)}
 .mast p{margin:5px 0 0;font:400 11.5px/1.25 var(--caps);letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2)}
 .stamp{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .stamp span:last-child{color:var(--claret)}
@@ -257,7 +257,7 @@ table.st{width:100%;border-collapse:collapse;border:1.5px solid var(--rule);back
     <button class="plate go" id="btnPutt" hidden>Putt</button>
   </div>
 
-  <div id="scrim" hidden><div id="card" role="dialog" aria-modal="true" aria-label="Flick Links"></div></div>
+  <div id="scrim" hidden><div id="card" role="dialog" aria-modal="true" aria-label="Breakfast Ball"></div></div>
 </div>
 
 <script>
@@ -900,7 +900,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795470912000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795481133000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -1303,7 +1303,7 @@ async function handle(req,store,opts={}){const url=new URL(req.url),path=url.pat
         if(saved)await store.put('gi:'+ses.pid,idx.slice(-3000));return done({saved})}
       case'/passkey/options':{const challenge=b64u(rand(32));await store.put('ch:'+challenge,{pid:ses?ses.pid:null,t:Date.now()});
         if(b.kind==='create'){if(!ses)return fail('no_player',401);
-          return done({publicKey:{challenge,rp:{name:'Flick Links',id:url.hostname},user:{id:b64u(enc.encode(ses.pid)),name:ses.player.name,displayName:ses.player.name},
+          return done({publicKey:{challenge,rp:{name:'Breakfast Ball',id:url.hostname},user:{id:b64u(enc.encode(ses.pid)),name:ses.player.name,displayName:ses.player.name},
             pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{residentKey:'required',userVerification:'preferred'},attestation:'none',timeout:60000}})}
         return done({publicKey:{challenge,rpId:url.hostname,userVerification:'preferred',timeout:60000}})}
       case'/passkey/create':{if(!ses)return fail('no_player',401);const ch=await checkClientData(store,unb64u(b.clientDataJSON),'webauthn.create',origin);
@@ -1391,7 +1391,7 @@ function clubStrip(){const c=C.club;
   if(c&&c.member){const played=c.today.filter(t=>t.round),lead=played[0];
     return`<button class="strip" data-act="club"><span><b>${esc(c.name)}</b><i>${lead?esc(lead.nick)+' leads at '+rel(lead.round.tot-lead.round.par)+' · '+played.length+' of '+c.count+' in':'Nobody has played yet today'}</i></span><em>Open</em></button>`}
   return`<button class="strip" data-act="clubform"><span><b>Start a clubhouse</b><i>A daily leaderboard with friends</i></span><em>New</em></button>`}
-const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your card'}</button>`;
+const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your stats'}</button>`;
 
 // ───────── sheets
 function formCard(kind){const c=C.club,join=kind==='join',club=kind==='club';
@@ -1418,7 +1418,7 @@ const gameTable=()=>{const d=gameStats('daily'),p=gameStats('practice');if(!d.ro
 async function syncLog(){if(!Net.remote||!C.me)return;const L=fetchKey('log')||[],todo=L.filter(r=>!r.up).slice(0,25);if(!todo.length)return;
   try{const j=await Net.call('POST','/log',{rounds:todo.map(({up,...r})=>r)});if(j&&j.ok){const ids=new Set(todo.map(r=>r.id)),M=fetchKey('log')||[];M.forEach(r=>{if(ids.has(r.id))r.up=1});store('log',M)}}catch(e){}}
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
-  sheet(`<p class="eyebrow">Your card</p><h2>${esc(m.name)}</h2>
+  sheet(`<p class="eyebrow">Your stats</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
 <p class="fine">${st.hcp==null?'Handicap in '+plural(Math.max(1,3-st.rounds),'round')+'.':''}</p>
 ${gameTable()}<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
@@ -1436,7 +1436,7 @@ async function signIn(){const note=$('formErr');try{const o=await Net.call('POST
     const a=await navigator.credentials.get({publicKey:pk}),r=a.response,j=await Net.call('POST','/passkey/login',{id:a.id,clientDataJSON:toB64(r.clientDataJSON),authenticatorData:toB64(r.authenticatorData),signature:toB64(r.signature)});
     if(!j.ok)throw j;await refresh();titleCard()}catch(e){if(note)note.textContent='No saved player was found on this phone.'}}
 async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.textContent='Invites need the hosted site. This clubhouse is on this device only.';return}
-  const url=location.origin+location.pathname+'?c='+c.code,text=`Join ${c.name} on Flick Links. Three holes a day.\n${url}`;
+  const url=location.origin+location.pathname+'?c='+c.code,text=`Join ${c.name} on Breakfast Ball. Three holes a day.\n${url}`;
   if(navigator.share)try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(text);note.textContent='Invite copied.'}catch(e){note.textContent=url}}
 $('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),btn=f.querySelector('[type=submit]');
@@ -1481,7 +1481,7 @@ const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{w
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
 function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(cur().tee.x,cur().tee.y);setupShot();overviewCam(.2,.3,true);hud();hintOff();
-  sheet(`<div class="mast">${CREST}<h1>Flick Links</h1>${meChip()}</div>
+  sheet(`<div class="mast">${CREST}<h1>Breakfast<br>Ball</h1>${meChip()}</div>
 <div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
@@ -1502,8 +1502,8 @@ function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?n
 ${scoreCard(S.round.ids,S.round.scores)}
 <button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
 function shareText(){const r=S.round,hs=r.ids.map(INFO),par=sum(hs.map(h=>h.par)),tot=sum(r.scores),em=(a,b)=>r.scores.slice(a,b).map((s,i)=>emo(s,hs[a+i].par)).join('');
-  let t=r.type==='nine'?`⛳ Flick Links · ${hs.length>9?'eighteen':hs[0].n>9?'back nine':'front nine'} at ${hs[0].course.club}\n`+(hs.length>9?em(0,9)+'\n'+em(9,18):em(0,9))+`\n${tot} strokes (${rel(tot-par)})`
-    :`⛳ Flick Links No. ${S.day}${hs.every(h=>h.course===hs[0].course)?' · '+hs[0].course.club:''}\n`+r.scores.map((s,i)=>`${hs.every(h=>h.course===hs[0].course)?'No. ':hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
+  let t=r.type==='nine'?`⛳ Breakfast Ball · ${hs.length>9?'eighteen':hs[0].n>9?'back nine':'front nine'} at ${hs[0].course.club}\n`+(hs.length>9?em(0,9)+'\n'+em(9,18):em(0,9))+`\n${tot} strokes (${rel(tot-par)})`
+    :`⛳ Breakfast Ball No. ${S.day}${hs.every(h=>h.course===hs[0].course)?' · '+hs[0].course.club:''}\n`+r.scores.map((s,i)=>`${hs.every(h=>h.course===hs[0].course)?'No. ':hs[i].course.code}${hs[i].n} ${emo(s,hs[i].par)} ${s}`).join('   ')+`\n${tot} strokes (${rel(tot-par)})`;
   let url=SHARE_URL;try{if(!url&&window.top===window.self&&/^https?:$/.test(location.protocol))url=location.origin+location.pathname+(Net.remote&&C.code?'?c='+C.code:'')}catch(e){}
   return url?t+'\n'+url:t}
 function resultsCard(){const r=S.round,sv=fetchKey(saveKey());if(sv&&sv.scores)r.scores=sv.scores;

@@ -22,8 +22,8 @@ cat <<'HEAD'
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a21">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta property="og:title" content="Flick Links">
-<meta property="og:description" content="Three holes a day on the front nine. Same holes for everyone. Fewest strokes wins the group chat.">
+<meta property="og:title" content="Breakfast Ball">
+<meta property="og:description" content="Three holes a day on a real course. Same holes for everyone. Fewest strokes wins the group chat.">
 <style>:root{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>

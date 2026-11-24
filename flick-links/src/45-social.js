@@ -54,7 +54,7 @@ function clubStrip(){const c=C.club;
   if(c&&c.member){const played=c.today.filter(t=>t.round),lead=played[0];
     return`<button class="strip" data-act="club"><span><b>${esc(c.name)}</b><i>${lead?esc(lead.nick)+' leads at '+rel(lead.round.tot-lead.round.par)+' · '+played.length+' of '+c.count+' in':'Nobody has played yet today'}</i></span><em>Open</em></button>`}
   return`<button class="strip" data-act="clubform"><span><b>Start a clubhouse</b><i>A daily leaderboard with friends</i></span><em>New</em></button>`}
-const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your card'}</button>`;
+const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me.stats.hcp!=null?' · '+hcpStr(C.me.stats.hcp):''):'Your stats'}</button>`;
 
 // ───────── sheets
 function formCard(kind){const c=C.club,join=kind==='join',club=kind==='club';
@@ -81,7 +81,7 @@ const gameTable=()=>{const d=gameStats('daily'),p=gameStats('practice');if(!d.ro
 async function syncLog(){if(!Net.remote||!C.me)return;const L=fetchKey('log')||[],todo=L.filter(r=>!r.up).slice(0,25);if(!todo.length)return;
   try{const j=await Net.call('POST','/log',{rounds:todo.map(({up,...r})=>r)});if(j&&j.ok){const ids=new Set(todo.map(r=>r.id)),M=fetchKey('log')||[];M.forEach(r=>{if(ids.has(r.id))r.up=1});store('log',M)}}catch(e){}}
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
-  sheet(`<p class="eyebrow">Your card</p><h2>${esc(m.name)}</h2>
+  sheet(`<p class="eyebrow">Your stats</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
 <p class="fine">${st.hcp==null?'Handicap in '+plural(Math.max(1,3-st.rounds),'round')+'.':''}</p>
 ${gameTable()}<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
@@ -99,7 +99,7 @@ async function signIn(){const note=$('formErr');try{const o=await Net.call('POST
     const a=await navigator.credentials.get({publicKey:pk}),r=a.response,j=await Net.call('POST','/passkey/login',{id:a.id,clientDataJSON:toB64(r.clientDataJSON),authenticatorData:toB64(r.authenticatorData),signature:toB64(r.signature)});
     if(!j.ok)throw j;await refresh();titleCard()}catch(e){if(note)note.textContent='No saved player was found on this phone.'}}
 async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.textContent='Invites need the hosted site. This clubhouse is on this device only.';return}
-  const url=location.origin+location.pathname+'?c='+c.code,text=`Join ${c.name} on Flick Links. Three holes a day.\n${url}`;
+  const url=location.origin+location.pathname+'?c='+c.code,text=`Join ${c.name} on Breakfast Ball. Three holes a day.\n${url}`;
   if(navigator.share)try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(text);note.textContent='Invite copied.'}catch(e){note.textContent=url}}
 $('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),btn=f.querySelector('[type=submit]');

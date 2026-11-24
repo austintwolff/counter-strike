@@ -1,4 +1,4 @@
-# Putting Flick Links on its own web address
+# Putting Breakfast Ball on its own web address
 
 The game is one static page plus a small clubhouse server under `/api`.
 Cloudflare Pages runs both for free and redeploys on every push.

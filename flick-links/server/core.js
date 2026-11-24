@@ -123,7 +123,7 @@ export async function handle(req,store,opts={}){const url=new URL(req.url),path=
         if(saved)await store.put('gi:'+ses.pid,idx.slice(-3000));return done({saved})}
       case'/passkey/options':{const challenge=b64u(rand(32));await store.put('ch:'+challenge,{pid:ses?ses.pid:null,t:Date.now()});
         if(b.kind==='create'){if(!ses)return fail('no_player',401);
-          return done({publicKey:{challenge,rp:{name:'Flick Links',id:url.hostname},user:{id:b64u(enc.encode(ses.pid)),name:ses.player.name,displayName:ses.player.name},
+          return done({publicKey:{challenge,rp:{name:'Breakfast Ball',id:url.hostname},user:{id:b64u(enc.encode(ses.pid)),name:ses.player.name,displayName:ses.player.name},
             pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{residentKey:'required',userVerification:'preferred'},attestation:'none',timeout:60000}})}
         return done({publicKey:{challenge,rpId:url.hostname,userVerification:'preferred',timeout:60000}})}
       case'/passkey/create':{if(!ses)return fail('no_player',401);const ch=await checkClientData(store,unb64u(b.clientDataJSON),'webauthn.create',origin);

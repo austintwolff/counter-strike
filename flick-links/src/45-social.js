@@ -4,7 +4,7 @@
 const TROPHY={ace:['1','Ace','A hole in one'],eagle:['−2','Eagle','Two under on one hole'],hat:['III','Hat Trick','Three birdies in a round'],clean:['✓','Clean Card','A round without a bogey'],
   red:['−','In the Red','A round under par'],week:['7','Regular','Seven days running'],month:['30','Fixture','Thirty days running']};
 COURSES.forEach(c=>TROPHY['sweep-'+c.id]=[c.code,'Swept '+c.club,'Nine holes birdied']);
-const MSG={name:'Enter a name.',taken:'Someone in this clubhouse already has that name.',full:'This clubhouse is full.',no_club:'That clubhouse no longer exists.',too_many:'You are in the most clubhouses one player can join.'};
+const MSG={name:'Enter a name.',taken:'Someone in this clubhouse already has that name.',full:'This clubhouse is full.',no_club:'That clubhouse no longer exists.',too_many:'You are in the most clubhouses one player can join.',user:'Usernames are 3 to 16 letters, numbers or underscores.',user_taken:'That username is taken.'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const hcpStr=h=>h==null?'–':h<0?'+'+(-h).toFixed(1):h.toFixed(1);
 const holeKey=h=>h.course.id+h.k; // the hole's fixed place in its course, 1 to 18, which is not always its number
@@ -58,17 +58,19 @@ const meChip=()=>`<button class="chip" data-act="me">${C.me?esc(C.me.name)+(C.me
 
 // ───────── sheets
 // kind: 'join' a clubhouse, start a 'club', change a 'name', or 'welcome' a new player straight after the practice range
-function formCard(kind){const c=C.club,join=kind==='join',club=kind==='club',hi=kind==='welcome';
-  sheet(`<p class="eyebrow">${join?'Join the clubhouse':club?'A new clubhouse':hi?'Welcome':'Your player'}</p><h2>${join?esc(c.name):club?'Name your clubhouse':'What should we call you?'}</h2>
+// A player without a username yet (a new one, or one from before usernames) is asked for it on whichever form comes first.
+function formCard(kind){const c=C.club,join=kind==='join',club=kind==='club',hi=kind==='welcome',needUser=!C.me||!C.me.user;
+  sheet(`<p class="eyebrow">${join?'Join the clubhouse':club?'A new clubhouse':hi?'Welcome':'Your player'}</p><h2>${join?esc(c.name):club?'Name your clubhouse':hi?'Set up your player':'Your name'}</h2>
 <form id="socialForm" data-kind="${kind}" class="field" novalidate>
 ${club?'<label for="houseName">Clubhouse name</label><input id="houseName" maxlength="24" autocomplete="off" placeholder="Sunday Skins">':''}
+${needUser?'<label for="userName">Username</label><input id="userName" maxlength="16" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">':''}
 <label for="nickName">${kind==='name'||hi?'Your name':'Your name in this clubhouse'}</label><input id="nickName" maxlength="16" autocomplete="nickname" value="${esc(C.me?C.me.name:'')}">
 <p class="fine err" id="formErr" role="alert"></p>
 <div class="row"><button class="btn" type="submit">${join?'Join':club?'Open the doors':'Save'}</button>${hi?'<button class="btn ghost" type="button" data-act="guest">Not now</button>':'<button class="btn ghost" type="button" data-act="title">Back</button>'}</div>
 ${!C.me&&Net.remote&&window.PublicKeyCredential?'<button class="link" type="button" data-act="signin">Played before on another phone? Sign in</button>':''}</form>
 <p class="fine">${Net.remote?(C.me?'':'Your phone will ask to save a passkey. That is your account.'):'On this device only for now.'}</p>`)}
 // Someone who would rather not give a name yet still gets a player, so that their rounds are kept from the first one.
-async function guest(){try{if(!C.me)await Net.call('POST','/player',{name:'Guest'});await refresh()}catch(e){}titleCard()}
+async function guest(){try{for(let i=0;i<4&&!C.me;i++){const j=await Net.call('POST','/player',{name:'Guest',user:'guest'+Math.floor(1e4+Math.random()*9e4)});if(j.ok||j.error!=='user_taken')break}await refresh()}catch(e){}titleCard()}
 function clubCard(){const c=C.club;if(!c||!c.member)return titleCard();const t=C.tab,others=(C.me?C.me.clubs:[]).filter(x=>x.code!==c.code);
   sheet(`<p class="eyebrow">Clubhouse · ${plural(c.count,'member')}${Net.remote?'':' · this device only'}</p><h2>${esc(c.name)}</h2>
 <div class="tabs" role="tablist">${[['today','Today'],['standings','Standings'],['records','Records']].map(([k,l])=>`<button role="tab" aria-selected="${t===k}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
@@ -84,7 +86,7 @@ const gameTable=()=>{const d=gameStats('daily'),p=gameStats('practice');if(!d.ro
 async function syncLog(){if(!Net.remote||!C.me)return;const L=fetchKey('log')||[],todo=L.filter(r=>!r.up).slice(0,25);if(!todo.length)return;
   try{const j=await Net.call('POST','/log',{rounds:todo.map(({up,...r})=>r)});if(j&&j.ok){const ids=new Set(todo.map(r=>r.id)),M=fetchKey('log')||[];M.forEach(r=>{if(ids.has(r.id))r.up=1});store('log',M)}}catch(e){}}
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
-  sheet(`<p class="eyebrow">Your stats</p><h2>${esc(m.name)}</h2>
+  sheet(`<p class="eyebrow">Your stats${m.user?' · @'+esc(m.user):''}</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
 <p class="fine">${st.hcp==null?'Handicap in '+plural(Math.max(1,3-st.rounds),'round')+'.':''}</p>
 ${gameTable()}<p class="eyebrow">Trophy case</p><div class="tro">${Object.keys(TROPHY).map(id=>{const[mono,name,what]=TROPHY[id],e=won[id],sw=id.startsWith('sweep-')?(st.sweep[id.slice(6)]||[]).length:null;
@@ -105,10 +107,10 @@ async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.
   const url=location.origin+location.pathname+'?c='+c.code,text=`Join ${c.name} on Breakfast Ball. Three holes a day.\n${url}`;
   if(navigator.share)try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(text);note.textContent='Invite copied.'}catch(e){note.textContent=url}}
-$('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),btn=f.querySelector('[type=submit]');
-  const cname=kind==="club"?$("houseName").value.trim():"";if(!nick)return say(MSG.name);if(kind==='club'&&cname.length<2)return say('Give the clubhouse a name.');
+$('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),uf=$('userName'),user=uf?uf.value.trim().toLowerCase():'',btn=f.querySelector('[type=submit]');
+  const cname=kind==="club"?$("houseName").value.trim():"";if(uf&&!/^[a-z0-9_]{3,16}$/.test(user))return say(MSG.user);if(!nick)return say(MSG.name);if(kind==='club'&&cname.length<2)return say('Give the clubhouse a name.');
   btn.disabled=true;
-  try{const fresh=!C.me;if(fresh||kind==='name'||kind==='welcome'){const j=await Net.call('POST','/player',{name:nick});if(!j.ok)throw j}
+  try{const fresh=!C.me;if(fresh||uf||kind==='name'||kind==='welcome'){const j=await Net.call('POST','/player',uf?{name:(kind==='join'||kind==='club')&&C.me?C.me.name:nick,user}:{name:nick});if(!j.ok)throw j}
     // a new player is saved to the phone's passkey straight away, so two weeks of rounds never hang on a cookie
     if(fresh&&await canPrompt()){btn.textContent='Saving your player';await savePasskey()}
     if(kind==='club'){const j=await Net.call('POST','/club',{name:cname,nick});if(!j.ok)throw j;endInvite();pickClub(j.code)}

@@ -3,3 +3,4 @@ flick-links/data/*.trace.jpg
 __pycache__/
 flick-links/data/*.preview.png
 flick-links/check-*/
+flick-links/.wrangler/

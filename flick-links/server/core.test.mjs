@@ -9,9 +9,12 @@ const austin = mk(), sam = mk(), kim = mk(), stranger = mk();
 assert.equal((await austin('GET', '/ping')).ok, true);
 assert.equal((await austin('GET', '/state?day=' + today)).me, null);
 assert.equal((await austin('POST', '/club', { name: 'Sunday Skins' })).error, 'no_player');
-const p = await austin('POST', '/player', { name: '  Austin <b> ' }); assert.ok(p.ok); assert.match(p.cookieSet, /HttpOnly/); assert.match(p.cookieSet, /Secure/); assert.equal(p.session, undefined, 'token never returned to page script on the hosted site');
+assert.equal((await austin('POST', '/player', { name: 'Austin' })).error, 'user'); assert.equal((await austin('POST', '/player', { name: 'Austin', user: 'a b' })).error, 'user');
+const p = await austin('POST', '/player', { name: '  Austin <b> ', user: ' Austin_W ' }); assert.ok(p.ok); assert.match(p.cookieSet, /HttpOnly/); assert.match(p.cookieSet, /Secure/); assert.equal(p.session, undefined, 'token never returned to page script on the hosted site');
 const club = await austin('POST', '/club', { name: 'Sunday Skins' }); assert.ok(club.ok); const code = club.code; assert.match(code, /^[A-Z2-9]{6}$/);
-await sam('POST', '/player', { name: 'Sam' }); await kim('POST', '/player', { name: 'Kim' });
+assert.equal((await sam('POST', '/player', { name: 'Sam', user: 'AUSTIN_W' })).error, 'user_taken');
+await sam('POST', '/player', { name: 'Sam', user: 'sam' }); await kim('POST', '/player', { name: 'Kim', user: 'kim' });
+assert.ok((await sam('POST', '/player', { name: 'Sammy', user: 'someone_else' })).ok); { const me = (await sam('GET', '/state?day=' + today)).me; assert.equal(me.user, 'sam', 'a username is chosen once'); assert.equal(me.name, 'Sammy'); } await sam('POST', '/player', { name: 'Sam' });
 assert.equal((await sam('POST', '/join', { code, nick: 'austin b' })).error, 'taken');         // cannot take a member's name, whatever the capitals
 assert.equal((await kim('POST', '/join', { code, nick: 'AUSTIN B' })).error, 'taken');
 assert.ok((await kim('POST', '/join', { code: code.toLowerCase(), nick: 'Kim' })).ok);
@@ -41,7 +44,7 @@ assert.deepEqual(s.club.records.feed.map(f => f.id + ':' + f.nick), ['ace:Austin
 assert.equal((await stranger('GET', '/state?day=' + today + '&club=' + code)).club.member, false);
 // handicap appears at three rounds: best differential of 3, times 6
 const st2 = new MemStore(), solo = (() => { let c = ''; return async (m, pth, b) => { const r = await handle(new Request('https://golf.test/api' + pth, { method: m, headers: { cookie: c, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }), st2, { local: true }); const j = await r.json(); if (j.session) c = 'fl=' + j.session; return j; }; })();
-assert.match((await solo('POST', '/player', { name: 'Solo' })).session, /^[a-f0-9]{64}$/);
+assert.match((await solo('POST', '/player', { name: 'Solo', user: 'solo' })).session, /^[a-f0-9]{64}$/);
 for (const [k, sc] of [[-1, [5, 4, 6]], [0, [4, 4, 6]], [1, [4, 3, 6]]]) { const d = new Date(Date.now() + k * 864e5).toISOString().slice(0, 10); assert.ok((await solo('POST', '/round', { day: d, holes, pars, scores: sc })).ok); }
 assert.equal((await solo('GET', '/state?day=' + today)).me.stats.hcp, 6);
 assert.ok((await sam('POST', '/leave', { code })).ok); assert.equal((await sam('GET', '/state?day=' + today + '&club=' + code)).club.count, 2);

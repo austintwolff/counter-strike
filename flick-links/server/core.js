@@ -62,7 +62,7 @@ async function clubView(store,club,pid,day){const ms=await store.list('m:'+club.
   return{code:club.code,name:club.name,founder:club.owner===pid,member:members.some(m=>m.id===pid),count:members.length,today,standings,records:{holes,low,feed:feed.reverse().slice(0,12)}}}
 async function state(store,ses,day,code){const out={me:null,club:null};
   if(ses){const rs=await roundsOf(store,ses.pid),clubs=[];for(const c of ses.player.clubs||[]){const cl=await store.get('c:'+c);if(cl)clubs.push({code:c,name:cl.name})}
-    out.me={id:ses.pid,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day),today:rs.find(r=>r.day===day)||null}}
+    out.me={id:ses.pid,user:ses.player.user||null,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day),today:rs.find(r=>r.day===day)||null}}
   if(code){const club=await store.get('c:'+String(code).toUpperCase());if(club)out.club=await clubView(store,club,ses&&ses.pid,day)}
   return out}
 
@@ -90,9 +90,12 @@ export async function handle(req,store,opts={}){const url=new URL(req.url),path=
     const signIn=async pid=>{const tok=await newSession(store,pid);head['set-cookie']=cookieFor(tok,url);if(opts.local)extra.session=tok};
     const done=(o={})=>json({ok:true,...o,...extra},200,head);
     switch(path){
-      case'/player':{const name=cleanName(b.name);if(name.length<1)return fail('name');
-        if(ses){ses.player.name=name;await store.put('p:'+ses.pid,ses.player)}
-        else{const pid=b64u(rand(9));await store.put('p:'+pid,{id:pid,name,created:Date.now(),clubs:[],keys:[]});await signIn(pid)}
+      // A player has a username, chosen once and unique, and a name they can change. Everything they play is kept under the
+      // player ('u:<username>' points to it), so the username is the handle that stays put.
+      case'/player':{const name=cleanName(b.name),user=String(b.user||'').trim().toLowerCase(),need=!ses||!ses.player.user;if(name.length<1)return fail('name');
+        if(need){if(!/^[a-z0-9_]{3,16}$/.test(user))return fail('user');if(await store.get('u:'+user))return fail('user_taken')}
+        if(ses){ses.player.name=name;if(need){ses.player.user=user;await store.put('u:'+user,ses.pid)}await store.put('p:'+ses.pid,ses.player)}
+        else{const pid=b64u(rand(9));await store.put('p:'+pid,{id:pid,user,name,created:Date.now(),clubs:[],keys:[]});await store.put('u:'+user,pid);await signIn(pid)}
         return done()}
       case'/club':{if(!ses)return fail('no_player',401);const name=cleanName(b.name,24),nick=cleanName(b.nick)||ses.player.name;if(name.length<2)return fail('name');
         if((ses.player.clubs||[]).length>=8)return fail('too_many');
@@ -123,7 +126,7 @@ export async function handle(req,store,opts={}){const url=new URL(req.url),path=
         if(saved)await store.put('gi:'+ses.pid,idx.slice(-3000));return done({saved})}
       case'/passkey/options':{const challenge=b64u(rand(32));await store.put('ch:'+challenge,{pid:ses?ses.pid:null,t:Date.now()});
         if(b.kind==='create'){if(!ses)return fail('no_player',401);
-          return done({publicKey:{challenge,rp:{name:'Breakfast Ball',id:url.hostname},user:{id:b64u(enc.encode(ses.pid)),name:ses.player.name,displayName:ses.player.name},
+          return done({publicKey:{challenge,rp:{name:'Breakfast Ball',id:url.hostname},user:{id:b64u(enc.encode(ses.pid)),name:ses.player.user||ses.player.name,displayName:ses.player.name},
             pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{residentKey:'required',userVerification:'preferred'},attestation:'none',timeout:60000}})}
         return done({publicKey:{challenge,rpId:url.hostname,userVerification:'preferred',timeout:60000}})}
       case'/passkey/create':{if(!ses)return fail('no_player',401);const ch=await checkClientData(store,unb64u(b.clientDataJSON),'webauthn.create',origin);

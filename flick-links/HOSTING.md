@@ -34,6 +34,13 @@ cd flick-links && npx wrangler pages dev . --d1 DB=flick-links
 The whole clubhouse flow (two players, an invite, daily cards, a passkey and signing back in with it) has been run
 against that and passes.
 
+## The link preview and the home-screen icon
+
+`og.jpg` is the picture a group chat shows for the link; `apple-touch-icon.png`, the `icon-*.png` files and
+`manifest.webmanifest` are what a phone uses when someone adds the game to their home screen. They are made from the
+game itself by `node tools/make_art.js`. The preview's address is written into `build.sh` and has to be the site's real
+address, so change it there if the site moves. Chat apps cache previews: a link already sent keeps its old picture.
+
 ## What lives where
 
 - `server/core.js` is the whole server. It needs only web-standard `Request`, `Response` and `crypto`,

@@ -1023,7 +1023,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795649115000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795650856000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -1633,6 +1633,8 @@ ${wide?table(0,3,'Total'):all?table(0,9,'Out')+table(9,18,'In'):table(0,9,hs[0].
 const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
 // a day's saved round keeps the holes it was drawn with, so a later change to the draw cannot scramble it
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
+// the practice menu lists the famous courses first, then the Texas ones; the order of COURSES itself never changes
+const FAMOUS=['ts','an','pb','sa'],tomorrowCourse=()=>{const n=COURSES.length;return COURSES[(dayNumber(S.key)%n+n)%n]};
 function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(cur().tee.x,cur().tee.y);setupShot();overviewCam(.2,.3,true);hud();hintOff();
   sheet(`<div class="mast">${CREST}<h1>Breakfast<br>Ball</h1>${meChip()}</div>
@@ -1640,8 +1642,8 @@ function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('see
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
 ${saveStrip()}${clubStrip()}
-<p class="eyebrow">Practice</p>
-<div class="pick">${COURSES.map(c=>`<button class="btn green sm" data-act="course" data-c="${c.id}">${c.club}</button>`).join('')}</div>`,titleCard)}
+${[['Famous courses',COURSES.filter(c=>FAMOUS.includes(c.id))],['Texas',COURSES.filter(c=>!FAMOUS.includes(c.id))]].map(([t,cs])=>`<p class="eyebrow">Practice · ${t}</p>
+<div class="pick">${cs.map(c=>`<button class="btn green sm" data-act="course" data-c="${c.id}">${c.club}</button>`).join('')}</div>`).join('')}`,titleCard)}
 // a course with both nines asks which to play
 function courseCard(id){const c=COURSES.find(c=>c.id===id),opt=(p,l)=>{const hs=courseIds(id,p).map(INFO);
     return`<button class="btn green" data-act="nine" data-c="${id}" data-p="${p}">${l}<small>Par ${sum(hs.map(h=>h.par))} · ${sum(hs.map(h=>h.yards)).toLocaleString()} yd</small></button>`};
@@ -1669,7 +1671,7 @@ ${scoreCard(r.ids,r.scores)}
 <textarea id="shareText" readonly rows="${shareText().split('\n').length}" aria-label="Your result, ready to paste">${shareText()}</textarea>
 <div class="row"><button class="btn" data-act="share">Share score</button><button class="btn ghost" data-act="${nine?'again':'title'}">${nine?'Play it again':'Home'}</button></div>
 ${nine?'':saveStrip()}${nine?'<button class="btn ghost" data-act="title">Home</button>':C.club&&C.club.member?'<p class="eyebrow">'+esc(C.club.name)+' today</p>'+tabToday(C.club)+'<button class="btn green" data-act="club">Open the clubhouse</button>':clubStrip()}
-<p class="fine" id="shareNote">${nine?'':(m&&m.streak>1?`Day streak <b>${m.streak}</b>. `:'')+'New holes in <b id="countdown">--:--:--</b>.'}</p>`,nine?null:resultsCard);tickClock()}
+<p class="fine" id="shareNote">${nine?'':(m&&m.streak>1?`Day streak <b>${m.streak}</b>. `:'')+`Next up <b>${tomorrowCourse().club}</b> in <b id="countdown">--:--:--</b>.`}</p>`,nine?null:resultsCard);tickClock()}
 async function share(){const ta=$('shareText'),text=ta.value,note=$('shareNote');let top=false;try{top=window.top===window.self}catch(e){}
   if(top&&navigator.share){try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}}
   try{await navigator.clipboard.writeText(text);note.textContent='Copied.'}

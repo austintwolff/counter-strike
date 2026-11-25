@@ -43,6 +43,9 @@ someone who has played it.
 | A new course added in the middle of the list would shift the saved index of every later hole and change which course today's three come from. | New courses go at the end of `COURSES`. The first six keep the indexes they were published with; the daily course is taken in turn from the whole list. Check that today's three holes are the same before and after. |
 | Augusta's 18th measures 505 yards along its mapped line but 462 from tee to pin: the line swings wide round the dogleg. | A line that is long only because of a bend is fine. Compare the straight distance on the hole card before worrying. |
 | Checking eight nines at once on four processors made builds look slow and some pictures catch the camera still moving. | Run `check_course.js` two at a time at most; re-run alone any hole flagged slow before believing it. |
+| A wall or pier drawn on the map as a closed outline came through as a single point: the line simplifier treats a line that ends where it starts as having no length. The timber ring round Sawgrass's island green vanished. | Closed lines are simplified as outlines and closed again; a pier drawn as an outline keeps its long axis and width. After importing a detail, check its point count before looking for it in the picture. |
+| The downloaded map stops at its own edge, so the St Andrews coastline ended inside the area being built and no sea was made. | The importer carries such a coastline straight on to the edge and says so. That stretch is a guess: confirm it is more than 165 yards from every hole, where nothing is drawn. |
+| A beach on the map runs out past the coastline (the coastline is the high-water mark). Drawn under the sea it disappeared. | Beaches are drawn over the water's edge, and a ball on one lies in sand, not water. |
 | Overpass does not work from the cloud session. | The tool uses `api.openstreetmap.org` and Nominatim. The session's network allowlist must include those, the tile hosts for imagery, and nothing else is needed. |
 
 ## The look: what stays the same, what makes each course its own
@@ -73,6 +76,26 @@ someone who has played it.
 | Augusta National | Wide emerald fairways with no rough to speak of, tall pines over pine straw, azaleas, white sand, Rae's Creek at Amen Corner | pine-heavy mix, woods floor the colour of pine straw (`woods:'#6a5a36'`), `sand` near white, pink flower beds (`blooms:20`), real hole names |
 | Pebble Beach | Cliff-top holes over Carmel Bay, tiny greens, Monterey cypress, mansions along the inland holes | `sea:true`, `wet:false` (no bald cypress by salt water), clumps of Monterey cypress and pine, houses drawn |
 | St Andrews (Old Course) | The original links: no trees, whin and fescue, double greens, over a hundred pot bunkers, the Swilcan Burn, the town at the 18th | `out:'native'`, `clumps:0`, mapped scrub filled with low whin bushes, pale lightly striped turf, houses drawn, real hole names |
+
+**Details the map carries.** Before deciding a course is finished, list what else the map has inside the property
+(named features, `barrier`, `man_made`, `natural=beach`, `landuse=flowerbed`, named trees) and bring in what a player would
+recognise. The importer keeps these, and they are drawn only where the map puts them:
+
+| Detail | Map tag | Where it shows |
+|---|---|---|
+| Timber bulkheads | `barrier=retaining_wall`, `material=wood` | Sawgrass: round the island green at 17, the lake at 16 and 18, the greens at 4, 11 and 13 |
+| Dry stone walls | `barrier=wall` | St Andrews: the wall behind the Road Hole green (17), the walls by the 1st and 18th |
+| Piers | `man_made=pier` | Pebble Beach: Stillwater Pier beside the 4th and 17th |
+| Beaches | `natural=beach` | Pebble Beach: Carmel Beach below the 9th and 10th. St Andrews: West Sands by the 1st, the Eden estuary behind the 11th |
+| The sea | `natural=coastline` | Pebble Beach; St Andrews (West Sands bay and the Eden estuary) |
+| Flower beds | `landuse=flowerbed` | Augusta: the beds in front of the clubhouse (`beds:'bloomGold'`) |
+| A named tree | `natural=tree` with a `name` | Augusta: the big oak behind the clubhouse, by the 1st tee, drawn as a very large live oak |
+| Buildings on the property | `building` | Augusta now draws them (`houses:true`): the clubhouse and the cabins by the 10th tee |
+| Sod-walled pot bunkers | every bunker, with `pot:true` | St Andrews: a dark turf face round each bunker, Hell Bunker on the 14th included |
+
+Walls, piers and bulkheads are scenery: they do not stop a ball. They are drawn after the greens, or a green's collar covers a
+bulkhead that rings it. Not everything is on the map: the wetlands at Sawgrass lie outside the holes, and Pebble Beach has no
+cliffs or offshore rocks mapped near play, so none were drawn.
 
 Rules of thumb that came out of this:
 

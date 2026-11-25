@@ -112,8 +112,9 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
     way_pts = lambda wid: [P(nodes[i]) for i in ways[wid][0] if i in nodes]
     hp = [q for l in lines.values() for i in range(len(l) - 1) for q in [(l[i][0] + (l[i + 1][0] - l[i][0]) * k / 8, l[i][1] + (l[i + 1][1] - l[i][1]) * k / 8) for k in range(9)]]
     close_to_holes = lambda p, d: any((q[0] - a[0]) ** 2 + (q[1] - a[1]) ** 2 < d * d for q in p[::max(1, len(p) // 12)] + [p[-1]] for a in hp)
-    G = {k: [] for k in ('fair', 'green', 'tee', 'bunker', 'rough', 'water', 'wood', 'scrub', 'rock', 'building', 'pitch', 'pool', 'parking')}
+    G = {k: [] for k in ('fair', 'green', 'tee', 'bunker', 'rough', 'water', 'wood', 'scrub', 'rock', 'building', 'pitch', 'pool', 'parking', 'beach', 'marsh', 'bed')}
     streams, roads, paths, rails, boundary, seen = [], [], [], [], None, set()
+    walls, piers = [], []
     def add_poly(kind, p, eps=.5, tags=None):
         if len(p) < 4 or not near(p): return
         q = simp_poly(p, eps)
@@ -124,6 +125,9 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
         if g == 'green': return 'green'
         if g == 'fairway': return 'fair'
         if g == 'tee': return 'tee'
+        if t.get('natural') == 'beach': return 'beach'
+        if t.get('natural') == 'wetland': return 'marsh'
+        if t.get('landuse') == 'flowerbed': return 'bed'
         if g == 'bunker' or t.get('natural') == 'sand': return 'bunker'
         if g == 'rough': return 'rough'
         if g in ('water_hazard', 'lateral_water_hazard') or t.get('natural') == 'water': return 'water'
@@ -141,6 +145,16 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
             continue
         k = classify(t)
         if k == 'building' and closed and not close_to_holes(p, 140): continue  # only the houses that edge the holes
+        # details that make a place: stone walls and timber bulkheads, and piers
+        if t.get('barrier') in ('wall', 'retaining_wall') and len(p) > 1 and near(p) and close_to_holes(p, 170):
+            q = (lambda r: r + [r[0]])(simp_poly(p, .4)) if closed else rdp(p, .4)  # a wall that rings a green is a closed line
+            walls.append({'p': flat(q), 'wood': t.get('material') == 'wood'}); continue
+        if t.get('man_made') == 'pier' and len(p) > 1 and near(p):
+            if closed:  # drawn as an outline: keep its long axis and its width
+                a, b = max(((a, b) for a in p for b in p), key=lambda ab: math.hypot(ab[0][0] - ab[1][0], ab[0][1] - ab[1][1])); L = math.hypot(a[0] - b[0], a[1] - b[1]) or 1
+                piers.append({'p': flat([a, b]), 'w': round(max(2, min(8, area(p[:-1]) / L)), 1), 'name': t.get('name', '')})
+            else: piers.append({'p': flat(rdp(p, .4)), 'w': 3, 'name': t.get('name', '')})
+            continue
         if k and closed: add_poly(k, p, .9 if k == 'building' else .3 if k in ('green', 'tee', 'bunker') else .6, t); seen.add(wid); continue
         if t.get('waterway') in ('stream', 'river', 'drain', 'ditch', 'canal') and len(p) > 1 and near(p):
             streams.append({'p': flat(rdp(p, .5)), 'w': {'river': 7, 'stream': 4, 'drain': 2.5, 'ditch': 2.5, 'canal': 6}[t['waterway']], 'dry': t.get('intermittent') == 'yes' or t['waterway'] in ('drain', 'ditch'), 'name': t.get('name', '')})
@@ -160,6 +174,16 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
                     if t.get('leisure') == 'golf_course':
                         if near(p) and (boundary is None or area(p) > area(boundary)): boundary = p
                     else: add_poly(k, p, .6, t)
+        if k in ('beach', 'marsh'):  # these often come as an outline in several pieces: join them end to end
+            segs = [list(ways[ref][0]) for typ, ref, role in members if typ == 'way' and role in ('outer', '') and ref in ways and ways[ref][0][0] != ways[ref][0][-1]]
+            while segs:
+                r = segs.pop(0)
+                while r[0] != r[-1]:
+                    for i, s2 in enumerate(segs):
+                        if s2[0] == r[-1]: r += s2[1:]; segs.pop(i); break
+                        if s2[-1] == r[-1]: r += s2[-2::-1]; segs.pop(i); break
+                    else: break
+                if r[0] == r[-1] and len(r) > 3: add_poly(k, [P(nodes[i]) for i in r if i in nodes], .6, t)
     # The sea is not mapped as water but as a coastline, a line with land on its left. Join the pieces, cut the line to a box
     # round the holes, and close it along the box's edge on the seaward side, to get the sea as an outline like any pond.
     coast = [nd for nd, t in ways.values() if t.get('natural') == 'coastline' and len(nd) > 1]
@@ -184,7 +208,14 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
         return 2 * w + h + sb[3] - q[1]
     for nd in coast:
         pts_ = [P(nodes[i]) for i in nd if i in nodes]; inside = [i for i, q in enumerate(pts_) if ins(q)]
-        if not inside or nd[0] == nd[-1] or inside[0] == 0 or inside[-1] == len(pts_) - 1: continue
+        if not inside or nd[0] == nd[-1] or len(pts_) < 3: continue
+        # The downloaded map stops at its own edge, so a coastline can end inside the box. Carry it straight on, the way it was
+        # heading, until it is out of the box. That stretch is a guess: check it lies out of sight of every hole.
+        def carry(end, back):
+            d = (end[0] - back[0], end[1] - back[1]); L = math.hypot(*d) or 1; return (end[0] + d[0] / L * 9000, end[1] + d[1] / L * 9000)
+        if inside[0] == 0: pts_.insert(0, carry(pts_[0], pts_[min(4, len(pts_) - 1)])); print('sea: the coastline starts inside the map at', [round(v) for v in pts_[1]], 'and was carried straight on')
+        if ins(pts_[-1]): pts_.append(carry(pts_[-1], pts_[max(0, len(pts_) - 5)])); print('sea: the coastline ends inside the map at', [round(v) for v in pts_[-2]], 'and was carried straight on')
+        inside = [i for i, q in enumerate(pts_) if ins(q)]
         a, z = inside[0], inside[-1]; enter = edge(pts_[a - 1], pts_[a]); leave = edge(pts_[z + 1], pts_[z]); path = [enter] + pts_[a:z + 1] + [leave]
         w, h = sb[2] - sb[0], sb[3] - sb[1]; per = 2 * (w + h); corners = [(0, (sb[0], sb[1])), (w, (sb[2], sb[1])), (w + h, (sb[2], sb[3])), (2 * w + h, (sb[0], sb[3]))]
         s0, s1 = along(leave), along(enter); span = (s1 - s0) % per   # with land on the left, the sea is reached by turning right on leaving
@@ -216,13 +247,13 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
     tr = []
     for nid, t in trees:
         x, y = P(nodes[nid])
-        if box[0] <= x <= box[2] and box[1] <= y <= box[3]: tr.append([round(x, 1), round(y, 1), (t.get('species') or t.get('genus') or t.get('taxon') or t.get('leaf_type') or '')[:24]])
+        if box[0] <= x <= box[2] and box[1] <= y <= box[3]: tr.append([round(x, 1), round(y, 1), (t.get('species') or t.get('genus') or t.get('taxon') or t.get('leaf_type') or '')[:24] + ('!big' if t.get('name') or t.get('denotation') == 'landmark' else '')])
     for k, v in ((extra or {}).get('add') or {}).items():  # hand-traced additions, in lat/lon
         for item in v:
             p = [P(tuple(q)) for q in item]
             if k in G: G[k].append(flat(simp_poly(p, .3)))
     out = {'id': cid, 'origin': [round(lat0, 6), round(lon0, 6)], 'lines': {n: flat(rdp(lines[n], .8) if len(lines[n]) > 2 else lines[n]) for n in want}, 'len': {n: round(length(lines[n])) for n in want}, 'card': {n: auto[n] for n in want if n in auto},
-           'boundary': flat(simp_poly(boundary, 1.2)) if boundary else None, 'streams': streams, 'roads': roads, 'paths': paths, 'rails': rails, 'trees': tr, **G}
+           'boundary': flat(simp_poly(boundary, 1.2)) if boundary else None, 'streams': streams, 'roads': roads, 'paths': paths, 'rails': rails, 'walls': walls, 'piers': piers, 'trees': tr, **G}
     return out
 
 def plot(c, path, scale=1.3):

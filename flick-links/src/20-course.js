@@ -51,7 +51,7 @@ const COURSES=[
 {id:'an',code:'AN',club:'Augusta National',tee:'Masters',
  // Augusta, Georgia (Jones and MacKenzie, 1933): wide emerald fairways with hardly any rough, tall loblolly pines over pine straw,
  // azaleas, white sand, and Rae's Creek across Amen Corner (11, 12, 13). The holes carry their real names, each a plant on the hole.
- th:{out:'rough',floor:'#3f7d38',rough:'#3f7d38',fair:'#55a646',stripe:1,outer:'#466a3a',woods:'#6a5a36',mix:[['pine',.68],['liveoak',.16],['elm',.08],['pecan',.08]],marker:'#f4f4ec',bloom:'bloomPink',blooms:20,sand:'#fbfaf3',bridge:'stone',cart:false,belt:30,houses:false},
+ th:{out:'rough',floor:'#3f7d38',rough:'#3f7d38',fair:'#55a646',stripe:1,outer:'#466a3a',woods:'#6a5a36',mix:[['pine',.68],['liveoak',.16],['elm',.08],['pecan',.08]],marker:'#f4f4ec',bloom:'bloomPink',blooms:20,beds:'bloomGold',sand:'#fbfaf3',bridge:'stone',cart:false,belt:30,houses:true},
  holes:[['Tea Olive',4,445,9],['Pink Dogwood',5,585,1],['Flowering Peach',4,350,13],['Flowering Crab Apple',3,240,15],['Magnolia',4,495,5],['Juniper',3,180,17],['Pampas',4,450,11],['Yellow Jasmine',5,570,3],['Carolina Cherry',4,460,7]],
  more:[['Camellia',4,495,6],['White Dogwood',4,520,8],['Golden Bell',3,155,16],['Azalea',5,545,4],['Chinese Fir',4,440,12],['Firethorn',5,550,2],['Redbud',3,170,18],['Nandina',4,440,14],['Holly',4,465,10]]},
 {id:'pb',code:'PB',club:'Pebble Beach',tee:'Blue',
@@ -64,7 +64,7 @@ const COURSES=[
  // The Old Course, St Andrews, Scotland: the original links. No trees, only whin (gorse) and fescue; seven huge double greens;
  // more than a hundred pot bunkers; the Swilcan Burn across the 1st and 18th; the town and the Road Hole hotel hard against the last holes.
  // The holes carry their real names.
- th:{out:'native',floor:'#8d8a52',rough:'#6f8a45',fair:'#7da551',stripe:.3,outer:'#8d8a52',woods:'#56632f',mix:[['gorse',1]],marker:'#f4f4ec',bloom:'bloomGold',bridge:'stone',cart:false,clumps:0,houses:true,wet:false},
+ th:{out:'native',floor:'#8d8a52',rough:'#6f8a45',fair:'#7da551',stripe:.3,outer:'#8d8a52',woods:'#56632f',mix:[['gorse',1]],marker:'#f4f4ec',bloom:'bloomGold',bridge:'stone',cart:false,clumps:0,houses:true,wet:false,pot:true,sea:true},
  holes:[['Burn',4,376,10],['Dyke',4,411,6],['Cartgate Out',4,400,16],['Ginger Beer',4,464,8],["Hole O'Cross Out",5,514,2],['Heathery Out',4,413,12],['High Out',4,359,4],['Short',3,189,14],['End',4,347,18]],
  more:[['Bobby Jones',4,380,15],['High In',3,174,7],['Heathery In',4,316,3],["Hole O'Cross In",4,418,11],['Long',5,530,1],['Cartgate In',4,414,9],['Corner of the Dyke',4,412,13],['Road',4,455,5],['Tom Morris',4,357,17]]}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
@@ -97,7 +97,7 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
   const NEAR=FADE1+8,CELL=30,reach=d=>{const set=new Set(),n=Math.ceil(d/CELL);for(let i=0;i<R.pts.length;i+=2){const q=R.pts[i];
       for(let a=-n;a<=n;a++)for(let b=-n;b<=n;b++)if(a*a+b*b<=(n+.7)*(n+.7))set.add((Math.floor(q.x/CELL)+a)+','+(Math.floor(q.y/CELL)+b))}return p=>set.has(Math.floor(p.x/CELL)+','+Math.floor(p.y/CELL))};
   const nearHoles=reach(NEAR),inPlay=reach(PAD+60);
-  for(const k of['fair','green','bunker','rough','rock'])g[k]=shapes(m[k],shp);for(const k of['tee','pool','parking'])g[k]=shapes(m[k],box);
+  for(const k of['fair','green','bunker','rough','rock'])g[k]=shapes(m[k],shp);for(const k of['tee','pool','parking'])g[k]=shapes(m[k],box);for(const k of['beach','bed'])g[k]=shapes(m[k]||[],shp);
   g.woods=shapes(m.wood.concat(m.scrub),shp);g.pitches=shapes(m.pitch,o=>Object.assign(box(o),{sport:o.sport}));g.boundary=m.boundary?shp(m.boundary):null;
   // buildings keep their straight walls and get a roof ridge along their longest side. Where houses are switched off, only large ones stay.
   g.building=shapes(m.building,box).filter(s=>th.houses||s.area>650);
@@ -118,12 +118,15 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
       return w})}
   const wet=(p,d)=>g.water.some(w=>inSh(w,p,d)),line=f=>{const P=pts(f.p),path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;P.forEach((q,i)=>{i?path.lineTo(q.x,q.y):path.moveTo(q.x,q.y);x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)});return{...f,pts:P,path,bb:[x0-9,y0-9,x1+9,y1+9]}};
   g.roads=m.roads.filter(r=>local(r)&&(th.houses||r.w>=9)).map(line);g.rails=shapes(m.rails||[],f=>line({...f,w:4}));g.paths=shapes(m.paths,line);
+  // details the map gives for some courses: stone walls and timber bulkheads, piers (beaches and flower beds are shapes, above)
+  g.walls=shapes(m.walls||[],line);g.piers=shapes(m.piers||[],line);
   // a bridge wherever a path or road runs over water
   g.bridges=[];for(const w of g.paths.concat(g.roads)){const r=mkRoute(w.pts);let a=null;for(let s=0;s<=r.len;s+=1.5){const q=rAt(r,s),in1=wet(q,0);if(in1&&a===null)a=s;if((!in1||s+1.5>r.len)&&a!==null){if(s-a>2&&s-a<70){const p0=rAt(r,a-2.5),p1=rAt(r,s+1);
         g.bridges.push({x:(p0.x+p1.x)/2,y:(p0.y+p1.y)/2,a:Math.atan2(p1.y-p0.y,p1.x-p0.x),len:hyp(p1.x-p0.x,p1.y-p0.y),wide:w.w||0})}a=null}}}
   // trees. Mapped single trees stand where they really are and stop a low ball. Woods are filled with the course's native mix.
   const pick=()=>{let u=rng();for(const[k,w]of th.mix)if((u-=w)<0)return k;return th.mix[0][0]},tree=(x,y,kind,r,solid)=>({x,y,kind,r:r*TREES[kind].size,v:Math.floor(rng()*4),solid,h:r*1.15+3});
-  g.solid=m.trees.filter(([x,y])=>nearHoles({x,y})).map(([x,y,sp])=>{const k=(SPECIES.find(([re])=>re.test(sp))||[0,pick()])[1];return tree(x,y,th.wet!==false&&wet({x,y},9)&&k!=='pecan'?'cypress':k,lerp(6,9.5,rng()),true)});
+  // a tree the map names is a landmark (the big oak behind Augusta's clubhouse): it is drawn as a very large live oak
+  g.solid=m.trees.filter(([x,y])=>nearHoles({x,y})).map(([x,y,sp])=>{const big=/!big/.test(sp),k=big?'liveoak':(SPECIES.find(([re])=>re.test(sp))||[0,pick()])[1],r=lerp(6,9.5,rng());return tree(x,y,!big&&th.wet!==false&&wet({x,y},9)&&k!=='pecan'?'cypress':k,big?12.5:r,true)});
   // The way off the tee stays open. A tee shot is still climbing for its first fifty yards, so a tree standing there cannot be cleared:
   // none is kept on the tee or along that stretch of the line of play, and nothing leafy is scattered over it either.
   // "The line" is both the way the hole runs and the straight line the camera first aims down, which differ on a dogleg.
@@ -139,7 +142,7 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
   g.trees=[];const inBox=(w,p,d)=>p.x>w.bb[0]-d&&p.x<w.bb[2]+d&&p.y>w.bb[1]-d&&p.y<w.bb[3]+d,any=(list,p,d)=>{for(const s of list)if(inSh(s,p,d))return true;return false};
   const lineNear=(list,p,d)=>{for(const w of list)if(inBox(w,p,d)&&distLine(w.pts,p)<w.w*.5+d)return true;return false};
   const noise=p=>Math.sin(p.x*.031+c.id.length)+Math.sin(p.y*.027+1.3)+Math.sin((p.x+p.y)*.017);
-  const inWood=p=>any(g.woods,p,0),inB=p=>!g.boundary||inSh(g.boundary,p),clear=(p,r)=>!any(g.fair,p,r)&&!any(g.green,p,r+4)&&!any(g.tee,p,r+2)&&!any(g.bunker,p,r)&&!any(g.building,p,r*.5);
+  const inWood=p=>any(g.woods,p,0),inB=p=>!g.boundary||inSh(g.boundary,p),clear=(p,r)=>!any(g.fair,p,r)&&!any(g.green,p,r+4)&&!any(g.tee,p,r+2)&&!any(g.bunker,p,r)&&!any(g.building,p,r*.5)&&!any(g.beach,p,r*.5)&&!any(g.bed,p,r*.4);
   const paths=g.paths.map(w=>({...w,w:5}));
   for(let x=x0-NEAR;x<x1+NEAR;x+=10.5)for(let y=y0-NEAR;y<y1+NEAR;y+=10.5){const p={x:x+rng()*10.5,y:y+rng()*10.5},r=lerp(4.6,9.5,rng()*rng()+.1),u=rng();
     if(!nearHoles(p)||inWay(p,r*.6,50,8))continue;
@@ -198,6 +201,7 @@ function lieAt(h,q){const g=h.geo,off=distLine(h.route.pts,q);
   if(inSh(h.green,q))return'green';
   for(const b of g.bunker)if(inSh(b,q))return'bunker';
   if(inSh(h.fringe,q))return'fringe';
+  for(const b of g.beach)if(inSh(b,q))return'bunker';
   for(const w of g.water)if(inSh(w,q))return'water';
   if(hyp(q.x-h.tee.x,q.y-h.tee.y)<6)return'tee';
   for(const f of g.fair)if(inSh(f,q))return'fairway';

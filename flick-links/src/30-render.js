@@ -34,6 +34,8 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   }
   for(const s of G.woods)if(seen(s)){ctx.fillStyle=th.woods;ctx.fill(s.path);texFill(s.path,'mottle',.8,.35,.9)}
   for(const b of G.blooms)if(seen(b)){ctx.fillStyle='#3d6a3c';ctx.globalAlpha=.4;ctx.fill(b.path);ctx.globalAlpha=1;texFill(b.path,th.bloom,.95,.085,b.rot)}
+  // mapped flower beds
+  for(const b of G.bed)if(seen(b)){ctx.fillStyle='#35602f';ctx.fill(b.path);texFill(b.path,th.beds||th.bloom,1,.07,.4);ctx.strokeStyle='rgba(24,44,18,.55)';ctx.lineWidth=.45;ctx.stroke(b.path)}
   // dry creek beds and bare limestone
   // a dry creek is a rocky wash: darker and rougher than any path, with cut banks, so the two are never mistaken for each other
   for(const w of G.dry)if(seen(w)){ctx.strokeStyle='rgba(44,36,18,.5)';ctx.lineWidth=3.2;ctx.stroke(w.path);ctx.fillStyle='#989078';ctx.fill(w.path);texFill(w.path,'mottle',.55,.16,.4);texFill(w.path,'grain',.6,.09);
@@ -68,11 +70,15 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   if(z>1.8){ctx.lineCap='round';for(const r of G.reeds)if(vis(r)){ctx.strokeStyle='#27481f';ctx.lineWidth=.22*r.s;ctx.beginPath();
       for(const da of[-.6,0,.6]){ctx.moveTo(r.x,r.y);ctx.lineTo(r.x+Math.cos(r.a+da)*1.1*r.s,r.y+Math.sin(r.a+da)*1.1*r.s)}ctx.stroke();ctx.fillStyle='#6b4a2a';disc(r.x+Math.cos(r.a)*1.15*r.s,r.y+Math.sin(r.a)*1.15*r.s,.24*r.s)}
     for(const q of G.pebbles)if(vis(q)){ctx.fillStyle='rgba(20,24,16,.35)';disc(q.x+.12,q.y+.14,q.r);ctx.fillStyle='#bdb8a8';disc(q.x,q.y,q.r);ctx.fillStyle='#e4e0d3';disc(q.x-q.r*.25,q.y-q.r*.28,q.r*.5)}}
+  // beaches lie over the water's edge: the map's coastline is the high-water mark and the sand runs out past it
+  for(const s of G.beach)if(seen(s)){ctx.fillStyle='#dccfa6';ctx.fill(s.path);texFill(s.path,'grain',.5,.11);inner(s.path,0,0,'#c2b388',.45,4);inner(s.path,0,0,'#f3ecd2',.35,1.2)}
   for(const b of G.bridges)if(vis(b))drawBridge(b,b.wide>6?'road':th.bridge,now);
   // every green on the property, bunkers, then the one being played with its contours
   ctx.lineJoin='round';for(const s of G.green)if(seen(s)){ctx.strokeStyle=K.fringe;ctx.lineWidth=4.8;ctx.stroke(s.path);ctx.fillStyle=K.fringe;ctx.fill(s.path)}
   for(const b of G.bunker)if(seen(b)){ctx.strokeStyle='#2c4a1d';ctx.globalAlpha=.6;ctx.lineWidth=1.7;ctx.stroke(b.path);ctx.globalAlpha=1;ctx.fillStyle=th.sand||K.sand;ctx.fill(b.path);
-    texFill(b.path,'rake',.5*clamp(z/6,.3,1),.07,b.x*.1);inner(b.path,SUN.x,SUN.y,K.sandSh,.55,2.3);inner(b.path,-SUN.x*.8,-SUN.y*.8,'#fffdf2',.75,1.3)}
+    texFill(b.path,'rake',.5*clamp(z/6,.3,1),.07,b.x*.1);inner(b.path,SUN.x,SUN.y,K.sandSh,.55,2.3);inner(b.path,-SUN.x*.8,-SUN.y*.8,'#fffdf2',.75,1.3);
+    // a links pot bunker is walled with stacked turf: a dark, steep face all the way round
+    if(th.pot){inner(b.path,0,0,'#5b4b2b',.9,1.7);inner(b.path,0,0,'#2c2413',.5,.7)}}
   if(z>2.2)for(const r of G.rakes)if(vis(r)){ctx.save();ctx.translate(r.x,r.y);ctx.rotate(r.a);ctx.lineCap='round';ctx.strokeStyle='rgba(10,20,8,.35)';ctx.lineWidth=.22;ctx.beginPath();ctx.moveTo(-1.3+.15,.18);ctx.lineTo(1.3+.15,.18);ctx.stroke();
     ctx.strokeStyle='#b08a55';ctx.lineWidth=.16;ctx.beginPath();ctx.moveTo(-1.3,0);ctx.lineTo(1.3,0);ctx.stroke();ctx.strokeStyle='#5d4a2c';ctx.lineWidth=.2;ctx.beginPath();ctx.moveTo(1.3,-.5);ctx.lineTo(1.3,.5);ctx.stroke();ctx.restore()}
   for(const s of G.green)if(seen(s)){ctx.fillStyle=K.green;ctx.fill(s.path);if(s!==h.green){texFill(s.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,s.x*.01);ctx.strokeStyle='rgba(20,60,20,.3)';ctx.lineWidth=.3;ctx.stroke(s.path)}}
@@ -81,6 +87,14 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   if(CONTOURS){if(!h.contours)h.contours=contours(h);ctx.strokeStyle='rgba(18,52,24,.22)';ctx.lineWidth=clamp(2.6/z,.06,.2);ctx.stroke(h.contours);ctx.strokeStyle='rgba(250,255,236,.3)';ctx.lineWidth=clamp(1.2/z,.035,.11);ctx.stroke(h.contours)}ctx.restore();
   texFill(g.path,'stripe',.04*clamp((z-1.5)/5,0,1),.42,h.axis+.5);texFill(g.path,'grain',.3*tG,.05);
   ctx.strokeStyle='rgba(20,60,20,.3)';ctx.lineWidth=.3;ctx.stroke(g.path);
+  // walls: dry stone, or the timber bulkheads that hold a bank against the water. Then piers, planked.
+  ctx.lineCap='butt';ctx.lineJoin='round';
+  for(const w of G.walls)if(seen2(w)){ctx.save();ctx.translate(SUN.x*.5,SUN.y*.5);ctx.strokeStyle='rgba(8,14,6,.4)';ctx.lineWidth=w.wood?2.5:2;ctx.stroke(w.path);ctx.restore();
+    ctx.strokeStyle=w.wood?'#553c24':'#6f695a';ctx.lineWidth=w.wood?1.9:1.5;ctx.stroke(w.path);ctx.strokeStyle=w.wood?'#a8855c':'#c6bfad';ctx.lineWidth=w.wood?.95:.65;ctx.stroke(w.path);
+    if(z>2.4){ctx.setLineDash(w.wood?[.22,1]:[.16,1.5]);ctx.strokeStyle=w.wood?'#3a2816':'#59544a';ctx.lineWidth=w.wood?1.9:1.5;ctx.stroke(w.path);ctx.setLineDash([])}}
+  for(const w of G.piers)if(seen2(w)){ctx.save();ctx.translate(SUN.x*1.3,SUN.y*1.3);const pw=w.w||3;ctx.strokeStyle='rgba(2,14,20,.4)';ctx.lineWidth=pw+1.2;ctx.stroke(w.path);ctx.restore();
+    ctx.strokeStyle='#463220';ctx.lineWidth=pw+.7;ctx.stroke(w.path);ctx.strokeStyle='#ad8c62';ctx.lineWidth=pw;ctx.stroke(w.path);ctx.setLineDash([.14,.8]);ctx.strokeStyle='#75593a';ctx.lineWidth=pw;ctx.stroke(w.path);ctx.setLineDash([])}
+  ctx.lineCap='round';
   if(G.cart&&vis(G.cart))drawCart(G.cart.x,G.cart.y,G.cart.a);
   // roofs: a shadow, the footprint, then two slopes either side of the ridge, the one facing the sun lighter
   for(const s of G.building)if(seen(s)){const sv=rotv(SUN.x,SUN.y,-s.ax),lit=sv.y>0?-1:1,Rr=s.R+2;ctx.save();ctx.translate(SUN.x*2.6,SUN.y*2.6);ctx.fillStyle='rgba(5,15,10,.4)';ctx.fill(s.path);ctx.restore();

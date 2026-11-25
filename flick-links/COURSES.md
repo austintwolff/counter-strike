@@ -69,3 +69,10 @@ Course data is © OpenStreetMap contributors and is used under the Open Database
 credit on its How to play sheet. The files in `data/` are derived from OpenStreetMap and stay under the same
 licence if you share them. Aerial photos are used only to look at while tracing. The USGS imagery the tool
 fetches is public domain.
+
+## Where a new course goes
+
+Add it at the end of `COURSES` in `src/20-course.js`, and add its id and hole count to `SIZE` in `server/core.js`.
+Never insert one in the middle: saved rounds keep hole indexes, and the day's course is taken in turn from the list.
+See `COURSE_LESSONS.md` for the look settings added for the sea (`sea`), sand colour (`sand`), flower beds (`blooms`),
+treeless ground (`clumps:0`) and salt water (`wet:false`).

@@ -1,7 +1,8 @@
 # Building a course: lessons learned
 
-Read this before adding or reworking a course. It is the record of what went wrong on the first five
-(Grey Rock, Lost Pines, Hancock, Jimmy Clay, Lions, Olmos Basin; four of them with both nines) and what each fix became. `COURSES.md` is the how-to;
+Read this before adding or reworking a course. It is the record of what went wrong on the first ten
+(Grey Rock, Lost Pines, Hancock, Jimmy Clay, Lions, Olmos Basin, then TPC Sawgrass, Augusta National, Pebble Beach and the Old Course
+at St Andrews) and what each fix became. `COURSES.md` is the how-to;
 this file is the why, and the checklist.
 
 The aim never changes: **true to the real place, consistent with the other courses, and pretty.**
@@ -35,6 +36,13 @@ someone who has played it.
 | Olmos Basin's published cards disagree by up to 650 yards, and several describe an older layout: the 4th is listed at 368 to 382 yards but the tee visible in the satellite view makes it 280. | When cards conflict, check the mapped tees against the aerial. If they are where the map says, the map is the course as it is today: use the published figure where the map agrees within 8% and the mapped length otherwise, and say so in the extra file's note. |
 | Lost Pines included the whole Colorado River: 46,000 outline points and 19,000 pebbles. The game crawled. | Water is clipped to the hole at build time, but check anyway: `check_course.js` flags a hole that is slow to build. |
 | The map draws the same water twice (a creek as a line and as its banks; a pond as water and as a hazard) and long rivers come in pieces. This showed as doubled creeks and seams. | All water on a hole is merged into one outline per body automatically. Still look at every creek for forks or doubles. A genuine side channel is fine. |
+| The name lookup for Pebble Beach landed on the clubhouse and The Hay, the par-3 course next door: four hole lines, named Watson, Bing and Grace. | If the import finds too few holes, look at what it found. Download the map for the right area yourself (`api.openstreetmap.org/api/0.6/map?bbox=w,s,e,n` into `data/cache/<id>.osm`, with a `<id>.place.json` beside it) and run the import again. |
+| The sea is not mapped as water. It is a coastline: a line with the land on its left. Pebble Beach came in with no ocean at all. | The importer joins the coastline, cuts it to a box round the holes and closes it on the seaward side. Set `sea:true` in the course's look: any water over 25,000 square yards is then painted as sea (a sand and rock strand, surf, deeper water; no reeds, lilies or ducks). |
+| St Andrews has seven double greens: one huge shape serving two holes. The pin went to the middle of the shape, far from either hole. | The green is the one the hole line ends on, and on a green more than 34 yards in radius the day's pins are set round the end of the line. A hole line must end where that hole's flag goes. |
+| None of the four famous courses carries yardages on the map, only par and (for two of them) stroke index. | Cards for these came from the published tournament or medal cards as remembered, checked against each course's known total, and then against the mapped lines: the published figure is used where the map agrees within 8% and the mapped length otherwise (Sawgrass 12; Pebble 9, 10, 13; St Andrews 3, 4, 6, 8, 10, 16, where the map carries the championship tees). Stroke indexes for Pebble Beach and most of St Andrews are from memory and worth checking against a card in hand. |
+| A new course added in the middle of the list would shift the saved index of every later hole and change which course today's three come from. | New courses go at the end of `COURSES`. The first six keep the indexes they were published with; the daily course is taken in turn from the whole list. Check that today's three holes are the same before and after. |
+| Augusta's 18th measures 505 yards along its mapped line but 462 from tee to pin: the line swings wide round the dogleg. | A line that is long only because of a bend is fine. Compare the straight distance on the hole card before worrying. |
+| Checking eight nines at once on four processors made builds look slow and some pictures catch the camera still moving. | Run `check_course.js` two at a time at most; re-run alone any hole flagged slow before believing it. |
 | Overpass does not work from the cloud session. | The tool uses `api.openstreetmap.org` and Nominatim. The session's network allowlist must include those, the tile hosts for imagery, and nothing else is needed. |
 
 ## The look: what stays the same, what makes each course its own
@@ -42,8 +50,9 @@ someone who has played it.
 **The same everywhere**
 
 - The painting style: striped fairways, soft relief on greens, tree sprites with shadows, the late light.
-- Native Texas trees only (live oak, Ashe juniper, cedar elm, pecan, post oak, mesquite, loblolly pine, bald cypress
-  at the water). No ornamental pink trees: the owner had them removed.
+- Trees that grow in the place. In Texas: live oak, Ashe juniper, cedar elm, pecan, post oak, mesquite, loblolly pine, bald cypress
+  at the water. Elsewhere: sabal palm (Sawgrass), Monterey cypress (Pebble Beach), whin, which is gorse (St Andrews).
+  No ornamental pink trees: the owner had them removed. Augusta's azaleas are flower beds, not trees.
 - Soft water: a shade on the grass, a thin rim, pale shallows. No heavy outlines.
 - A dry creek is a rocky wash: darker and rougher than a path, wider, with cut banks. In its first form it was pale and smooth
   and read as a cart path with rocks on it.
@@ -60,6 +69,10 @@ someone who has played it.
 | Jimmy Clay | Open parkland in a creek fork, clumps between holes, thick bottomland woods at the edge | a wide belt (`belt:46`) plus clumps, pecan and elm, the pond green at the 6th |
 | Lions (Lions Municipal, "Muny") | 1924, short tight holes cut through dense oak woods, open stands of big oaks over dry ground | mapped woods do the work; sparse even scatter (`clumps:.34, clumpAt:-.5`), houses drawn |
 | Olmos Basin | A flat flood basin in San Antonio: open parkland, a railroad through the middle, Olmos Creek and its drainage washes | no woods or belt, an even scatter with mesquite in the mix, the railway drawn (the importer now keeps `railway=rail`), houses drawn |
+| TPC Sawgrass (Stadium) | Cut from Florida swamp: water on every hole, long waste bunkers, pine, oak and palm pressing in, the island green at 17 | mapped lakes do the work; a belt (`belt:34`) of pine, live oak and sabal palm; bald cypress at the water's edge |
+| Augusta National | Wide emerald fairways with no rough to speak of, tall pines over pine straw, azaleas, white sand, Rae's Creek at Amen Corner | pine-heavy mix, woods floor the colour of pine straw (`woods:'#6a5a36'`), `sand` near white, pink flower beds (`blooms:20`), real hole names |
+| Pebble Beach | Cliff-top holes over Carmel Bay, tiny greens, Monterey cypress, mansions along the inland holes | `sea:true`, `wet:false` (no bald cypress by salt water), clumps of Monterey cypress and pine, houses drawn |
+| St Andrews (Old Course) | The original links: no trees, whin and fescue, double greens, over a hundred pot bunkers, the Swilcan Burn, the town at the 18th | `out:'native'`, `clumps:0`, mapped scrub filled with low whin bushes, pale lightly striped turf, houses drawn, real hole names |
 
 Rules of thumb that came out of this:
 
@@ -70,7 +83,7 @@ Rules of thumb that came out of this:
   they came out as blobs and were removed; only buildings larger than 650 square yards stay there (the clubhouse).
 - **Ground colour.** Take it from the aerial: straw for prairie, olive for dry parkland, deeper green for irrigated turf.
 - **One or two true landmarks beat any amount of decoration**: the railroad through Olmos Basin, the pond green at Jimmy Clay's 6th, Hogan's Hole at
-  Muni, the bare limestone of McKinney Falls across Onion Creek, Highway 45 over Grey Rock.
+  Muni, the island green at Sawgrass, the Swilcan Burn and the hotel on the Road Hole, the bare limestone of McKinney Falls across Onion Creek, Highway 45 over Grey Rock.
 - **Hole names**: short, from real local features, no repeats across courses. Use real lore where it exists.
 - After any rework, put before and after pictures side by side. "Make sure the holes still look as pretty as they did"
   is a standing requirement.

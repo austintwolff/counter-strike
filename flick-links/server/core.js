@@ -26,7 +26,7 @@ function handicap(rs){const d=rs.slice(0,20).map(r=>r.tot-r.par),n=d.length;if(n
 function streakOf(rs,day){const set=new Set(rs.map(r=>r.day));let d=dayNum(day),n=0;if(!set.has(day))d--;while(set.has(numDay(d))){n++;d--}return n}
 function maxStreak(rs){const ds=[...new Set(rs.map(r=>dayNum(r.day)))].sort((a,b)=>a-b);let best=0,run=0,prev=null;for(const d of ds){run=prev!==null&&d===prev+1?run+1:1;best=Math.max(best,run);prev=d}return best}
 // A course here is nine or eighteen holes; the ball and tour awards need to know which. Keep in step with COURSES in src/20-course.js.
-export const SIZE={gr:9,lp:18,hk:9,jc:18,mu:18,om:18};
+export const SIZE={gr:9,lp:18,hk:9,jc:18,mu:18,om:18,ts:18,an:18,pb:18,sa:18};
 // rs: the daily cards (handicap, streak and best come from these alone, since everyone plays the same holes once).
 // logs: the full record of play, daily and practice. Trophies and balls count all of it.
 //   balls, per course: b bronze, a full round under par; s silver, a birdie or better on every hole (n so far, over any

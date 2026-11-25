@@ -52,11 +52,13 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
     ctx.beginPath();ctx.moveTo((s.bb[0]+s.bb[2])/2,s.y-s.ry*.5);ctx.lineTo((s.bb[0]+s.bb[2])/2,s.y+s.ry*.5);ctx.globalAlpha=.5;ctx.stroke();ctx.globalAlpha=1}
   for(const s of G.pool)if(seen(s)){ctx.fillStyle='#e6e1d2';ctx.strokeStyle='#e6e1d2';ctx.lineWidth=1.6;ctx.stroke(s.path);ctx.fillStyle='#4fb6d8';ctx.fill(s.path)}
   // water: a soft shade on the grass, a thin muddy rim, then the water with pale shallows along the bank
+  // the sea: a strand of pale sand and rock along the shore, under the water's edge
+  for(const w of G.water)if(w.sea&&seen(w)){ctx.lineJoin='round';ctx.strokeStyle='#8f8468';ctx.lineWidth=17;ctx.stroke(w.path);ctx.strokeStyle='#d6c9a2';ctx.lineWidth=12;ctx.stroke(w.path)}
   ctx.strokeStyle='rgba(16,32,12,.2)';for(const w of G.water)if(seen(w)){ctx.lineWidth=w.pond?6:4;ctx.stroke(w.path)}
   for(const w of G.water)if(seen(w)){ctx.strokeStyle=K.bank;ctx.globalAlpha=.8;ctx.lineWidth=w.pond?1.5:1.1;ctx.stroke(w.path);ctx.globalAlpha=1;
     if(w.round){if(!w.grad){const g=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.R*1.05);g.addColorStop(0,K.deep);g.addColorStop(.62,K.water);g.addColorStop(1,'#2f8686');w.grad=g}ctx.fillStyle=w.grad}
-    else ctx.fillStyle=K.water;
-    ctx.fill(w.path);inner(w.path,0,0,K.shallow,.26,w.pond?7:2.6);inner(w.path,0,0,K.shallow,.2,w.pond?2.4:1);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.38,2.4);
+    else ctx.fillStyle=w.sea?'#2a7f93':K.water;
+    ctx.fill(w.path);if(w.sea){inner(w.path,0,0,'#7fd0cf',.3,26);inner(w.path,0,0,'#c9f2ea',.4,11);inner(w.path,0,0,'#ffffff',.75,3.4);texFill(w.path,'glint',.6,.2,.3,0,0);continue}inner(w.path,0,0,K.shallow,.26,w.pond?7:2.6);inner(w.path,0,0,K.shallow,.2,w.pond?2.4:1);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.38,2.4);
     texFill(w.path,'glint',.6,.2,.3,0,0);inner(w.path,0,0,'#eafffb',.2,.6);
     if(w.round&&w.area>150){const Rr=w.rx,sx=w.x-SUN.x*Rr*.3,sy=w.y-SUN.y*Rr*.3,gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rr*.7);gl.addColorStop(0,'rgba(255,250,215,.24)');gl.addColorStop(1,'rgba(255,250,215,0)');
       ctx.save();ctx.clip(w.path);ctx.globalAlpha=.8;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr);ctx.restore()}}
@@ -69,7 +71,7 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   for(const b of G.bridges)if(vis(b))drawBridge(b,b.wide>6?'road':th.bridge,now);
   // every green on the property, bunkers, then the one being played with its contours
   ctx.lineJoin='round';for(const s of G.green)if(seen(s)){ctx.strokeStyle=K.fringe;ctx.lineWidth=4.8;ctx.stroke(s.path);ctx.fillStyle=K.fringe;ctx.fill(s.path)}
-  for(const b of G.bunker)if(seen(b)){ctx.strokeStyle='#2c4a1d';ctx.globalAlpha=.6;ctx.lineWidth=1.7;ctx.stroke(b.path);ctx.globalAlpha=1;ctx.fillStyle=K.sand;ctx.fill(b.path);
+  for(const b of G.bunker)if(seen(b)){ctx.strokeStyle='#2c4a1d';ctx.globalAlpha=.6;ctx.lineWidth=1.7;ctx.stroke(b.path);ctx.globalAlpha=1;ctx.fillStyle=th.sand||K.sand;ctx.fill(b.path);
     texFill(b.path,'rake',.5*clamp(z/6,.3,1),.07,b.x*.1);inner(b.path,SUN.x,SUN.y,K.sandSh,.55,2.3);inner(b.path,-SUN.x*.8,-SUN.y*.8,'#fffdf2',.75,1.3)}
   if(z>2.2)for(const r of G.rakes)if(vis(r)){ctx.save();ctx.translate(r.x,r.y);ctx.rotate(r.a);ctx.lineCap='round';ctx.strokeStyle='rgba(10,20,8,.35)';ctx.lineWidth=.22;ctx.beginPath();ctx.moveTo(-1.3+.15,.18);ctx.lineTo(1.3+.15,.18);ctx.stroke();
     ctx.strokeStyle='#b08a55';ctx.lineWidth=.16;ctx.beginPath();ctx.moveTo(-1.3,0);ctx.lineTo(1.3,0);ctx.stroke();ctx.strokeStyle='#5d4a2c';ctx.lineWidth=.2;ctx.beginPath();ctx.moveTo(1.3,-.5);ctx.lineTo(1.3,.5);ctx.stroke();ctx.restore()}
@@ -114,7 +116,7 @@ function fogOf(h){const B=h.geo.box,u=4,w=Math.ceil(B[2]/u),hh=Math.ceil(B[3]/u)
 // The few things in the world that move, drawn every frame over the kept scenery.
 function drawLive(h,now){const G=h.geo,z=cam.s;ctx.lineJoin='round';ctx.lineCap='round';
   // a fish rises now and then
-  for(const w of G.water)if(w.pond&&w.area>150&&w.spots.length&&seen(w)){const T=5200,tt=now/T+Math.abs(w.x)*.01,k=Math.floor(tt),u=tt%1,q=w.spots[Math.floor(mulberry32(k*131+7)()*w.spots.length)];
+  for(const w of G.water)if(w.pond&&!w.sea&&w.area>150&&w.spots.length&&seen(w)){const T=5200,tt=now/T+Math.abs(w.x)*.01,k=Math.floor(tt),u=tt%1,q=w.spots[Math.floor(mulberry32(k*131+7)()*w.spots.length)];
     if(u<.5){ctx.strokeStyle='#eafffb';ctx.lineWidth=.16;for(const m of[1,.55]){ctx.globalAlpha=(1-u*2)*.5;ctx.beginPath();ctx.arc(q.x,q.y,(.4+u*9)*m,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
   // ducks idle round a spot out on the water, a slow turn every minute or so
   for(const d of G.ducks)if(seen(d.w)){const th=d.ph+now/d.T*TAU*d.dir,x=d.x+Math.cos(th)*d.rad,y=d.y+Math.sin(th)*d.rad*.7,hd=Math.atan2(Math.cos(th)*.7*d.dir,-Math.sin(th)*d.dir),sz=Math.max(.55,4.2/z);ctx.save();ctx.translate(x,y);ctx.rotate(hd);

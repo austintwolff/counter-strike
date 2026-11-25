@@ -39,15 +39,43 @@ const COURSES=[
  // drainage washes wandering through, a railroad cutting the course in two, Highway 281 along the east side
  th:{out:'rough',floor:'#6c8540',rough:'#6c8540',fair:'#70a548',stripe:.6,outer:'#636f40',woods:'#2f4a26',mix:[['liveoak',.4],['pecan',.2],['mesquite',.22],['elm',.18]],marker:'#4f86e8',bloom:'bloomGold',bridge:'wood',cart:true,clumps:.4,clumpAt:-.2,houses:true},
  holes:[['The Basin',4,410,3],['McCullough',4,434,1],['Mesquite Flat',3,198,5],['Across the Tracks',4,280,11],['Two Eighty-One',5,532,17],['Whistle Stop',3,195,9],['Basse Road',4,376,13],['Huisache',4,400,7],['Green Tank',5,526,15]],
- more:[['Olmos Creek',4,380,10],['Dam Site',5,381,16],['Channel',3,200,8],['The Terrace',4,366,4],['Long Three',3,221,2],['Floodplain',4,380,6],['Alamo Heights',4,378,14],['San Antonio',4,393,12],['The Quarry',5,518,18]]}];
+ more:[['Olmos Creek',4,380,10],['Dam Site',5,381,16],['Channel',3,200,8],['The Terrace',4,366,4],['Long Three',3,221,2],['Floodplain',4,380,6],['Alamo Heights',4,378,14],['San Antonio',4,393,12],['The Quarry',5,518,18]]},
+// The four below were added after the six above were in play. New courses go at the end: the day's course is taken in turn
+// from this list, and the hole list keeps the first six courses' indexes as they were.
+{id:'ts',code:'TS',club:'TPC Sawgrass',tee:'Players',
+ // The Stadium Course, Ponte Vedra Beach, Florida (Pete Dye, 1980): cut out of swamp, so there is water on every hole, long waste
+ // bunkers, pine, live oak and sabal palm pressing in, and the island green at the 17th
+ th:{out:'rough',floor:'#4d7d3a',rough:'#4d7d3a',fair:'#62a848',stripe:.9,outer:'#48683a',woods:'#294424',mix:[['pine',.36],['liveoak',.3],['palm',.24],['elm',.1]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,belt:34,houses:false},
+ holes:[['Ponte Vedra',4,423,11],['Pine Straw',5,532,15],['First Water',3,177,17],['The Moat',4,384,9],['Waste Bunker',4,471,3],['Sabal Palm',4,393,13],['Long Lagoon',4,451,1],['Mounds',3,237,7],['Three Shots',5,583,5]],
+ more:[['Back Door',4,424,12],['The Fork',5,558,8],['Short Four',4,335,16],['Gator Pond',3,181,18],['Spectator Mounds',4,481,4],['The Chute',4,470,6],['Go For It',5,523,10],['Island Green',3,137,14],['The Lake',4,462,2]]},
+{id:'an',code:'AN',club:'Augusta National',tee:'Masters',
+ // Augusta, Georgia (Jones and MacKenzie, 1933): wide emerald fairways with hardly any rough, tall loblolly pines over pine straw,
+ // azaleas, white sand, and Rae's Creek across Amen Corner (11, 12, 13). The holes carry their real names, each a plant on the hole.
+ th:{out:'rough',floor:'#3f7d38',rough:'#3f7d38',fair:'#55a646',stripe:1,outer:'#466a3a',woods:'#6a5a36',mix:[['pine',.68],['liveoak',.16],['elm',.08],['pecan',.08]],marker:'#f4f4ec',bloom:'bloomPink',blooms:20,sand:'#fbfaf3',bridge:'stone',cart:false,belt:30,houses:false},
+ holes:[['Tea Olive',4,445,9],['Pink Dogwood',5,585,1],['Flowering Peach',4,350,13],['Flowering Crab Apple',3,240,15],['Magnolia',4,495,5],['Juniper',3,180,17],['Pampas',4,450,11],['Yellow Jasmine',5,570,3],['Carolina Cherry',4,460,7]],
+ more:[['Camellia',4,495,6],['White Dogwood',4,520,8],['Golden Bell',3,155,16],['Azalea',5,545,4],['Chinese Fir',4,440,12],['Firethorn',5,550,2],['Redbud',3,170,18],['Nandina',4,440,14],['Holly',4,465,10]]},
+{id:'pb',code:'PB',club:'Pebble Beach',tee:'Blue',
+ // Pebble Beach Golf Links, California (Neville and Grant, 1919): the 4th to the 10th and the 17th and 18th run along the cliffs
+ // above Stillwater Cove and Carmel Bay; tiny greens, Monterey cypress and pine, big houses along the inland holes
+ th:{out:'rough',floor:'#5f8540',rough:'#5f8540',fair:'#6fae4c',stripe:.8,outer:'#687448',woods:'#2c4526',mix:[['montcyp',.5],['pine',.28],['liveoak',.22]],marker:'#4f86e8',bloom:'bloomGold',bridge:'wood',cart:true,clumps:.5,clumpAt:.1,houses:true,sea:true,wet:false},
+ holes:[['The Lodge',4,377,8],['Seventeen Mile Drive',5,511,10],['To the Sea',4,390,12],['Stillwater Cove',4,326,16],['The Bluff',3,192,14],['Arrowhead Point',5,506,2],['The Little One',3,106,18],['Over the Chasm',4,427,6],['Carmel Bay',4,523,4]],
+ more:[['Carmel Beach',4,491,7],['Turn Inland',4,373,5],['Del Monte',3,201,17],['Uphill',4,444,9],['Long Dogleg',5,572,1],['Cypress Row',4,396,13],['The Barranca',4,401,11],['The Hourglass',3,177,15],['Sea Wall',5,543,3]]},
+{id:'sa',code:'SA',club:'St Andrews',tee:'Medal',
+ // The Old Course, St Andrews, Scotland: the original links. No trees, only whin (gorse) and fescue; seven huge double greens;
+ // more than a hundred pot bunkers; the Swilcan Burn across the 1st and 18th; the town and the Road Hole hotel hard against the last holes.
+ // The holes carry their real names.
+ th:{out:'native',floor:'#8d8a52',rough:'#6f8a45',fair:'#7da551',stripe:.3,outer:'#8d8a52',woods:'#56632f',mix:[['gorse',1]],marker:'#f4f4ec',bloom:'bloomGold',bridge:'stone',cart:false,clumps:0,houses:true,wet:false},
+ holes:[['Burn',4,376,10],['Dyke',4,411,6],['Cartgate Out',4,400,16],['Ginger Beer',4,464,8],["Hole O'Cross Out",5,514,2],['Heathery Out',4,413,12],['High Out',4,359,4],['Short',3,189,14],['End',4,347,18]],
+ more:[['Bobby Jones',4,380,15],['High In',3,174,7],['Heathery In',4,316,3],["Hole O'Cross In",4,418,11],['Long',5,530,1],['Cartgate In',4,414,9],['Corner of the Dyke',4,412,13],['Road',4,455,5],['Tom Morris',4,357,17]]}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
 // data/<id>.json; its other nine, if it has one, is `more`, drawn from data/<id>2.json. The second nines are added after all the
 // first ones so that the index of a hole never changes once it has been published (saved rounds keep indexes).
 //   k  0 to 17, the hole's fixed place in its course (used for seeds and for the key sent to the clubhouse server)
 //   n  the number on the tee sign
 const ALL=[];
-for(const c of COURSES)c.holes.forEach((d,k)=>ALL.push({c,k,n:k+(c.first||1),map:c.id,def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));
-for(const c of COURSES)(c.more||[]).forEach((d,k)=>ALL.push({c,k:k+9,n:k+((c.first||1)===1?10:1),map:c.id+'2',def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));
+for(const set of[COURSES.slice(0,6),COURSES.slice(6)]){
+for(const c of set)c.holes.forEach((d,k)=>ALL.push({c,k,n:k+(c.first||1),map:c.id,def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));
+for(const c of set)(c.more||[]).forEach((d,k)=>ALL.push({c,k:k+9,n:k+((c.first||1)===1?10:1),map:c.id+'2',def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));}
 // the indexes of a course's holes in playing order: part 'f' the front nine, 'b' the back nine, 'a' all eighteen
 const courseIds=(id,part)=>ALL.map((e,i)=>e.c.id===id&&(part==='a'||(part==='b')===(e.n>9))?i:-1).filter(i=>i>=0).sort((a,b)=>ALL[a].n-ALL[b].n);
 // what a scorecard needs to know about a hole, without building it
@@ -84,7 +112,7 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
   // and long rivers come in pieces. All of it is merged into clean outlines, one per body of water, so nothing overlaps or shows a seam.
   if(g.water.length){const rw=mulberry32(hashStr('water:'+c.id+k));g.water=mergeShapes(g.water,g.box).map(o=>{const w=polyShape(o.outer,false,o.holes);
       let per=0;for(let i=0;i<o.outer.length;i++){const a=o.outer[i],b=o.outer[(i+1)%o.outer.length];per+=hyp(b.x-a.x,b.y-a.y)}
-      for(const h of o.holes)w.area-=Math.abs(ringArea(h));w.per=per;w.wide=2*w.area/per;w.pond=w.wide>9;w.round=w.area/(Math.PI*w.R*w.R)>.3;
+      for(const h of o.holes)w.area-=Math.abs(ringArea(h));w.per=per;w.wide=2*w.area/per;w.pond=w.wide>9;w.sea=!!th.sea&&w.area>25000;w.round=!w.sea&&w.area/(Math.PI*w.R*w.R)>.3;
       // a few spots well out from the bank, for lilies, rising fish and ducks
       w.spots=[];for(let i=0;i<70&&w.spots.length<9;i++){const p={x:lerp(w.bb[0],w.bb[2],rw()),y:lerp(w.bb[1],w.bb[3],rw())};if(inSh(w,p,-Math.min(5,w.wide*.3)))w.spots.push(p)}
       return w})}
@@ -95,7 +123,7 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
         g.bridges.push({x:(p0.x+p1.x)/2,y:(p0.y+p1.y)/2,a:Math.atan2(p1.y-p0.y,p1.x-p0.x),len:hyp(p1.x-p0.x,p1.y-p0.y),wide:w.w||0})}a=null}}}
   // trees. Mapped single trees stand where they really are and stop a low ball. Woods are filled with the course's native mix.
   const pick=()=>{let u=rng();for(const[k,w]of th.mix)if((u-=w)<0)return k;return th.mix[0][0]},tree=(x,y,kind,r,solid)=>({x,y,kind,r:r*TREES[kind].size,v:Math.floor(rng()*4),solid,h:r*1.15+3});
-  g.solid=m.trees.filter(([x,y])=>nearHoles({x,y})).map(([x,y,sp])=>{const k=(SPECIES.find(([re])=>re.test(sp))||[0,pick()])[1];return tree(x,y,wet({x,y},9)&&k!=='pecan'?'cypress':k,lerp(6,9.5,rng()),true)});
+  g.solid=m.trees.filter(([x,y])=>nearHoles({x,y})).map(([x,y,sp])=>{const k=(SPECIES.find(([re])=>re.test(sp))||[0,pick()])[1];return tree(x,y,th.wet!==false&&wet({x,y},9)&&k!=='pecan'?'cypress':k,lerp(6,9.5,rng()),true)});
   // The way off the tee stays open. A tee shot is still climbing for its first fifty yards, so a tree standing there cannot be cleared:
   // none is kept on the tee or along that stretch of the line of play, and nothing leafy is scattered over it either.
   // "The line" is both the way the hole runs and the straight line the camera first aims down, which differ on a dogleg.
@@ -120,8 +148,8 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
       if(!inB(p)){if(u>.3||any(g.building,p,r*.35))continue}
       else if(th.belt&&!any(g.fair,p,th.belt)&&!any(g.green,p,th.belt+6)){if(noise(p)<-1.1||any(g.tee,p,16)||any(g.bunker,p,8)||any(g.rough,p,4)||any(g.building,p,r*.35))continue}
       else if(th.belt&&!th.clumps)continue;
-      else{if(u>(th.clumps||.5)||noise(p)<(th.clumpAt||1.05)||any(g.fair,p,14)||any(g.rough,p,0)||!clear(p,7))continue}}
-    g.trees.push(tree(p.x,p.y,wet(p,12)&&rng()<.7?'cypress':pick(),r,false))}
+      else{if(u>(th.clumps==null?.5:th.clumps)||noise(p)<(th.clumpAt||1.05)||any(g.fair,p,14)||any(g.rough,p,0)||!clear(p,7))continue}}
+    g.trees.push(tree(p.x,p.y,th.wet!==false&&wet(p,12)&&rng()<.7?'cypress':pick(),r,false))}
   g.trees.sort((a,b)=>a.r-b.r);
   // small things that make it a place
   g.lilies=[];g.reeds=[];g.ducks=[];g.pebbles=[];g.rakes=[];g.blooms=[];
@@ -130,14 +158,14 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
   for(const w of g.water){const big=Math.sqrt(w.area/Math.PI);
     for(const ring of[w.poly,...(w.holes||[])])for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],L=hyp(b.x-a.x,b.y-a.y)||1,nx=(b.y-a.y)/L,ny=-(b.x-a.x)/L,sg=inSh(w,{x:(a.x+b.x)/2+nx*.6,y:(a.y+b.y)/2+ny*.6})?-1:1;
       for(let t=rd()*3;t<L;t+=w.pond?3.4:1.5){const q={x:a.x+(b.x-a.x)*t/L,y:a.y+(b.y-a.y)*t/L},u=rd(),v=rd();
-        if(w.pond){if(u<.22&&w.area>120)g.reeds.push({x:q.x+nx*sg*.3,y:q.y+ny*sg*.3,a:Math.atan2(ny*sg,nx*sg),s:lerp(.8,1.4,v)})}
+        if(w.sea);else if(w.pond){if(u<.22&&w.area>120)g.reeds.push({x:q.x+nx*sg*.3,y:q.y+ny*sg*.3,a:Math.atan2(ny*sg,nx*sg),s:lerp(.8,1.4,v)})}
         else if(u<.3)g.pebbles.push({x:q.x+nx*sg*(.3+v*.9),y:q.y+ny*sg*(.3+v*.9),r:lerp(.3,.8,rd())})}}
-    if(w.pond&&w.area>120){for(const p of w.spots)if(rd()<.55&&inSh(w,p,-1.6))for(let i=0,n=1+Math.floor(rd()*3);i<n;i++){const q={x:p.x+(rd()-.5)*5,y:p.y+(rd()-.5)*5};if(inSh(w,q,-1.6))g.lilies.push({...q,r:lerp(.7,1.4,rd()),a:rd()*TAU,fl:rd()<.35})}
+    if(w.pond&&w.area>120&&!w.sea){for(const p of w.spots)if(rd()<.55&&inSh(w,p,-1.6))for(let i=0,n=1+Math.floor(rd()*3);i<n;i++){const q={x:p.x+(rd()-.5)*5,y:p.y+(rd()-.5)*5};if(inSh(w,q,-1.6))g.lilies.push({...q,r:lerp(.7,1.4,rd()),a:rd()*TAU,fl:rd()<.35})}
       // a duck or two, idling in a small circle well out from the bank
       if(big>14&&w.spots.length)for(let i=0,n=1+(rd()<.4?1:0);i<n;i++){const p=w.spots[Math.floor(rd()*w.spots.length)];g.ducks.push({w,x:p.x,y:p.y,rad:lerp(1.2,2.2,rd()),T:lerp(50,80,rd())*1000,ph:rd()*TAU,dir:rd()<.5?1:-1})}}}
   for(const w of g.dry)for(const q of w.c)for(let i=0;i<3;i++)if(rng()<.6)g.pebbles.push({x:q.x+q.nx*(rng()*2-1)*(q.w+.3),y:q.y+q.ny*(rng()*2-1)*(q.w+.3),r:lerp(.35,1.5,Math.pow(rng(),1.6))});
   for(const b of g.bunker){if(b.area<25)continue;const q=b.poly[Math.floor(rng()*b.poly.length)],a=Math.atan2(q.y-b.y,q.x-b.x);g.rakes.push({x:q.x+Math.cos(a)*1.3,y:q.y+Math.sin(a)*1.3,a:a+1.2+rng()})}
-  for(let i=0;i<7;i++){const r=R,sd=rng()<.5?-1:1,q=rAt(r,lerp(20,r.len-20,rng())),d=lerp(32,58,rng()),p={x:q.x-q.dy*sd*d,y:q.y+q.dx*sd*d};
+  for(let i=0;i<(th.blooms||7);i++){const r=R,sd=rng()<.5?-1:1,q=rAt(r,lerp(20,r.len-20,rng())),d=lerp(32,58,rng()),p={x:q.x-q.dy*sd*d,y:q.y+q.dx*sd*d};
     if(clear(p,10)&&!wet(p,6)&&!inWood(p)&&inB(p))g.blooms.push(blob(p.x,p.y,lerp(6,11,rng()),lerp(3.5,6.5,rng()),rng()*TAU,g.blooms.length+7,.22))}
   if(th.cart){const w=g.paths.find(w=>w.cart&&w.pts.length>3)||g.paths[0];if(w){const a=w.pts[1],b=w.pts[2],ca=Math.atan2(b.y-a.y,b.x-a.x);g.cart={x:a.x-Math.sin(ca)*2.6,y:a.y+Math.cos(ca)*2.6,a:ca}}}
   // buckets so only what is on screen is drawn
@@ -147,17 +175,19 @@ function distLine(p,q){let m=1e9;for(let i=1;i<p.length;i++){const a=p[i-1],b=p[
 
 // ───────── one hole, with the day's pin and wind
 function buildHole(i,dayKey){const e=ALL[i],c=e.c,g=buildGeo(e),n=e.n,r=g.route,L=r.len,t0=rAt(r,0),end=rAt(r,L);
-  const green=g.green.reduce((b,s)=>hyp(s.x-end.x,s.y-end.y)<hyp(b.x-end.x,b.y-end.y)?s:b);
+  const green=g.green.find(s=>inSh(s,end,-1))||g.green.reduce((b,s)=>hyp(s.x-end.x,s.y-end.y)<hyp(b.x-end.x,b.y-end.y)?s:b);
+  // a double green (St Andrews) is one huge shape serving two holes: this hole's part of it is round the end of its line
+  const dbl=green.R>34&&inSh(green,end,-3),gc=dbl?{x:end.x,y:end.y}:{x:green.x,y:green.y};
   const h={course:c,th:c.th,geo:g,n,k:e.k+1,name:e.def.name,par:e.def.par,yards:e.def.yd,hcp:e.def.hcp,route:r,total:L,tee:{x:t0.x,y:t0.y,a:Math.atan2(t0.dy,t0.dx)},axis:Math.atan2(end.dy,end.dx),green,fringe:grown(green,2.4)};
   h.oaks=g.solid.filter(t=>distLine(r.pts,t)<160);
   // the day's pin: one of several spots well inside the green
-  const dr=mulberry32(hashStr('fl-cond:'+dayKey+':'+c.id+n)),gr=green.rx,spots=[[0,0]];for(let k=0;k<6;k++)spots.push([Math.cos(k*1.047+.4)*gr*.5,Math.sin(k*1.047+.4)*gr*.5]);
-  const ok=spots.map(([x,y])=>({x:green.x+x,y:green.y+y})).filter(p=>inSh(green,p,-3));h.pin=ok.length?ok[Math.floor(dr()*ok.length)]:{x:green.x,y:green.y};
+  const dr=mulberry32(hashStr('fl-cond:'+dayKey+':'+c.id+n)),gr=dbl?Math.min(green.rx,14):green.rx,spots=[[0,0]];for(let k=0;k<6;k++)spots.push([Math.cos(k*1.047+.4)*gr*.5,Math.sin(k*1.047+.4)*gr*.5]);
+  const ok=spots.map(([x,y])=>({x:gc.x+x,y:gc.y+y})).filter(p=>inSh(green,p,-3));h.pin=ok.length?ok[Math.floor(dr()*ok.length)]:dbl?gc:{x:green.x,y:green.y};
   const wsp=Math.round(lerp(0,14,dr())),wa=dr()*TAU;h.wind={x:Math.cos(wa)*wsp,y:Math.sin(wa)*wsp,sp:wsp};
   // the putting surface: a gentle overall tilt plus a few humps and hollows, fixed for each green
   const fr=mulberry32(hashStr('green:'+c.id+n)),sa=fr()*TAU,sm=lerp(.18,.32,fr());h.slope={x:Math.cos(sa)*sm,y:Math.sin(sa)*sm,m:sm};h.bumps=[];
   for(let k=0,nb=3+Math.floor(fr()*2);k<nb;k++){const a=fr()*TAU,d=Math.sqrt(fr())*gr*.85,sg=lerp(3.2,5.8,fr())*clamp(gr/12,.7,1.1),peak=lerp(.28,.72,fr())*(fr()<.5?-1:1);
-    h.bumps.push({x:green.x+Math.cos(a)*d,y:green.y+Math.sin(a)*d,s:sg,a:peak*sg/.607})}
+    h.bumps.push({x:gc.x+Math.cos(a)*d,y:gc.y+Math.sin(a)*d,s:sg,a:peak*sg/.607})}
   return h}
 // downhill pull on a rolling ball at a point, in yards per second squared, and the height potential behind it
 function slopeAt(h,q){let x=h.slope.x,y=h.slope.y;for(const b of h.bumps){const dx=q.x-b.x,dy=q.y-b.y,e=b.a*Math.exp(-(dx*dx+dy*dy)/(2*b.s*b.s))/(b.s*b.s);x+=dx*e;y+=dy*e}return{x,y}}

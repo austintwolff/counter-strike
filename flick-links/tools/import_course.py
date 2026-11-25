@@ -160,6 +160,37 @@ def build(path, cid, holes=range(1, 10), margin=150, extra=None, course=None):
                     if t.get('leisure') == 'golf_course':
                         if near(p) and (boundary is None or area(p) > area(boundary)): boundary = p
                     else: add_poly(k, p, .6, t)
+    # The sea is not mapped as water but as a coastline, a line with land on its left. Join the pieces, cut the line to a box
+    # round the holes, and close it along the box's edge on the seaward side, to get the sea as an outline like any pond.
+    coast = [nd for nd, t in ways.values() if t.get('natural') == 'coastline' and len(nd) > 1]
+    while True:
+        for i, a in enumerate(coast):
+            j = next((j for j, c in enumerate(coast) if j != i and c[0] == a[-1]), None)
+            if j is not None: coast[i] = a + coast[j][1:]; coast.pop(j); break
+        else: break
+    sb = (box[0] - 300, box[1] - 300, box[2] + 300, box[3] + 300); ins = lambda q: sb[0] < q[0] < sb[2] and sb[1] < q[1] < sb[3]
+    def edge(a, b):  # where the step from a (outside) to b (inside) crosses the box
+        best = None
+        for k, v in ((0, sb[0]), (0, sb[2]), (1, sb[1]), (1, sb[3])):
+            if (a[k] - v) * (b[k] - v) < 0:
+                u = (v - a[k]) / (b[k] - a[k]); q = (a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u)
+                if sb[0] - .01 <= q[0] <= sb[2] + .01 and sb[1] - .01 <= q[1] <= sb[3] + .01 and (best is None or u > best[0]): best = (u, q)
+        return best[1] if best else b
+    def along(q):  # distance round the box's edge, clockwise as a map is read (east along the north side first)
+        w, h = sb[2] - sb[0], sb[3] - sb[1]
+        if abs(q[1] - sb[1]) < .5: return q[0] - sb[0]
+        if abs(q[0] - sb[2]) < .5: return w + q[1] - sb[1]
+        if abs(q[1] - sb[3]) < .5: return w + h + sb[2] - q[0]
+        return 2 * w + h + sb[3] - q[1]
+    for nd in coast:
+        pts_ = [P(nodes[i]) for i in nd if i in nodes]; inside = [i for i, q in enumerate(pts_) if ins(q)]
+        if not inside or nd[0] == nd[-1] or inside[0] == 0 or inside[-1] == len(pts_) - 1: continue
+        a, z = inside[0], inside[-1]; enter = edge(pts_[a - 1], pts_[a]); leave = edge(pts_[z + 1], pts_[z]); path = [enter] + pts_[a:z + 1] + [leave]
+        w, h = sb[2] - sb[0], sb[3] - sb[1]; per = 2 * (w + h); corners = [(0, (sb[0], sb[1])), (w, (sb[2], sb[1])), (w + h, (sb[2], sb[3])), (2 * w + h, (sb[0], sb[3]))]
+        s0, s1 = along(leave), along(enter); span = (s1 - s0) % per   # with land on the left, the sea is reached by turning right on leaving
+        ring = path + [c for d, c in sorted(((d - s0) % per, c) for d, c in corners) if 0 < d < span]
+        q = simp_poly(ring, 1.0)
+        if len(q) > 3 and area(q) > 400: G['water'].append(flat(q)); print('sea: an outline of', len(q), 'points from the coastline')
     def centre(f): return (sum(f[0::2]) / (len(f) // 2), sum(f[1::2]) / (len(f) // 2))
     for n, l in lines.items():  # a hole line must end on a green: where the map has that green tagged as a tee, treat it as the green
         if any(math.hypot(centre(g)[0] - l[-1][0], centre(g)[1] - l[-1][1]) < 35 for g in G['green']): continue

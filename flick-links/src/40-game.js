@@ -149,7 +149,8 @@ cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)retu
   for(const ev of(evs.length?evs:[e])){if(!S.g)break;const p=gPos(ev);sample(ev.timeStamp||e.timeStamp,p.x,p.y)}});
 function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14)g.t0=t+g.off}
 function toSwing(g){const k=g.peak,m=meterAt(g,g.ft||performance.now());g.phase='swing';g.slow=0;g.top={x:k.x,y:k.y};g.pull=k.d;g.power=clamp(k.d/pullMax(),0,1);
-  g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f}
+  g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f;
+  if(S.tut&&S.tut.step==='pull'){g.e=0;g.frozen=1}} // the first lesson is the motion alone: any flick is a good one
 // A resting finger sends no events, so the gap before a sample is capped: whatever moved, moved within about a frame.
 function sample(t,x,y){const g=S.g,len=hyp(x-g.ox,y-g.oy),vr=(g.last.d-len)/clamp(t-g.last.t,4,20);
   g.x=x;g.y=y;g.last={t,d:len};
@@ -164,12 +165,13 @@ function commit(x,y){const g=S.g,fx=x-g.top.x,fy=y-g.top.y,b=S.ball;
   if(S.club.putt){const d=markDist()||1;aw={x:(S.mark.x-b.x)/d,y:(S.mark.y-b.y)/d};p=1}
   S.fx.push({type:'swing',pts:g.trail.slice(),t0:performance.now()});
   const te=g.e,tf=g.frozen;endGesture();fire(p,aw,dev,{x:g.ox,y:g.oy},te,tf)}
-function endGesture(){const g=S.g;if(!g)return;try{cv.releasePointerCapture(g.id)}catch(_){}S.g=null;if(S.mode==='aim')S.mode='ready'}
+function endGesture(){const g=S.g;if(!g)return;try{cv.releasePointerCapture(g.id)}catch(_){}S.g=null;S.idle0=performance.now();if(S.mode==='aim')S.mode='ready'}
 function onUp(e){const g=S.g;if(!g||e.pointerId!==g.id)return;
-  if(g.drag){endGesture();aimCam();hud();return}
+  if(g.drag){endGesture();aimCam();if(onRange())rangeDragged();hud();return}
   if(g.phase==='aim'&&g.fast>0)toSwing(g);
   if(g.phase==='swing'){const prog=(g.x-g.top.x)*g.aim.x+(g.y-g.top.y)*g.aim.y;if(prog>=g.pull*.35)return commit(g.x,g.y)}
-  const strong=g.power>.3;endGesture();if(S.club.putt)hud();else if(strong&&!onRange())hintOn('Flick up to swing')}
+  // let go without flicking: the commonest slip. The ghost thumb shows the flick again, and on the range the coach says so.
+  const strong=g.power>.3;endGesture();if(strong){S.nudge=performance.now();if(onRange())rangeLift()}if(S.club.putt)hud();else if(strong&&!onRange())hintOn('Flick up to swing')}
 cv.addEventListener('pointerup',onUp);cv.addEventListener('pointercancel',e=>{if(S.g&&e.pointerId===S.g.id)endGesture()});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
@@ -262,7 +264,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
   const g=S.g;if(g&&!g.drag&&g.t0&&g.phase==='aim'){const tk=Math.floor((performance.now()-g.t0+TD)/(TU+TD));if(tk>g.tick){g.tick=tk;sfx.tick()}}
   updateCam(dt);
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  drawScene(now);drawPreview(now);drawFlag(now);drawBall(dt);drawGesture(now);
+  drawScene(now);drawPreview(now);drawFlag(now);drawBall(dt);drawGesture(now);drawDemo(now);
   if(S.fx.length>12)S.fx.splice(0,S.fx.length-12);
   const ws=rotv(cur().wind.x,cur().wind.y,cam.r),deg=Math.round(Math.atan2(ws.y,ws.x)/DEG+90);
   if(deg!==windDeg){windDeg=deg;$('windArrow').style.transform=`rotate(${deg}deg)`}}
@@ -280,7 +282,8 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n);
-  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
+  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();S.fresh=!fetchKey('seen');S.fewPutts=(fetchKey('putts')||0)<2;
+  $('btnPutt').classList.toggle('pulse',!!(onRange()&&S.tut&&S.tut.step==='mark'&&S.tut.moved&&S.pmode==='aim'));$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
   // the first few putts name the controls; after that the green is left to be read from its streaks. The range has its own card.
@@ -292,4 +295,4 @@ function hintOff(){$('hint').style.opacity=0}
 $('clubPrev').onclick=()=>changeClub(-1);$('clubNext').onclick=()=>changeClub(1);
 $('btnSound').onclick=()=>{S.muted=!S.muted;$('btnSound').setAttribute('aria-pressed',String(!S.muted));store('muted',S.muted);if(!S.muted)sfx.putt()};
 $('btnHelp').onclick=()=>{if(S.mode==='ready')helpCard()};
-$('btnPutt').onclick=()=>{if(S.mode!=='ready'||!S.club.putt)return;S.pmode=S.pmode==='aim'?'stroke':'aim';aimCam();hud()};
+$('btnPutt').onclick=()=>{if(S.mode!=='ready'||!S.club.putt)return;S.pmode=S.pmode==='aim'?'stroke':'aim';S.idle0=performance.now();aimCam();if(onRange())rangePutt();hud()};

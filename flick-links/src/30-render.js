@@ -124,7 +124,7 @@ function drawLive(h,now){const G=h.geo,z=cam.s;ctx.lineJoin='round';ctx.lineCap=
   // the cup keeps its size on screen, so it is drawn here and not into a kept picture that may be magnified
   const cr=Math.max(.13,3.2/z);ctx.fillStyle='rgba(255,255,255,.85)';disc(h.pin.x,h.pin.y,cr*1.28);ctx.fillStyle='#07120b';disc(h.pin.x+cr*.08,h.pin.y+cr*.1,cr);
   if(z>6)drawFlow(h,now);
-  for(const f of S.fx)if(f.type==='ring'){const a=(now-f.t0)/900;if(a<1){ctx.strokeStyle=f.water?'#d8f4f0':K.cream;ctx.globalAlpha=1-a;ctx.lineWidth=2/z;
+  for(const f of S.fx)if(f.type==='ring'){const a=Math.max(0,(now-f.t0)/900);if(a<1){ // never negative: on a long frame the ring is stamped later than the frame's own clockctx.strokeStyle=f.water?'#d8f4f0':K.cream;ctx.globalAlpha=1-a;ctx.lineWidth=2/z;
     for(const m of[1,.55]){ctx.beginPath();ctx.arc(f.x,f.y,(4+a*26)*m/z,0,TAU);ctx.stroke()}ctx.globalAlpha=1}}
   for(const m of S.marks){if(m.t==='pitch'){ctx.fillStyle='rgba(20,50,20,.38)';disc(m.x,m.y,.13);ctx.fillStyle='rgba(255,255,220,.25)';disc(m.x-.05,m.y-.05,.06)}
     else{ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.a);ctx.fillStyle='#6f5a36';ctx.beginPath();ctx.ellipse(.5,0,.55,.2,0,0,TAU);ctx.fill();ctx.fillStyle='rgba(30,22,8,.4)';ctx.beginPath();ctx.ellipse(.42,.03,.38,.11,0,0,TAU);ctx.fill();ctx.restore()}}
@@ -297,6 +297,7 @@ function drawGesture(now){const g=S.g;
   if(g.phase==='swing'&&g.trail.length>1){ctx.strokeStyle=K.gold;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(g.trail[0].x,g.trail[0].y);for(const q of g.trail)ctx.lineTo(q.x,q.y);ctx.stroke()}
   // the meter: two arcs climb from the bottom of the ring and meet at the gold notch on top, which is as wide as the timing window.
   // The bottom third is the shank zone, marked red; the fill itself turns red while it is in there.
+  if(!(S.tut&&S.tut.step==='pull')){ // the first lesson on the range is the motion alone, with no ring to watch
   const a0=Math.PI/2,shk=SHANK*Math.PI,low=m.f<SHANK,ha=Math.max(.12,(1-Math.pow(1-w/TU,EASE))*Math.PI);
   ctx.lineCap='butt';ctx.strokeStyle='rgba(6,22,17,.72)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,0,TAU);ctx.stroke();
   ctx.strokeStyle='rgba(201,40,58,.55)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0-shk,a0+shk);ctx.stroke();
@@ -304,9 +305,34 @@ function drawGesture(now){const g=S.g;
   if(m.f>.004){ctx.lineCap='round';ctx.strokeStyle=hit?'#fff6c9':low||late?'#ff7d8e':K.cream;ctx.lineWidth=7;const sw=m.f*Math.PI;
     ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0+sw);ctx.stroke();ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0-sw,true);ctx.stroke()}
   if(hit){ctx.strokeStyle=K.gold;ctx.globalAlpha=.55;ctx.lineWidth=3;ctx.beginPath();ctx.arc(g.ox,g.oy,R+11,0,TAU);ctx.stroke();ctx.globalAlpha=1}
+  // a word at the moment to go, on the range and for a new player's first few real swings
+  if((S.tut||(S.fresh&&S.hintShots<4))&&g.phase==='aim'&&m.e>-140&&m.e<70)txt('Flick!',g.ox,g.oy-R-(S.club.putt?30:58),30,K.gold)}
+  else if(g.phase==='aim'&&g.power>.25)txt('Flick up',g.ox,g.oy-R-58,26,K.gold);
   ctx.fillStyle='rgba(6,22,17,.45)';disc(g.ox,g.oy,R-7);ctx.fillStyle=K.gold;disc(g.ox,g.oy,3.5);
   ctx.fillStyle='rgba(244,236,214,.3)';disc(g.x,g.y,24);
   if(!S.club.putt&&g.power>.04)txt(Math.round(g.power*100)+'%',g.ox,g.oy-R-24,g.power>=1?28:24,g.power>=1?K.gold:K.cream)}
+// ───────── the ghost thumb
+// A see-through thumb that makes the swing where the player can watch it: down, wait for gold, up. It plays on the practice
+// range while the player is idle, for a new player who sits on a real shot for a few seconds, and straight after anyone pulls
+// back and lets go without flicking. Kinds: 'pull' the motion alone, 'time' the motion with the ring, 'drag' moving the putt marker.
+function demoKind(now){if(S.mode!=='ready'||S.g||!$('scrim').hidden)return null;const idle=now-(S.idle0||0),t=S.tut,nudged=S.nudge&&now-S.nudge<5600;
+  if(onRange()&&t)return idle<900?null:t.step==='pull'?'pull':t.step==='mark'?(t.moved?null:'drag'):'time';
+  if(S.club.putt)return S.pmode==='aim'?(S.fewPutts&&idle>4500?'drag':null):nudged||(S.fewPutts&&idle>4500)?'time':null;
+  return nudged||(S.fresh&&S.hintShots<3&&idle>4500)?'time':null}
+function drawDemo(now){const kind=demoKind(now);if(!kind){S.demoT=0;return}if(!S.demoT||S.demoK!==kind){S.demoT=now;S.demoK=kind}
+  const ease=u=>{u=clamp(u,0,1);return u*u*(3-2*u)},ghost=(x,y,a,press)=>{ctx.globalAlpha=a*.3;ctx.fillStyle=K.cream;disc(x,y,press?21:25);ctx.globalAlpha=a*.95;ctx.strokeStyle=K.cream;ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(x,y,press?21:25,0,TAU);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=a};
+  if(kind==='drag'){const T=2500,t=(now-S.demoT)%T,a=clamp(t/200,0,1)*clamp((2000-t)/300,0,1),x=lerp(W*.36,W*.64,ease((t-350)/1100)),y=H*.6;if(a<=0)return;
+    ctx.globalAlpha=a*.6;ctx.strokeStyle=K.cream;ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(W*.36,y);ctx.lineTo(x,y);ctx.stroke();ghost(x,y,a,t>250);txt('Drag',x,y-44,18,K.cream);ctx.globalAlpha=1;return}
+  const timed=kind==='time',L=pullMax()*.92,ox=W/2,oy=H*.46,R=31,down0=300,down1=850,ring0=380,gold=timed?ring0+TU:1150,up1=gold+130,end=up1+420,T=end+500,t=(now-S.demoT)%T;
+  const a=clamp(t/200,0,1)*clamp((end-t)/300,0,1);if(a<=0)return;
+  const y=t<down1?oy+L*ease((t-down0)/(down1-down0)):t<gold?oy+L:oy+L-(L*1.5)*ease((t-gold)/(up1-gold)),f=timed?clamp(Math.pow(clamp((t-ring0)/TU,0,1),EASE),0,1):0,hit=timed&&t>=gold-40&&t<up1+200;
+  ctx.lineCap='round';ctx.globalAlpha=a*.75;ctx.strokeStyle=t>=gold?K.gold:K.cream;ctx.lineWidth=t>=gold?5:3;ctx.beginPath();ctx.moveTo(ox,t>=gold?oy+L:oy);ctx.lineTo(ox,y);ctx.stroke();
+  // where the thumb first went down, with the ring on it when the lesson includes timing
+  ctx.globalAlpha=a*.8;ctx.lineCap='butt';ctx.strokeStyle='rgba(6,22,17,.7)';ctx.lineWidth=timed?11:4;ctx.beginPath();ctx.arc(ox,oy,R,0,TAU);ctx.stroke();
+  if(timed){const a0=Math.PI/2,ha=.34;ctx.strokeStyle=K.gold;ctx.globalAlpha=a*(hit?1:.7);ctx.beginPath();ctx.arc(ox,oy,R,-a0-ha,-a0+ha);ctx.stroke();
+    if(f>.004&&t<up1){ctx.lineCap='round';ctx.strokeStyle=hit?'#fff6c9':K.cream;ctx.lineWidth=6.5;ctx.globalAlpha=a;ctx.beginPath();ctx.arc(ox,oy,R,a0,a0+f*Math.PI);ctx.stroke();ctx.beginPath();ctx.arc(ox,oy,R,a0,a0-f*Math.PI,true);ctx.stroke()}}
+  ctx.globalAlpha=a;ctx.fillStyle=K.gold;disc(ox,oy,3.5);ghost(ox,y,a,t>down0-80);
+  txt(t<down1+60?'Pull down':t<gold-40?(timed?'Wait for gold':'Pull down'):'Flick up',ox+40,clamp(y,oy-30,oy+L),19,t>=gold-40?K.gold:K.cream,'left');ctx.globalAlpha=1}
 function drawVignette(){if(!VIG){VIG=ctx.createRadialGradient(W/2,H*.5,Math.min(W,H)*.35,W/2,H*.5,hyp(W,H)*.62);VIG.addColorStop(0,'rgba(8,24,14,0)');VIG.addColorStop(1,'rgba(8,24,14,.36)')}
   ctx.fillStyle=VIG;ctx.fillRect(0,0,W,H)}
 function burst(x,y,col,n,sp,up){for(let i=0;i<n;i++){const a=Math.random()*TAU,v=Math.random()*sp,l=.4+Math.random()*.5;S.parts.push({x,y,z:.2,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vz:up*(.5+Math.random()),life:l,max:l,col,sz:1.2+Math.random()*1.8})}}

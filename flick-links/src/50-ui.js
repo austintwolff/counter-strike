@@ -115,10 +115,10 @@ function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=[];S.muted=!!
 // is idle: the motion alone (no ring, any flick is good), the same with the ring, moving the putt marker, and the putt.
 // Nothing counts and Skip is always there.
 const RANGE_HOLE=()=>courseIds('lp','f')[7];   // a wide, straight hole to hit down
-const STEPS=['pull','time','mark','putt'],STEP_TITLE={pull:'Pull down, flick up',time:'Flick on gold',mark:'Aim the putt',putt:'Roll it in'};
+const STEPS=['pull','time','mark','putt'],STEP_TITLE={pull:'Pull down, flick up',time:'Flick on gold',mark:'Putting: first, aim',putt:'Putting: then hit'};
 // te, where given, puts a tick on a small bar showing when the flick came against gold
 function coach(text,te){const t=S.tut,sw=t.step==='pull'||t.step==='time',n=$('coachNext'),bar=$('coachBar');$('coachStep').textContent='Practice · '+(STEPS.indexOf(t.step)+1)+' of 4';$('coachTitle').textContent=STEP_TITLE[t.step];
-  $('coachText').textContent=text;n.textContent=sw?'Putting':'Play';n.disabled=!t.good;bar.hidden=te==null;if(te!=null)bar.querySelector('b').style.left=clamp((te+500)/700,0,1)*100+'%'}
+  $('coachText').textContent=text;n.textContent=t.step==='putt'||(!sw&&t.good)?'Play':'Next';n.classList.toggle('ghost',!t.good);bar.hidden=te==null;if(te!=null)bar.querySelector('b').style.left=clamp((te+500)/700,0,1)*100+'%'}
 function rangeSpot(){const h=cur();if(S.tut.step==='pull'||S.tut.step==='time')return h.tee;const dx=h.tee.x-h.pin.x,dy=h.tee.y-h.pin.y,d=hyp(dx,dy);for(const k of[7,5.5,4,3]){const p={x:h.pin.x+dx/d*k,y:h.pin.y+dy/d*k};if(inSh(h.green,p,-1))return p}return{x:h.green.x,y:h.green.y}}
 function rangeSet(){const p=rangeSpot();setBall(p.x,p.y);S.strokes=0;setupShot();S.tut.m0={x:S.mark.x,y:S.mark.y};S.idle0=performance.now();S.mode='ready';aimCam();hud()}
 function startRange(){closeSheet();S.round={type:'range',ids:[RANGE_HOLE()],scores:[],course:null};S.hi=0;S.marks=[];S.tut={step:'pull',n:0,good:false,moved:false};const h=cur();h.wind.x=h.wind.y=0;h.wind.sp=0;
@@ -128,19 +128,25 @@ function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();
   else if(t.step==='time'){const ok=!note&&!l.shank&&Math.abs(l.te)<=150;t.good=t.good||ok;
     coach(note||(l.shank?'Far too early. Let the ring leave the red.':l.pure?'Pure. Pull farther for power, sideways to aim.':ok?'Good. Pull farther for power, sideways to aim.':l.early?'Early. Wait for gold.':'Late. Flick as it reaches gold.'),note?null:l.te)}
   else{const ft=Math.round(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*3),ok=holed||ft<=4;t.good=t.good||ok;t.step='mark';t.moved=false;
-    coach(holed?'Holed.':ok?'Close: '+ft+' ft.':ft+' ft away. Aim the marker up the slope and try again.')}
+    coach(holed?'Holed.':ok?'Close: '+ft+' ft.':ft+' ft away. Aim the marker up the slope, tap Putt and try again.')}
   rangeSet()}
 // pulled back and let go without flicking
 function rangeLift(){const t=S.tut;if(t&&t.step!=='mark')coach('Keep your thumb down, then flick up.')}
 // the marker was dragged: on to the Putt button
-function rangeDragged(){const t=S.tut;if(t&&t.step==='mark'&&!t.moved&&hyp(S.mark.x-t.m0.x,S.mark.y-t.m0.y)>.4){t.moved=true;coach('Now press Putt.')}}
-function rangePutt(){const t=S.tut;if(!t||(t.step!=='mark'&&t.step!=='putt'))return;t.step=S.pmode==='stroke'?'putt':'mark';coach(t.step==='putt'?'Pull down, flick up on gold.':'Drag to move the marker.')}
+function rangeDragged(){const t=S.tut;if(t&&t.step==='mark'&&!t.moved&&hyp(S.mark.x-t.m0.x,S.mark.y-t.m0.y)>.4){t.moved=true;coach('Aimed. Now tap Putt, bottom right, to switch to hitting.')}}
+function rangePutt(){const t=S.tut;if(!t||(t.step!=='mark'&&t.step!=='putt'))return;t.step=S.pmode==='stroke'?'putt':'mark';coach(t.step==='putt'?PUTT_TEXT:t.moved?'Aiming again. Drag the marker, then tap Putt.':MARK_TEXT)}
 // After the range a new player is asked their name (or, arriving by an invite, to join that clubhouse), so play is recorded
 // under a player from the first real round. Someone already known goes straight to the menu.
 function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard();
   Net.loaded.then(()=>{if(C.me||S.mode!=='title')return;C.invite&&C.club&&!C.club.member?formCard('join'):formCard('welcome')})}
 $('coachSkip').onclick=endRange;
-$('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='pull'||t.step==='time'){t.step='mark';t.good=false;t.moved=false;S.last=null;rangeSet();coach('Drag to move the marker to where the putt should stop. The streaks run downhill.')}else endRange()};
+// Next always moves on, whether or not the step was done: nobody should be stuck on a lesson.
+const MARK_TEXT='You are not hitting yet. Drag the marker to where the ball should stop. The streaks run downhill.',PUTT_TEXT='Pull down, flick up on gold. The marker sets how hard it rolls.';
+$('coachNext').onclick=()=>{const t=S.tut;if(!t||S.mode!=='ready'||S.g)return;
+  if(t.step==='pull'){t.step='time';t.n=2;S.last=null;rangeSet();coach('Now the ring. Flick as it reaches gold.')}
+  else if(t.step==='time'){t.step='mark';t.good=false;t.moved=false;S.last=null;rangeSet();coach(MARK_TEXT)}
+  else if(t.step==='mark'&&!t.good){S.pmode='stroke';S.idle0=performance.now();aimCam();rangePutt();hud()}
+  else endRange()};
 
 // ───────── boot, and staying current while a round is open
 // A new build can arrive mid-round: the round is saved after every stroke, so it resumes where it stood.

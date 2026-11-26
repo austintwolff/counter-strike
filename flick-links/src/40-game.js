@@ -129,7 +129,7 @@ const pullMax=()=>clamp(H*.18,84,132);
 const reachFor=pw=>S.club.bomb?clamp(((pw==null?(S.g?S.g.power:0):pw)-.7)/.3,0,1):0;
 const timingWindow=pw=>Math.max(22,S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*WIN*(1-.35*reachFor(pw)));
 // where the ring stands at time t: f how full it is, and e the timing error in ms (early is negative)
-function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=(t-g.t0)%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
+function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=Math.max(0,t-g.t0)%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
 // A flick inside the window is on time. Outside it, the strike is judged on how many windows off it was: six is as bad
 // as it gets, and an early one that caught the ring still in the red is a shank.
 function judge(te,tf,pw){const x=Math.abs(te)/timingWindow(pw);return{onTime:x<=1,q:clamp((x-1)/5,0,1),shank:te<0&&x>1&&tf<SHANK}}
@@ -142,15 +142,19 @@ cv.addEventListener('pointerdown',e=>{
   const p=gPos(e);hintOff();
   if(S.club.putt&&S.pmode==='aim'){S.g={id:e.pointerId,drag:true,x:p.x,y:p.y};return}
   S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},anc:null,still:0,lp:null,fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,
-    off:Math.abs(performance.now()-e.timeStamp)<3000?0:performance.now()-e.timeStamp}; // timing uses each touch's own timestamp, not when it was processed
+    off:0,cl:performance.now()-e.timeStamp};
+  // Timing uses each touch's own timestamp, not when it was processed. Those timestamps are meant to share a clock with
+  // performance.now(), which draws the ring, but on some devices (iPads among them) the two drift apart, and the ring then ran
+  // out of step with the finger or did not fill at all. cl is the smallest gap seen between the two clocks during this
+  // gesture; when the ring starts, anything more than ordinary delay (30 ms) is taken as the clocks' difference and allowed for.
   S.mode='aim'});
 cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)return;
   if(g.drag){const p=gPos(e),w=rotv(p.x-g.x,p.y-g.y,-cam.r),b=S.ball;g.x=p.x;g.y=p.y;
     let mx=S.mark.x+w.x/cam.s*.75,my=S.mark.y+w.y/cam.s*.75;const d=hyp(mx-b.x,my-b.y),k=d>70?70/d:d<.3?0:1;
     if(k){S.mark.x=b.x+(mx-b.x)*k;S.mark.y=b.y+(my-b.y)*k}hudClub();return}
-  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
+  g.cl=Math.min(g.cl,performance.now()-e.timeStamp);const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of(evs.length?evs:[e])){if(!S.g)break;const p=gPos(ev);sample(ev.timeStamp||e.timeStamp,p.x,p.y)}});
-function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14)g.t0=t+g.off}
+function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14){g.off=g.cl>=0&&g.cl<30?0:g.cl;g.t0=t+g.off}}
 function toSwing(g){const k=g.peak,m=meterAt(g,g.ft||performance.now());g.phase='swing';g.slow=0;g.lp=null;g.top={x:k.x,y:k.y};g.pull=k.d;g.power=clamp(k.d/pullMax(),0,1);
   g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f;
   if(S.tut&&S.tut.step==='pull'){g.e=0;g.frozen=1}} // the first lesson is the motion alone: any flick is a good one

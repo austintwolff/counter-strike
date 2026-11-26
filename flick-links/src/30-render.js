@@ -313,7 +313,7 @@ function drawGesture(now){const g=S.g;
   if(g.phase==='swing'&&g.trail.length>1){ctx.strokeStyle=K.gold;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(g.trail[0].x,g.trail[0].y);for(const q of g.trail)ctx.lineTo(q.x,q.y);ctx.stroke()}
   // the meter: two arcs climb from the bottom of the ring and meet at the gold notch on top, which is as wide as the timing window.
   // The bottom third is the shank zone, marked red; the fill itself turns red while it is in there.
-  if(!(S.tut&&S.tut.step==='pull')){ // the first lesson on the range is the motion alone, with no ring to watch
+  {
   const a0=Math.PI/2,shk=SHANK*Math.PI,low=m.f<SHANK,ha=Math.max(.12,(1-Math.pow(1-w/TU,EASE))*Math.PI);
   ctx.lineCap='butt';ctx.strokeStyle='rgba(6,22,17,.72)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,0,TAU);ctx.stroke();
   ctx.strokeStyle='rgba(201,40,58,.55)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0-shk,a0+shk);ctx.stroke();
@@ -322,8 +322,9 @@ function drawGesture(now){const g=S.g;
     ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0+sw);ctx.stroke();ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0-sw,true);ctx.stroke()}
   if(hit){ctx.strokeStyle=K.gold;ctx.globalAlpha=.55;ctx.lineWidth=3;ctx.beginPath();ctx.arc(g.ox,g.oy,R+11,0,TAU);ctx.stroke();ctx.globalAlpha=1}
   // a word at the moment to go, on the range and for a new player's first few real swings
-  if((S.tut||(S.fresh&&S.hintShots<4))&&g.phase==='aim'&&m.e>-140&&m.e<70)txt('Flick!',g.ox,g.oy-R-(S.club.putt?30:58),30,K.gold)}
-  else if(g.phase==='aim'&&g.power>.25)txt('Flick up',g.ox,g.oy-R-58,26,K.gold);
+  const first=S.tut&&S.tut.step==='pull'; // the first lesson is the motion alone: the ring is there to see, but any flick will do
+  if(!first&&(S.tut||(S.fresh&&S.hintShots<4))&&g.phase==='aim'&&m.e>-140&&m.e<70)txt('Flick!',g.ox,g.oy-R-(S.club.putt?30:58),30,K.gold);
+  if(first&&g.phase==='aim'&&g.power>.25)txt('Flick up',g.ox,g.oy-R-58,26,K.gold)}
   ctx.fillStyle='rgba(6,22,17,.45)';disc(g.ox,g.oy,R-7);ctx.fillStyle=K.gold;disc(g.ox,g.oy,3.5);
   ctx.fillStyle='rgba(244,236,214,.3)';disc(g.x,g.y,24);
   if(!S.club.putt&&g.power>.04)txt(Math.round(g.power*100)+'%',g.ox,g.oy-R-24,g.power>=1?28:24,g.power>=1?K.gold:K.cream)}

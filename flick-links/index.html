@@ -273,7 +273,7 @@ table.st{width:100%;border-collapse:collapse;border:1.5px solid var(--rule);back
     <b id="coachTitle">The swing</b>
     <p id="coachText"></p>
     <div id="coachBar" hidden><i></i><b></b><span>early</span><span>late</span></div>
-    <div class="row"><button class="btn sm ghost" id="coachSkip">Skip</button><button class="btn sm" id="coachNext" disabled>Putting</button></div>
+    <div class="row"><button class="btn sm ghost" id="coachSkip">Skip</button><button class="btn sm" id="coachNext">Next</button></div>
   </div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="hint"></div>
@@ -966,7 +966,7 @@ function drawGesture(now){const g=S.g;
   if(g.phase==='swing'&&g.trail.length>1){ctx.strokeStyle=K.gold;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(g.trail[0].x,g.trail[0].y);for(const q of g.trail)ctx.lineTo(q.x,q.y);ctx.stroke()}
   // the meter: two arcs climb from the bottom of the ring and meet at the gold notch on top, which is as wide as the timing window.
   // The bottom third is the shank zone, marked red; the fill itself turns red while it is in there.
-  if(!(S.tut&&S.tut.step==='pull')){ // the first lesson on the range is the motion alone, with no ring to watch
+  {
   const a0=Math.PI/2,shk=SHANK*Math.PI,low=m.f<SHANK,ha=Math.max(.12,(1-Math.pow(1-w/TU,EASE))*Math.PI);
   ctx.lineCap='butt';ctx.strokeStyle='rgba(6,22,17,.72)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,0,TAU);ctx.stroke();
   ctx.strokeStyle='rgba(201,40,58,.55)';ctx.lineWidth=12;ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0-shk,a0+shk);ctx.stroke();
@@ -975,8 +975,9 @@ function drawGesture(now){const g=S.g;
     ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0+sw);ctx.stroke();ctx.beginPath();ctx.arc(g.ox,g.oy,R,a0,a0-sw,true);ctx.stroke()}
   if(hit){ctx.strokeStyle=K.gold;ctx.globalAlpha=.55;ctx.lineWidth=3;ctx.beginPath();ctx.arc(g.ox,g.oy,R+11,0,TAU);ctx.stroke();ctx.globalAlpha=1}
   // a word at the moment to go, on the range and for a new player's first few real swings
-  if((S.tut||(S.fresh&&S.hintShots<4))&&g.phase==='aim'&&m.e>-140&&m.e<70)txt('Flick!',g.ox,g.oy-R-(S.club.putt?30:58),30,K.gold)}
-  else if(g.phase==='aim'&&g.power>.25)txt('Flick up',g.ox,g.oy-R-58,26,K.gold);
+  const first=S.tut&&S.tut.step==='pull'; // the first lesson is the motion alone: the ring is there to see, but any flick will do
+  if(!first&&(S.tut||(S.fresh&&S.hintShots<4))&&g.phase==='aim'&&m.e>-140&&m.e<70)txt('Flick!',g.ox,g.oy-R-(S.club.putt?30:58),30,K.gold);
+  if(first&&g.phase==='aim'&&g.power>.25)txt('Flick up',g.ox,g.oy-R-58,26,K.gold)}
   ctx.fillStyle='rgba(6,22,17,.45)';disc(g.ox,g.oy,R-7);ctx.fillStyle=K.gold;disc(g.ox,g.oy,3.5);
   ctx.fillStyle='rgba(244,236,214,.3)';disc(g.x,g.y,24);
   if(!S.club.putt&&g.power>.04)txt(Math.round(g.power*100)+'%',g.ox,g.oy-R-24,g.power>=1?28:24,g.power>=1?K.gold:K.cream)}
@@ -1026,7 +1027,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795665762000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795711875000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -1136,7 +1137,7 @@ const pullMax=()=>clamp(H*.18,84,132);
 const reachFor=pw=>S.club.bomb?clamp(((pw==null?(S.g?S.g.power:0):pw)-.7)/.3,0,1):0;
 const timingWindow=pw=>Math.max(22,S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*WIN*(1-.35*reachFor(pw)));
 // where the ring stands at time t: f how full it is, and e the timing error in ms (early is negative)
-function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=(t-g.t0)%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
+function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=Math.max(0,t-g.t0)%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
 // A flick inside the window is on time. Outside it, the strike is judged on how many windows off it was: six is as bad
 // as it gets, and an early one that caught the ring still in the red is a shank.
 function judge(te,tf,pw){const x=Math.abs(te)/timingWindow(pw);return{onTime:x<=1,q:clamp((x-1)/5,0,1),shank:te<0&&x>1&&tf<SHANK}}
@@ -1149,15 +1150,19 @@ cv.addEventListener('pointerdown',e=>{
   const p=gPos(e);hintOff();
   if(S.club.putt&&S.pmode==='aim'){S.g={id:e.pointerId,drag:true,x:p.x,y:p.y};return}
   S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},anc:null,still:0,lp:null,fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,
-    off:Math.abs(performance.now()-e.timeStamp)<3000?0:performance.now()-e.timeStamp}; // timing uses each touch's own timestamp, not when it was processed
+    off:0,cl:performance.now()-e.timeStamp};
+  // Timing uses each touch's own timestamp, not when it was processed. Those timestamps are meant to share a clock with
+  // performance.now(), which draws the ring, but on some devices (iPads among them) the two drift apart, and the ring then ran
+  // out of step with the finger or did not fill at all. cl is the smallest gap seen between the two clocks during this
+  // gesture; when the ring starts, anything more than ordinary delay (30 ms) is taken as the clocks' difference and allowed for.
   S.mode='aim'});
 cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)return;
   if(g.drag){const p=gPos(e),w=rotv(p.x-g.x,p.y-g.y,-cam.r),b=S.ball;g.x=p.x;g.y=p.y;
     let mx=S.mark.x+w.x/cam.s*.75,my=S.mark.y+w.y/cam.s*.75;const d=hyp(mx-b.x,my-b.y),k=d>70?70/d:d<.3?0:1;
     if(k){S.mark.x=b.x+(mx-b.x)*k;S.mark.y=b.y+(my-b.y)*k}hudClub();return}
-  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
+  g.cl=Math.min(g.cl,performance.now()-e.timeStamp);const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of(evs.length?evs:[e])){if(!S.g)break;const p=gPos(ev);sample(ev.timeStamp||e.timeStamp,p.x,p.y)}});
-function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14)g.t0=t+g.off}
+function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14){g.off=g.cl>=0&&g.cl<30?0:g.cl;g.t0=t+g.off}}
 function toSwing(g){const k=g.peak,m=meterAt(g,g.ft||performance.now());g.phase='swing';g.slow=0;g.lp=null;g.top={x:k.x,y:k.y};g.pull=k.d;g.power=clamp(k.d/pullMax(),0,1);
   g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f;
   if(S.tut&&S.tut.step==='pull'){g.e=0;g.frozen=1}} // the first lesson is the motion alone: any flick is a good one
@@ -1736,10 +1741,10 @@ function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=[];S.muted=!!
 // is idle: the motion alone (no ring, any flick is good), the same with the ring, moving the putt marker, and the putt.
 // Nothing counts and Skip is always there.
 const RANGE_HOLE=()=>courseIds('lp','f')[7];   // a wide, straight hole to hit down
-const STEPS=['pull','time','mark','putt'],STEP_TITLE={pull:'Pull down, flick up',time:'Flick on gold',mark:'Aim the putt',putt:'Roll it in'};
+const STEPS=['pull','time','mark','putt'],STEP_TITLE={pull:'Pull down, flick up',time:'Flick on gold',mark:'Putting: first, aim',putt:'Putting: then hit'};
 // te, where given, puts a tick on a small bar showing when the flick came against gold
 function coach(text,te){const t=S.tut,sw=t.step==='pull'||t.step==='time',n=$('coachNext'),bar=$('coachBar');$('coachStep').textContent='Practice · '+(STEPS.indexOf(t.step)+1)+' of 4';$('coachTitle').textContent=STEP_TITLE[t.step];
-  $('coachText').textContent=text;n.textContent=sw?'Putting':'Play';n.disabled=!t.good;bar.hidden=te==null;if(te!=null)bar.querySelector('b').style.left=clamp((te+500)/700,0,1)*100+'%'}
+  $('coachText').textContent=text;n.textContent=t.step==='putt'||(!sw&&t.good)?'Play':'Next';n.classList.toggle('ghost',!t.good);bar.hidden=te==null;if(te!=null)bar.querySelector('b').style.left=clamp((te+500)/700,0,1)*100+'%'}
 function rangeSpot(){const h=cur();if(S.tut.step==='pull'||S.tut.step==='time')return h.tee;const dx=h.tee.x-h.pin.x,dy=h.tee.y-h.pin.y,d=hyp(dx,dy);for(const k of[7,5.5,4,3]){const p={x:h.pin.x+dx/d*k,y:h.pin.y+dy/d*k};if(inSh(h.green,p,-1))return p}return{x:h.green.x,y:h.green.y}}
 function rangeSet(){const p=rangeSpot();setBall(p.x,p.y);S.strokes=0;setupShot();S.tut.m0={x:S.mark.x,y:S.mark.y};S.idle0=performance.now();S.mode='ready';aimCam();hud()}
 function startRange(){closeSheet();S.round={type:'range',ids:[RANGE_HOLE()],scores:[],course:null};S.hi=0;S.marks=[];S.tut={step:'pull',n:0,good:false,moved:false};const h=cur();h.wind.x=h.wind.y=0;h.wind.sp=0;
@@ -1749,19 +1754,25 @@ function rangeAfter(holed,note){const t=S.tut,l=S.last||{},h=cur();
   else if(t.step==='time'){const ok=!note&&!l.shank&&Math.abs(l.te)<=150;t.good=t.good||ok;
     coach(note||(l.shank?'Far too early. Let the ring leave the red.':l.pure?'Pure. Pull farther for power, sideways to aim.':ok?'Good. Pull farther for power, sideways to aim.':l.early?'Early. Wait for gold.':'Late. Flick as it reaches gold.'),note?null:l.te)}
   else{const ft=Math.round(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*3),ok=holed||ft<=4;t.good=t.good||ok;t.step='mark';t.moved=false;
-    coach(holed?'Holed.':ok?'Close: '+ft+' ft.':ft+' ft away. Aim the marker up the slope and try again.')}
+    coach(holed?'Holed.':ok?'Close: '+ft+' ft.':ft+' ft away. Aim the marker up the slope, tap Putt and try again.')}
   rangeSet()}
 // pulled back and let go without flicking
 function rangeLift(){const t=S.tut;if(t&&t.step!=='mark')coach('Keep your thumb down, then flick up.')}
 // the marker was dragged: on to the Putt button
-function rangeDragged(){const t=S.tut;if(t&&t.step==='mark'&&!t.moved&&hyp(S.mark.x-t.m0.x,S.mark.y-t.m0.y)>.4){t.moved=true;coach('Now press Putt.')}}
-function rangePutt(){const t=S.tut;if(!t||(t.step!=='mark'&&t.step!=='putt'))return;t.step=S.pmode==='stroke'?'putt':'mark';coach(t.step==='putt'?'Pull down, flick up on gold.':'Drag to move the marker.')}
+function rangeDragged(){const t=S.tut;if(t&&t.step==='mark'&&!t.moved&&hyp(S.mark.x-t.m0.x,S.mark.y-t.m0.y)>.4){t.moved=true;coach('Aimed. Now tap Putt, bottom right, to switch to hitting.')}}
+function rangePutt(){const t=S.tut;if(!t||(t.step!=='mark'&&t.step!=='putt'))return;t.step=S.pmode==='stroke'?'putt':'mark';coach(t.step==='putt'?PUTT_TEXT:t.moved?'Aiming again. Drag the marker, then tap Putt.':MARK_TEXT)}
 // After the range a new player is asked their name (or, arriving by an invite, to join that clubhouse), so play is recorded
 // under a player from the first real round. Someone already known goes straight to the menu.
 function endRange(){store('tut',1);$('app').classList.remove('tut');$('coach').hidden=true;hintOff();titleCard();
   Net.loaded.then(()=>{if(C.me||S.mode!=='title')return;C.invite&&C.club&&!C.club.member?formCard('join'):formCard('welcome')})}
 $('coachSkip').onclick=endRange;
-$('coachNext').onclick=()=>{const t=S.tut;if(!t||!t.good)return;if(t.step==='pull'||t.step==='time'){t.step='mark';t.good=false;t.moved=false;S.last=null;rangeSet();coach('Drag to move the marker to where the putt should stop. The streaks run downhill.')}else endRange()};
+// Next always moves on, whether or not the step was done: nobody should be stuck on a lesson.
+const MARK_TEXT='You are not hitting yet. Drag the marker to where the ball should stop. The streaks run downhill.',PUTT_TEXT='Pull down, flick up on gold. The marker sets how hard it rolls.';
+$('coachNext').onclick=()=>{const t=S.tut;if(!t||S.mode!=='ready'||S.g)return;
+  if(t.step==='pull'){t.step='time';t.n=2;S.last=null;rangeSet();coach('Now the ring. Flick as it reaches gold.')}
+  else if(t.step==='time'){t.step='mark';t.good=false;t.moved=false;S.last=null;rangeSet();coach(MARK_TEXT)}
+  else if(t.step==='mark'&&!t.good){S.pmode='stroke';S.idle0=performance.now();aimCam();rangePutt();hud()}
+  else endRange()};
 
 // ───────── boot, and staying current while a round is open
 // A new build can arrive mid-round: the round is saved after every stroke, so it resumes where it stood.

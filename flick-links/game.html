@@ -243,6 +243,7 @@ table.st{width:100%;border-collapse:collapse;border:1.5px solid var(--rule);back
         <span class="num" id="hWind">0</span><span class="lbl">mph</span>
       </div>
       <div class="tools">
+        <button class="plate round" id="btnExit" aria-label="Leave the round">✕</button>
         <button class="plate round" id="btnSound" aria-label="Sound" aria-pressed="true">♪</button>
         <button class="plate round" id="btnHelp" aria-label="How to play">?</button>
       </div>
@@ -1331,7 +1332,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='snow'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795733132000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795733417000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -1349,9 +1350,11 @@ const S={mode:'title',key:'',day:1,holes:[],round:{type:'daily',ids:[0,1,2],scor
 const HOLE=i=>ALL[i]?S.holes[i]||(S.holes[i]=buildHole(i,S.key)):undefined;
 const cur=()=>HOLE(S.round.ids[S.hi]);
 const maxScore=()=>cur().par+MAX_OVER;
-const saveKey=()=>S.round.type==='nine'?S.key+':rd:'+S.round.course+':'+(S.round.part||'f'):S.key;
+// where a round in progress is kept: the daily under its date; a practice round under its course and nine, whatever the day,
+// so one saved today can be picked up tomorrow
+const saveKey=()=>S.round.type==='nine'?'rd:'+S.round.course+':'+(S.round.part||'f'):S.key;
 const onRange=()=>S.round.type==='range';
-function save(){if(onRange())return;const n=S.round.ids.length;store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n,hs:S.hs,log:S.round.log||[]})}
+function save(){if(onRange())return;const n=S.round.ids.length;store(saveKey(),{day:S.key,ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n,hs:S.hs,log:S.round.log||[]})}
 // ───────── the record of play
 // Every finished round, daily or practice, is kept hole by hole, so that any table, record or badge thought of later can be worked
 // out from what was actually played. For each hole (S.hs while it is in play):
@@ -1610,7 +1613,7 @@ function holed(){const b=S.ball,h=cur();b.x=h.pin.x;b.y=h.pin.y;b.vx=b.vy=b.vz=b
   finishHole(S.strokes)}
 function finishHole(score){if(onRange()){S.mode='wait';return setTimeout(()=>rangeAfter(true),700)}S.mode='wait';S.round.scores[S.hi]=score;S.strokes=0;const n=S.round.ids.length,last=S.hi>=n-1,h=cur(),hs=S.hs||newHs();
   (S.round.log=S.round.log||[])[S.hi]={k:h.course.id+h.k,par:h.par,s:score,p:hs.p,pen:hs.pen,sw:hs.sw,pure:hs.pure,fw:hs.fw,gir:hs.gir,dr:hs.dr,fp:hs.fp,hf:hs.hf,chip:hs.chip};S.hs=null;
-  store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last,hs:null,log:S.round.log});
+  store(saveKey(),{day:S.key,ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last,hs:null,log:S.round.log});
   if(last)logRound();
   if(last){if(S.round.type==='daily')bumpStreak();refresh()} // refresh posts the finished card to the clubhouse
   setTimeout(()=>holeCard(score),900)}
@@ -1649,7 +1652,7 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n)+(Math.abs(h.drop)>=60?' · '+(h.drop>0?'drops ':'climbs ')+Math.abs(h.drop).toLocaleString()+' ft':'');
-  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();S.fresh=!fetchKey('seen');S.fewPutts=(fetchKey('putts')||0)<2;
+  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('btnExit').hidden=onRange();S.fresh=!fetchKey('seen');S.fewPutts=(fetchKey('putts')||0)<2;
   $('btnPutt').classList.toggle('pulse',!!(onRange()&&S.tut&&S.tut.step==='mark'&&S.tut.moved&&S.pmode==='aim'));$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
@@ -1665,7 +1668,7 @@ function hintOff(){$('hint').style.opacity=0}
 $('chipSeg').onclick=e=>{const b=e.target.closest('[data-s]');if(b){ac();setChip(+b.dataset.s)}};
 $('clubPrev').onclick=()=>changeClub(-1);$('clubNext').onclick=()=>changeClub(1);
 $('btnSound').onclick=()=>{S.muted=!S.muted;$('btnSound').setAttribute('aria-pressed',String(!S.muted));store('muted',S.muted);if(!S.muted)sfx.putt()};
-$('btnHelp').onclick=()=>{if(S.mode==='ready')helpCard()};
+$('btnHelp').onclick=()=>{if(S.mode==='ready')helpCard()};$('btnExit').onclick=()=>{if(S.mode==='ready')leaveCard()};
 $('btnPutt').onclick=()=>{if(S.mode!=='ready'||!S.club.putt)return;S.pmode=S.pmode==='aim'?'stroke':'aim';S.idle0=performance.now();aimCam();if(onRange())rangePutt();hud()};
 const LocalServer=(()=>{
 // The whole clubhouse server as one portable module. It needs only web-standard Request, Response and crypto,
@@ -1690,8 +1693,9 @@ const numDay=n=>new Date(n*864e5).toISOString().slice(0,10);
 const CODE='ABCDEFGHJKMNPQRSTUVWXYZ23456789',COOKIE='fl';
 
 // ───────── a player's own numbers, all derived from their rounds (newest first)
-// Handicap: how many strokes over the course rating a player takes for eighteen holes, on average, across the last 180 holes
-// they played (daily threes and practice alike, in the order played). It needs eighteen holes. Below zero is a "plus" handicap.
+// Handicap: how many strokes over the course rating a player takes for eighteen holes, on average, across the last 90 holes
+// that count, in the order played. Daily threes count, and events when there are any; practice does not (it can be replayed,
+// abandoned, and played where it suits). It needs nine holes: three days. Below zero is a "plus" handicap.
 //
 // The rating of a hole is what the house pro scores on it: a computer player that never mistimes a swing (tools/rate_courses.js,
 // which writes the table below). Par would not do. A good player beats par on most holes here, and some nines play ten strokes
@@ -1701,14 +1705,15 @@ const CODE='ABCDEFGHJKMNPQRSTUVWXYZ23456789',COOKIE='fl';
 // RATING:BEGIN (written by tools/rate_courses.js; do not edit by hand)
 const RATING={"gr":[3.63,4.31,2.5,4.25,3.31,3.25,3.88,2.81,3.25],"lp":[3.5,4,4.5,2.81,4.31,2.38,3.69,4,3.5,3.81,3.5,2.94,4.38,5,3.13,2.5,3.13,3.81],"hk":[2.94,3.19,4.31,3.13,2.94,3.81,3.19,2.94,3.06],"jc":[4.06,2.81,3.69,3.56,2.88,3.94,3.63,3.56,3.38,4.63,3.69,2.94,3.69,2.75,3.69,4,3.31,3.88],"mu":[2.94,2.75,3.88,3.25,3.81,3.13,3.63,2.31,3.19,3.69,3.94,3.81,2.69,3.5,3.25,2.63,3.75,2.69],"om":[3.31,3.63,2.75,3.13,4.44,2.31,4.06,3.44,4,3.69,3.19,2.94,3.19,2.75,3.44,3.31,3.44,3.5],"ts":[3.56,4.38,3.19,3.75,3.63,4.19,4.63,3.5,3.81,3.25,4.13,4,3.19,3.81,3.63,4.5,3.44,4.31],"an":[4,5.25,3.31,3,4.38,3,3.75,3.56,3.88,4,4.25,4.5,4.38,3.19,5.5,2.5,3.63,3.25],"pb":[3.44,3.44,3.5,3,2.88,3.94,2.5,3.19,3.94,4.38,3.56,2.81,3.63,5.75,3.63,3.94,2.56,3.5],"sa":[3.44,3.94,3.88,3.81,3.56,4,3.56,2.38,3.13,3.25,2.38,2.88,3.44,3.88,4.56,3.94,3.31,3.31],"ba":[3.94,4.06,2.81,3.88,3.69,5,3.69,3.63,3.63,3.5,3.94,3.31,4.44,3.06,2.69,4.25,4.06,4.63],"tl":[3.69,2.5,4.44,4.56,2.75,4,4.06,3.69,3.38,4.06,4.81,2.94,3,4.13,2.94,3.5,2.63,4.88]};
 // RATING:END
-const HCP_HOLES=180,rated=h=>{const m=/^([a-z]{2})(\d+)$/.exec(h.k||''),r=m&&RATING[m[1]]&&RATING[m[1]][m[2]-1];return r!=null?r:h.par-.55}; // a hole not yet rated: about what the pro averages everywhere
-function handicap(plays){const H=plays.flatMap(p=>p.holes).slice(-HCP_HOLES);if(H.length<18)return null;return Math.round(total(H.map(h=>h.s-rated(h)))/H.length*180)/10}
+const HCP_HOLES=90,HCP_MIN=9,counts=p=>p.kind!=='practice',rated=h=>{const m=/^([a-z]{2})(\d+)$/.exec(h.k||''),r=m&&RATING[m[1]]&&RATING[m[1]][m[2]-1];return r!=null?r:h.par-.55}; // a hole not yet rated: about what the pro averages everywhere
+function handicap(plays){const H=plays.filter(counts).flatMap(p=>p.holes).slice(-HCP_HOLES);if(H.length<HCP_MIN)return null;return Math.round(total(H.map(h=>h.s-rated(h)))/H.length*180)/10}
 function streakOf(rs,day){const set=new Set(rs.map(r=>r.day));let d=dayNum(day),n=0;if(!set.has(day))d--;while(set.has(numDay(d))){n++;d--}return n}
 function maxStreak(rs){const ds=[...new Set(rs.map(r=>dayNum(r.day)))].sort((a,b)=>a-b);let best=0,run=0,prev=null;for(const d of ds){run=prev!==null&&d===prev+1?run+1:1;best=Math.max(best,run);prev=d}return best}
 // A course here is nine or eighteen holes; the ball and tour awards need to know which. Keep in step with COURSES in src/20-course.js.
 const SIZE={gr:9,lp:18,hk:9,jc:18,mu:18,om:18,ts:18,an:18,pb:18,sa:18,ba:18,tl:18};
 // rs: the daily cards (streak and best come from these alone, since everyone plays the same holes once).
 // logs: the full record of play, daily and practice. Handicap, trophies and balls count all of it.
+// counted: how many of a player's holes count toward the handicap.
 //   balls, per course: b bronze, a full round under par; s silver, a birdie or better on every hole (n so far, over any
 //   number of rounds); g gold, a full round ten under or better (five on a nine-hole course).
 function personal(rs,day,logs=[]){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{id,n:0,day:d}).n++},bird={},balls={},full={};
@@ -1729,7 +1734,7 @@ function personal(rs,day,logs=[]){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{i
   if(Object.keys(SIZE).every(c=>full[c]))tro.tour={id:'tour',n:1};
   const ms=maxStreak(rs);if(ms>=7)tro.week={id:'week',n:1};if(ms>=30)tro.month={id:'month',n:1};
   const best=rs.reduce((b,r)=>!b||r.tot-r.par<b.tot-b.par?r:b,null);
-  return{rounds:rs.length,holes:total(plays.map(p=>p.holes.length)),hcp:handicap(plays),best:best&&{tot:best.tot,par:best.par,day:best.day},streak:streakOf(rs,day),trophies:Object.values(tro),balls}}
+  return{rounds:rs.length,holes:total(plays.map(p=>p.holes.length)),counted:total(plays.filter(counts).map(p=>p.holes.length)),hcp:handicap(plays),best:best&&{tot:best.tot,par:best.par,day:best.day},streak:streakOf(rs,day),trophies:Object.values(tro),balls}}
 
 // ───────── storage helpers
 const roundsOf=async(store,pid)=>(await store.list('r:'+pid+':')).map(x=>x.v).sort((a,b)=>a.day<b.day?1:-1);
@@ -1909,7 +1914,7 @@ const tabToday=c=>`<ol class="lb">${c.today.map((m,i)=>{const r=m.round;return`<
   r?`<span class="hs">${r.scores.map((s,j)=>mk(s,r.pars[j])).join('')}</span><span class="tt">${r.tot}<small>${rel(r.tot-r.par)}</small></span>`:'<span class="wait">yet to play</span>'}</li>`}).join('')}</ol>`;
 const tabStandings=c=>`<table class="st"><tr><th>Member</th><th>Hcp</th><th>Rounds</th><th>Wins</th><th>Streak</th></tr>${c.standings.map(m=>
   `<tr class="${m.me?'me':''}"><td>${esc(m.nick)}</td><td><b>${hcpStr(m.hcp)}</b></td><td>${m.rounds}</td><td>${m.wins}</td><td>${m.streak}</td></tr>`).join('')}</table>
-<p class="fine">Handicap counts every hole played, daily and practice.</p>`;
+<p class="fine">Handicap counts the daily holes only.</p>`;
 // Records: the best daily three there has been, then each course's record from practice rounds (the full course and each nine),
 // then the honours board. The front nine is the holes numbered 1 to 9, whichever nine the course was built with first.
 function tabRecords(c){const rec=c.records,cr=rec.courses||{},cell=r=>r?`<b>${rel(r.tot-r.par)}</b><small>${esc(r.nick)}</small>`:'<i>·</i>';
@@ -1958,7 +1963,7 @@ async function syncLog(){if(!C.me)return false;const L=fetchKey('log')||[],todo=
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
   sheet(`<p class="eyebrow">Your stats${m.user?' · @'+esc(m.user):''}</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
-<p class="fine">${st.hcp==null?'Handicap after '+plural(Math.max(1,18-(st.holes||0)),'more hole')+', daily or practice.':'Handicap: strokes over the course rating for eighteen holes, averaged over your last 180. The rating is what a computer pro scores.'}</p>
+<p class="fine">${st.hcp==null?'Handicap after '+plural(Math.max(1,9-(st.counted||0)),'more daily hole')+'. Practice does not count.':'Handicap: strokes over the course rating for eighteen holes, averaged over your last 90 daily holes. The rating is what a computer pro scores.'}</p>
 ${gameTable()}<p class="eyebrow">Balls</p><div class="balls">${COURSES.map(c=>{const b=(st.balls||{})[c.id]||{},n=courseIds(c.id,'a').length;
   return`<div><b>${c.club}</b><i class="ball bz${b.b?' on':''}"></i><i class="ball sv${b.s?' on':''}"></i><i class="ball gd${b.g?' on':''}"></i><small>${b.n||0}/${n}</small></div>`}).join('')}</div>
 <p class="fine">Bronze: a full round under par. Silver: a birdie on every hole. Gold: ten under.</p>
@@ -2030,16 +2035,26 @@ ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
 ${saveStrip()}${clubStrip()}
 ${[['Famous courses',COURSES.filter(c=>FAMOUS.includes(c.id))],['Fantasy, on real ground',COURSES.filter(c=>WILD.includes(c.id))],['Texas',COURSES.filter(c=>!FAMOUS.includes(c.id)&&!WILD.includes(c.id))]].map(([t,cs])=>`<p class="eyebrow">Practice · ${t}</p>
-<div class="pick">${cs.map(c=>`<button class="btn green sm" data-act="course" data-c="${c.id}">${c.club}</button>`).join('')}</div>`).join('')}`,titleCard)}
+<div class="pick">${cs.map(c=>{const n=['f','b','a'].map(p=>inPlay(c.id,p)).find(Boolean);return`<button class="btn green sm" data-act="course" data-c="${c.id}">${c.club}${n?'<small>In play · No. '+n+'</small>':''}</button>`}).join('')}</div>`).join('')}`,titleCard)}
 // a course with both nines asks which to play
 function courseCard(id){const c=COURSES.find(c=>c.id===id),opt=(p,l)=>{const hs=courseIds(id,p).map(INFO);
-    return`<button class="btn green" data-act="nine" data-c="${id}" data-p="${p}">${l}<small>Par ${sum(hs.map(h=>h.par))} · ${sum(hs.map(h=>h.yards)).toLocaleString()} yd</small></button>`};
+    const n=inPlay(id,p);return`<button class="btn green" data-act="nine" data-c="${id}" data-p="${p}">${l}<small>${n?'In play · No. '+n:'Par '+sum(hs.map(h=>h.par))+' · '+sum(hs.map(h=>h.yards)).toLocaleString()+' yd'}</small></button>`};
   sheet(`<p class="eyebrow">Practice</p><h2>${c.club}</h2>${opt('f','Front nine')}${opt('b','Back nine')}${opt('a','Eighteen holes')}<button class="btn ghost" data-act="title">Back</button>`)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>Putting.</b> Drag the marker to where a flat putt should stop. Press Putt, then flick on gold. The streaks run downhill.</p>
 <p class="fine"><b>Trouble.</b> Water: drop at the edge, +1. Out of bounds or lost: replay, +1.</p>
 <p class="fine">© OpenStreetMap contributors.</p>
 <div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button></div>`)}
+// Leaving a round part-way. Its place is always kept (every shot is saved as it is played); a practice round can also be thrown away.
+function leaveCard(){const nine=S.round.type==='nine',h=cur();
+  sheet(`<p class="eyebrow">${nine?'Practice · '+h.course.club:"Today's three"}</p><h2>Leave the round?</h2>
+<button class="btn" data-act="close">Carry on</button>
+<button class="btn green" data-act="leave">Save and exit<small>Pick it up again at No. ${h.n}</small></button>
+${nine?'<button class="btn ghost" data-act="quit">Quit the round</button>':''}`)}
+function quitCard(){sheet(`<p class="eyebrow">Practice · ${cur().course.club}</p><h2>Quit this round?</h2><p class="fine">Its score so far will be lost.</p>
+<div class="row"><button class="btn" data-act="quitsure">Quit</button><button class="btn ghost" data-act="close">Keep playing</button></div>`)}
+// the hole a saved practice round has reached, or 0 if there is none
+const inPlay=(c,p)=>{const sv=fetchKey('rd:'+c+':'+p),ids=courseIds(c,p);return sv&&!sv.done&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length&&(sv.hi>0||sv.strokes>0)?INFO(ids[sv.hi]).n:0};
 function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:INFO(S.round.ids[S.hi+1]);
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
 ${scoreCard(S.round.ids,S.round.scores)}
@@ -2075,6 +2090,9 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='next'){closeSheet();startHole(S.hi+1)}
   else if(a==='results')resultsCard();
   else if(a==='title')titleCard();
+  else if(a==='leave'){save();titleCard()}
+  else if(a==='quit')quitCard();
+  else if(a==='quitsure'){store(saveKey(),null);titleCard()}
   else if(a==='share')share();
   else if(a==='range')startRange();
   else if(a==='me')meCard();
@@ -2097,7 +2115,9 @@ function startHole(i,sv){clearTimeout(S.hzT);closeSheet();S.hi=i;S.marks=[];S.sh
   hintOff();if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
 function begin(type,course,part){const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';if(nine&&(!COURSES.find(c=>c.id===course).more||!/^[fba]$/.test(part||'')))part='f';
-  S.round={type,course:nine?course:null,part:nine?part:null,ids:[],scores:[],log:[]};const sv=fetchKey(saveKey());if(sv&&Array.isArray(sv.log))S.round.log=sv.log;S.round.ids=nine?courseIds(course,part):todaysIds(sv);const ids=S.round.ids;
+  S.round={type,course:nine?course:null,part:nine?part:null,ids:[],scores:[],log:[]};let sv=fetchKey(saveKey())||(nine?fetchKey(S.key+':rd:'+course+':'+part):null); // (the second: a round saved before practice saves outlived the day)
+  if(nine&&sv&&sv.done&&sv.day!==S.key)sv=null; // yesterday's finished card: start afresh
+  if(sv&&Array.isArray(sv.log))S.round.log=sv.log;S.round.ids=nine?courseIds(course,part):todaysIds(sv);const ids=S.round.ids;
   if(sv&&sv.done&&Array.isArray(sv.scores)){S.round.scores=sv.scores;return resultsCard()}
   if(sv&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length){S.round.scores=sv.scores.slice(0,sv.hi);startHole(sv.hi,sv)}else startHole(0)}
 function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=[];S.muted=!!fetchKey('muted');

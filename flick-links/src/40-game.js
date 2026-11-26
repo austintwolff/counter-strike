@@ -49,9 +49,11 @@ const S={mode:'title',key:'',day:1,holes:[],round:{type:'daily',ids:[0,1,2],scor
 const HOLE=i=>ALL[i]?S.holes[i]||(S.holes[i]=buildHole(i,S.key)):undefined;
 const cur=()=>HOLE(S.round.ids[S.hi]);
 const maxScore=()=>cur().par+MAX_OVER;
-const saveKey=()=>S.round.type==='nine'?S.key+':rd:'+S.round.course+':'+(S.round.part||'f'):S.key;
+// where a round in progress is kept: the daily under its date; a practice round under its course and nine, whatever the day,
+// so one saved today can be picked up tomorrow
+const saveKey=()=>S.round.type==='nine'?'rd:'+S.round.course+':'+(S.round.part||'f'):S.key;
 const onRange=()=>S.round.type==='range';
-function save(){if(onRange())return;const n=S.round.ids.length;store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n,hs:S.hs,log:S.round.log||[]})}
+function save(){if(onRange())return;const n=S.round.ids.length;store(saveKey(),{day:S.key,ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n,hs:S.hs,log:S.round.log||[]})}
 // ───────── the record of play
 // Every finished round, daily or practice, is kept hole by hole, so that any table, record or badge thought of later can be worked
 // out from what was actually played. For each hole (S.hs while it is in play):
@@ -310,7 +312,7 @@ function holed(){const b=S.ball,h=cur();b.x=h.pin.x;b.y=h.pin.y;b.vx=b.vy=b.vz=b
   finishHole(S.strokes)}
 function finishHole(score){if(onRange()){S.mode='wait';return setTimeout(()=>rangeAfter(true),700)}S.mode='wait';S.round.scores[S.hi]=score;S.strokes=0;const n=S.round.ids.length,last=S.hi>=n-1,h=cur(),hs=S.hs||newHs();
   (S.round.log=S.round.log||[])[S.hi]={k:h.course.id+h.k,par:h.par,s:score,p:hs.p,pen:hs.pen,sw:hs.sw,pure:hs.pure,fw:hs.fw,gir:hs.gir,dr:hs.dr,fp:hs.fp,hf:hs.hf,chip:hs.chip};S.hs=null;
-  store(saveKey(),{ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last,hs:null,log:S.round.log});
+  store(saveKey(),{day:S.key,ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last,hs:null,log:S.round.log});
   if(last)logRound();
   if(last){if(S.round.type==='daily')bumpStreak();refresh()} // refresh posts the finished card to the clubhouse
   setTimeout(()=>holeCard(score),900)}
@@ -349,7 +351,7 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n)+(Math.abs(h.drop)>=60?' · '+(h.drop>0?'drops ':'climbs ')+Math.abs(h.drop).toLocaleString()+' ft':'');
-  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();S.fresh=!fetchKey('seen');S.fewPutts=(fetchKey('putts')||0)<2;
+  $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('btnExit').hidden=onRange();S.fresh=!fetchKey('seen');S.fewPutts=(fetchKey('putts')||0)<2;
   $('btnPutt').classList.toggle('pulse',!!(onRange()&&S.tut&&S.tut.step==='mark'&&S.tut.moved&&S.pmode==='aim'));$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
@@ -365,5 +367,5 @@ function hintOff(){$('hint').style.opacity=0}
 $('chipSeg').onclick=e=>{const b=e.target.closest('[data-s]');if(b){ac();setChip(+b.dataset.s)}};
 $('clubPrev').onclick=()=>changeClub(-1);$('clubNext').onclick=()=>changeClub(1);
 $('btnSound').onclick=()=>{S.muted=!S.muted;$('btnSound').setAttribute('aria-pressed',String(!S.muted));store('muted',S.muted);if(!S.muted)sfx.putt()};
-$('btnHelp').onclick=()=>{if(S.mode==='ready')helpCard()};
+$('btnHelp').onclick=()=>{if(S.mode==='ready')helpCard()};$('btnExit').onclick=()=>{if(S.mode==='ready')leaveCard()};
 $('btnPutt').onclick=()=>{if(S.mode!=='ready'||!S.club.putt)return;S.pmode=S.pmode==='aim'?'stroke':'aim';S.idle0=performance.now();aimCam();if(onRange())rangePutt();hud()};

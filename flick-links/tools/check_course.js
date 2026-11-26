@@ -45,7 +45,7 @@ const page = 'file://' + path.resolve(__dirname, '..', 'index.html') + '#dev';
     console.log(`No. ${info.n} ${info.name} · par ${info.par} · ${info.card} yd (line ${info.line}) · built in ${info.ms} ms · ${info.water} water, ${info.bunkers} bunkers, ${info.trees}+${info.solid} trees` + (notes.length ? '   <-- ' + notes.join('; ') : ''));
   }
   // a bot plays the nine: full shots at the pin or up the line, putts at the cup
-  await p.evaluate(([id, part]) => { const f = __fl, S = f.S; localStorage.removeItem('flicklinks:v2:' + S.key + ':rd:' + id + ':' + part); f.S.holes.length = 0; f.begin('nine', id, part);
+  await p.evaluate(([id, part]) => { const f = __fl, S = f.S; localStorage.removeItem('flicklinks:v2:rd:' + id + ':' + part); f.S.holes.length = 0; f.begin('nine', id, part);
     window.bot = async () => { const log = [], until = (fn, ms = 25000) => new Promise((res, rej) => { const t0 = Date.now(), i = setInterval(() => { if (fn()) { clearInterval(i); res(); } else if (Date.now() - t0 > ms) { clearInterval(i); rej(new Error('stuck in mode ' + S.mode)); } }, 40); });
       await until(() => S.mode === 'ready' || S.mode === 'intro'); if (S.mode === 'intro') S.mode = 'ready'; let n = 0;
       while (S.mode === 'ready' && n++ < 18) { const h = f.cur(), b = S.ball, c = S.club, dx = h.pin.x - b.x, dy = h.pin.y - b.y, d = Math.hypot(dx, dy);

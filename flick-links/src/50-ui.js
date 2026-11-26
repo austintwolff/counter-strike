@@ -38,16 +38,26 @@ ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
 ${saveStrip()}${clubStrip()}
 ${[['Famous courses',COURSES.filter(c=>FAMOUS.includes(c.id))],['Fantasy, on real ground',COURSES.filter(c=>WILD.includes(c.id))],['Texas',COURSES.filter(c=>!FAMOUS.includes(c.id)&&!WILD.includes(c.id))]].map(([t,cs])=>`<p class="eyebrow">Practice · ${t}</p>
-<div class="pick">${cs.map(c=>`<button class="btn green sm" data-act="course" data-c="${c.id}">${c.club}</button>`).join('')}</div>`).join('')}`,titleCard)}
+<div class="pick">${cs.map(c=>{const n=['f','b','a'].map(p=>inPlay(c.id,p)).find(Boolean);return`<button class="btn green sm" data-act="course" data-c="${c.id}">${c.club}${n?'<small>In play · No. '+n+'</small>':''}</button>`}).join('')}</div>`).join('')}`,titleCard)}
 // a course with both nines asks which to play
 function courseCard(id){const c=COURSES.find(c=>c.id===id),opt=(p,l)=>{const hs=courseIds(id,p).map(INFO);
-    return`<button class="btn green" data-act="nine" data-c="${id}" data-p="${p}">${l}<small>Par ${sum(hs.map(h=>h.par))} · ${sum(hs.map(h=>h.yards)).toLocaleString()} yd</small></button>`};
+    const n=inPlay(id,p);return`<button class="btn green" data-act="nine" data-c="${id}" data-p="${p}">${l}<small>${n?'In play · No. '+n:'Par '+sum(hs.map(h=>h.par))+' · '+sum(hs.map(h=>h.yards)).toLocaleString()+' yd'}</small></button>`};
   sheet(`<p class="eyebrow">Practice</p><h2>${c.club}</h2>${opt('f','Front nine')}${opt('b','Back nine')}${opt('a','Eighteen holes')}<button class="btn ghost" data-act="title">Back</button>`)}
 function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine"><b>Putting.</b> Drag the marker to where a flat putt should stop. Press Putt, then flick on gold. The streaks run downhill.</p>
 <p class="fine"><b>Trouble.</b> Water: drop at the edge, +1. Out of bounds or lost: replay, +1.</p>
 <p class="fine">© OpenStreetMap contributors.</p>
 <div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button></div>`)}
+// Leaving a round part-way. Its place is always kept (every shot is saved as it is played); a practice round can also be thrown away.
+function leaveCard(){const nine=S.round.type==='nine',h=cur();
+  sheet(`<p class="eyebrow">${nine?'Practice · '+h.course.club:"Today's three"}</p><h2>Leave the round?</h2>
+<button class="btn" data-act="close">Carry on</button>
+<button class="btn green" data-act="leave">Save and exit<small>Pick it up again at No. ${h.n}</small></button>
+${nine?'<button class="btn ghost" data-act="quit">Quit the round</button>':''}`)}
+function quitCard(){sheet(`<p class="eyebrow">Practice · ${cur().course.club}</p><h2>Quit this round?</h2><p class="fine">Its score so far will be lost.</p>
+<div class="row"><button class="btn" data-act="quitsure">Quit</button><button class="btn ghost" data-act="close">Keep playing</button></div>`)}
+// the hole a saved practice round has reached, or 0 if there is none
+const inPlay=(c,p)=>{const sv=fetchKey('rd:'+c+':'+p),ids=courseIds(c,p);return sv&&!sv.done&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length&&(sv.hi>0||sv.strokes>0)?INFO(ids[sv.hi]).n:0};
 function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:INFO(S.round.ids[S.hi+1]);
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
 ${scoreCard(S.round.ids,S.round.scores)}
@@ -83,6 +93,9 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='next'){closeSheet();startHole(S.hi+1)}
   else if(a==='results')resultsCard();
   else if(a==='title')titleCard();
+  else if(a==='leave'){save();titleCard()}
+  else if(a==='quit')quitCard();
+  else if(a==='quitsure'){store(saveKey(),null);titleCard()}
   else if(a==='share')share();
   else if(a==='range')startRange();
   else if(a==='me')meCard();
@@ -105,7 +118,9 @@ function startHole(i,sv){clearTimeout(S.hzT);closeSheet();S.hi=i;S.marks=[];S.sh
   hintOff();if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
 function begin(type,course,part){const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';if(nine&&(!COURSES.find(c=>c.id===course).more||!/^[fba]$/.test(part||'')))part='f';
-  S.round={type,course:nine?course:null,part:nine?part:null,ids:[],scores:[],log:[]};const sv=fetchKey(saveKey());if(sv&&Array.isArray(sv.log))S.round.log=sv.log;S.round.ids=nine?courseIds(course,part):todaysIds(sv);const ids=S.round.ids;
+  S.round={type,course:nine?course:null,part:nine?part:null,ids:[],scores:[],log:[]};let sv=fetchKey(saveKey())||(nine?fetchKey(S.key+':rd:'+course+':'+part):null); // (the second: a round saved before practice saves outlived the day)
+  if(nine&&sv&&sv.done&&sv.day!==S.key)sv=null; // yesterday's finished card: start afresh
+  if(sv&&Array.isArray(sv.log))S.round.log=sv.log;S.round.ids=nine?courseIds(course,part):todaysIds(sv);const ids=S.round.ids;
   if(sv&&sv.done&&Array.isArray(sv.scores)){S.round.scores=sv.scores;return resultsCard()}
   if(sv&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length){S.round.scores=sv.scores.slice(0,sv.hi);startHole(sv.hi,sv)}else startHole(0)}
 function initDay(){S.key=todayKey();S.day=dayNumber(S.key);S.holes=[];S.muted=!!fetchKey('muted');

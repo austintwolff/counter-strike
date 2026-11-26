@@ -136,7 +136,9 @@ snow and water. A fairway is cut where a trail or a creek crosses it. A bunker t
 the line, or left out and reported. A green is never trimmed to fit and never crowds an edge: the whole shape keeps six yards
 of ground between it and water and ten from a cliff's edge, shrinking a little if it must, and the builder says when a green has
 no room so it can be moved (`fantasy.py room` lists where one fits). Plants keep off trails, roofs and creeks; the game's flower beds keep off slopes, cliffs,
-snow, trails and washes. A building the ground model puts on a cliff face is left out. Cliff ledge lines are drawn on cliffs
+snow, trails and washes. One hole's ground is not another's: a tee on another hole's fairway or within 14 yards of its green
+is reported (move it), a fairway stops short of any other hole's green, and a bunker that lands on another hole is left
+out. After moving any green or tee, read the notes for the holes next to it too. A building the ground model puts on a cliff face is left out. Cliff ledge lines are drawn on cliffs
 only, steep patches under 1,350 square yards are plain ground rather than hazards, and a trail stub under 45 yards that stops
 in the open is dropped: each of those read as a path that had been cut off. So lay holes on ground that is really
 flat enough: where the plan shows amber under a hole, the fairway will have a gap there.

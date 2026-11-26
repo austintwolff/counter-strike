@@ -181,6 +181,10 @@ def build(path, probe=None):
         rs_ = rng_for(cid, 'snow'); nz = ndi.gaussian_filter(rs_.random(E.shape), 7); nz = (nz - nz.mean()) / nz.std(); gyE = np.gradient(E, st)[0]
         field = (E * 3 > D['snowline'] + 160 * nz) & (gyE > .2) & (SL > 15) & (SL < 44) & ~W; snow |= ndi.binary_closing(ndi.binary_opening(field, iterations=2), iterations=2)
     steep &= ~snow
+    # A scrap of gentler ground wholly inside a cliff is cliff too: left as it was, it showed as a pale blob in the rock face,
+    # like a bunker, with a bush growing on it.
+    lab, n = ndi.label(~steep); size = ndi.sum(~steep, lab, range(1, n + 1)); edge_ = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]])))
+    steep |= np.isin(lab, [k + 1 for k, v in enumerate(size) if v < D.get('islet', 170) and (k + 1) not in edge_]) & ~W & ~snow
     # holes: tees, fairways, greens, bunkers
     G = {k: [] for k in ('fair', 'green', 'tee', 'bunker')}; card = {}; tilt = {}; lines = {}; keep_clear = []; notes = []
     Es = ndi.gaussian_filter(E, 5); gy, gx = np.gradient(Es, st)
@@ -209,7 +213,9 @@ def build(path, probe=None):
         for i, j in sorted(zip(*np.nonzero(peak)), key=lambda q: -roomg[q]):
             if all(math.hypot(xs[j] - a_, ys[i] - b_) > 12 for a_, b_ in seen_) and len(seen_) < 8: seen_.append((xs[j], ys[i])); print('  a green of up to %2d yd fits at [%d, %d]  (%d yd from the point, %d ft)' % (roomg[i, j], xs[j], ys[i], dd[i, j], E[i, j] * 3))
         return
+    mine = {}  # which of the shapes belong to which hole
     for n, h in sorted(holes.items()):
+        was = {k: len(G[k]) for k in G}
         L = ctr[n]; S = along(L); total = S[-1]; par = h['par']; rng = rng_for(cid, n); end = L[-1]; t_end = at_dist(L, S, total - 1)[1]
         # the green: across the line of play unless told otherwise
         gr = h.get('green') or [15 + (2 if par == 5 else 0), 12.5, None]; rot = gr[2] if gr[2] is not None else math.degrees(math.atan2(t_end[1], t_end[0])) + 90 + rng.uniform(-25, 25)
@@ -263,6 +269,29 @@ def build(path, probe=None):
         gi, gj = int((end[1] - ys[0]) / st), int((end[0] - xs[0]) / st); gxv, gyv = gx[gi, gj], gy[gi, gj]; m = math.hypot(gxv, gyv); sm = min(.34, .16 + math.degrees(math.atan(m)) * .012)  # a green is built flatter than the ground it sits on, but falls the same way
         tilt[n] = [round(-gxv / (m or 1) * sm, 3), round(-gyv / (m or 1) * sm, 3)]; drop = round((T.at(*L[0]) - T.at(*end)) * 3)
         card[n] = {'par': par, 'yd': int(round(total)), 'hcp': h.get('hcp'), 'drop': drop, 'name': h.get('name', '')}; lines[n] = flat(h['line'])
+        mine[n] = {k: list(range(was[k], len(G[k]))) for k in G}
+    # One hole's ground is not another's. A tee must stand clear of every other hole's green and off every fairway (the forward
+    # tees give way quietly; the back tee is reported, to be moved). A fairway stops short of any other hole's green. A bunker that
+    # lands on another hole's tee or green is left out. Greens keep apart.
+    drop_ = {k: set() for k in G}; at_ = lambda g: [round(v) for v in g.centroid.coords[0]]
+    for n in mine:
+        for j, ti in enumerate(mine[n]['tee']):
+            t = G['tee'][ti]; why = [('%d yd from the green of hole %d' % (t.distance(G['green'][mine[m]['green'][0]]), m)) for m in mine if m != n and t.distance(G['green'][mine[m]['green'][0]]) < 14]
+            why += ['on the fairway of hole %d' % m for m in mine if any(t.buffer(3).intersects(G['fair'][fi]) for fi in mine[m]['fair'])]
+            if why and j: drop_['tee'].add(ti)
+            elif why: notes.append('hole %d: the tee at %s is %s. Move it' % (n, at_(t), ' and '.join(why)))
+        for bi in mine[n]['bunker']:
+            b = G['bunker'][bi]
+            if any(b.intersects(G['tee'][ti].buffer(2)) for m in mine for ti in mine[m]['tee']) or any(b.intersects(G['green'][mine[m]['green'][0]].buffer(1)) for m in mine if m != n): drop_['bunker'].add(bi); notes.append('hole %d: a bunker near %s lay on another hole and was left out' % (n, at_(b)))
+        others = so.unary_union([G['green'][mine[m]['green'][0]].buffer(5) for m in mine if m != n] or [sg.Polygon()])
+        for fi in mine[n]['fair']:
+            if G['fair'][fi].intersects(others):
+                cut = G['fair'][fi].difference(others).buffer(-4).buffer(4); cut = max(cut.geoms, key=lambda q: q.area) if hasattr(cut, 'geoms') and len(cut.geoms) else cut
+                if cut.is_empty or cut.area < 500: drop_['fair'].add(fi)
+                else: G['fair'][fi] = sg.Polygon(cut.exterior)
+        for m in mine:
+            if m > n and G['green'][mine[n]['green'][0]].distance(G['green'][mine[m]['green'][0]]) < 10: notes.append('holes %d and %d: their greens are %d yd apart. Move one' % (n, m, G['green'][mine[n]['green'][0]].distance(G['green'][mine[m]['green'][0]])))
+    for k in drop_: G[k] = [q for i, q in enumerate(G[k]) if i not in drop_[k]]
     fairs = so.unary_union(G['fair']); greens = so.unary_union(G['green']); tees = so.unary_union(G['tee']); sands = so.unary_union(G['bunker']); turf = so.unary_union([fairs, greens.buffer(5), tees.buffer(3), sands.buffer(1)])
     # nothing steep or snowy is left inside the playing surfaces
     TM = raster(turf.buffer(2)); steep &= ~TM; snow &= ~TM & ~W
@@ -299,7 +328,7 @@ def build(path, probe=None):
     out['building'] = [flat(f['p']) for f in built]
     # what grows there, read off the photograph and scattered where it really is
     rngv = rng_for(cid, 'veg'); r_, g_, b_ = RGB[..., 0], RGB[..., 1], RGB[..., 2]; lum = (r_ + g_ + b_) / 3; exg = (2 * g_ - r_ - b_) / (lum + 30); kinds = D.get('plants', ['pine']); sc = []
-    free = ~raster(turf.buffer(3)) & ~W & ~snow & ~steep & ~raster(trails) & ~raster(houses.buffer(-3)) & ~raster(so.unary_union(runs + [washes])); dstream = ndi.distance_transform_edt(~raster(so.unary_union([sg.LineString(np.array(s['p']).reshape(-1, 2)).buffer(4) for s in out['streams'] if not s['dry']] + [water]) if out['streams'] or not water.is_empty else sg.Polygon())) * st
+    free = ~raster(turf.buffer(3)) & ~W & ~snow & ~steep & ~raster(crag.buffer(3)) & ~raster(trails) & ~raster(houses.buffer(-3)) & ~raster(so.unary_union(runs + [washes])); dstream = ndi.distance_transform_edt(~raster(so.unary_union([sg.LineString(np.array(s['p']).reshape(-1, 2)).buffer(4) for s in out['streams'] if not s['dry']] + [water]) if out['streams'] or not water.is_empty else sg.Polygon())) * st
     def strew(mask, kind, rmin, rmax, cell, chance):
         k = kinds.index(kind); c = max(1, int(cell / st))
         for i in range(0, mask.shape[0] - c, c):

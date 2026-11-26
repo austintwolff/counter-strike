@@ -76,7 +76,7 @@ const COURSES=[
  // Emerald fairways on sage and red rock; the cliffs are the hazard.
  th:{out:'native',floor:'#b0aa86',rough:'#8f9a62',fair:'#5cab49',stripe:.9,outer:'#b0aa86',woods:'#3a4a2a',mix:[['juniper',1]],marker:'#d9693a',bloom:'bloomGold',bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
   collar:.5,span:175,bird:'condor',sand:'#e4bc90',wat:{water:'#3f8f7d',deep:'#2a6e66',shallow:'#9ad8c2',rim:'#2f7f72'}},
- holes:[["Havasupai Gardens",4,414,11,0],["Tonto Trail",5,620,5,59],["Dry Fall",3,215,15,12],["Horn Creek",4,460,7,60],["Inner Gorge",4,396,3,23],["The Bite",5,635,1,-57],["Garden Creek",4,467,9,47],["Tapeats Rim",3,196,17,63],["Plateau Point",4,312,13,-54]],
+ holes:[["Havasupai Gardens",4,414,11,0],["Tonto Trail",5,620,5,59],["Dry Fall",3,215,15,12],["Horn Creek",4,460,7,60],["Inner Gorge",4,396,3,23],["The Bite",5,635,1,-57],["Garden Creek",4,467,9,47],["Tapeats Rim",3,196,17,63],["Plateau Point",4,258,13,-56]],
  more:[["Tonto East",4,441,10,74],["The Tipoff",4,430,6,21],["Cremation",4,345,12,24],["Burro Spring",5,540,4,-30],["Pipe Creek",4,358,14,43],["Zoroaster",3,122,16,-35],["The Plunge",3,490,18,1459],["Silver Bridge",4,474,2,-2],["Phantom Ranch",5,573,8,-71]]},
 {id:'tl',code:'TL',club:'Twenty Lakes',tee:'Granite',
  // The Sierra Nevada at 10,000 feet, north of Tioga Pass. Out: the Twenty Lakes Basin, lake to lake from Greenstone past Wasco and
@@ -86,7 +86,7 @@ const COURSES=[
   collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
  th2:{wat:{water:'#3fa7b5',deep:'#2a8aa0',shallow:'#b4ece4',rim:'#3597a6'}},
  holes:[["Greenstone",4,407,9,-107],["Wasco",3,170,15,0],["Hidden Lake",5,555,5,-152],["Steelhead",4,486,3,155],["Excelsior",3,180,13,-12],["Shamrock",4,247,7,17],["Mill Creek",5,522,1,280],["Lake Helen",3,227,5,-17],["Twin Lakes",4,344,17,-206]],
- more:[["Lee Vining Creek",5,529,12,-21],["The Cascade",5,594,4,-297],["Conness Lake",3,159,14,41],["North Peak",4,281,10,-204],["Glacial Flour",4,371,2,-303],["Snowmelt Tarn",3,140,16,-160],["Mount Conness",4,363,6,464],["Alpenglow",3,170,18,0],["Tioga Crest",4,453,8,-8]]}];
+ more:[["Lee Vining Creek",5,529,12,-21],["The Cascade",5,594,4,-297],["Conness Lake",3,159,14,41],["North Peak",4,281,10,-204],["Glacial Flour",4,371,2,-303],["Snowmelt Tarn",3,140,16,-160],["Mount Conness",4,359,6,467],["Alpenglow",3,170,18,0],["Tioga Crest",4,453,8,-8]]}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
 // data/<id>.json; its other nine, if it has one, is `more`, drawn from data/<id>2.json. The second nines are added after all the
 // first ones so that the index of a hole never changes once it has been published (saved rounds keep indexes).

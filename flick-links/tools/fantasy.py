@@ -278,6 +278,11 @@ def build(path, probe=None):
         for j, ti in enumerate(mine[n]['tee']):
             t = G['tee'][ti]; why = [('%d yd from the green of hole %d' % (t.distance(G['green'][mine[m]['green'][0]]), m)) for m in mine if m != n and t.distance(G['green'][mine[m]['green'][0]]) < 14]
             why += ['on the fairway of hole %d' % m for m in mine if any(t.buffer(3).intersects(G['fair'][fi]) for fi in mine[m]['fair'])]
+            # nor in another hole's line of play: within 18 yards of its line anywhere past its own tee ground
+            for m in mine:
+                if m != n:
+                    Lm = ctr[m]; Sm = along(Lm); way = sg.LineString([tuple(at_dist(Lm, Sm, d_)[0]) for d_ in np.arange(60, Sm[-1] + 1, 6)]) if Sm[-1] > 70 else None
+                    if way is not None and t.distance(way) < 18 and not any('hole %d' % m in w_ for w_ in why): why.append('in the line of play of hole %d' % m)
             if why and j: drop_['tee'].add(ti)
             elif why: notes.append('hole %d: the tee at %s is %s. Move it' % (n, at_(t), ' and '.join(why)))
         for bi in mine[n]['bunker']:
@@ -348,6 +353,10 @@ def build(path, probe=None):
         dark = (exg > D2.get('green', .05)) & (lum < D2.get('dark', 92)) & free; meadow = (exg > D2.get('meadow', .1)) & (lum >= D2.get('dark', 92)) & free
         if 'pine' in kinds: strew(dark, 'pine', 3.2, 6.2, 9, (.34, .85))
         if 'willow' in kinds: strew(meadow & (dstream < 30), 'willow', 1.6, 3, 9, (.5, .4))
+    # The masks above are on a three-yard grid, which a trail or a creek can slip through. Each plant is checked again against
+    # the true outlines: none stands on a trail, in a creek or the water, on a roof, on a cliff or on anything mown.
+    from shapely.prepared import prep
+    off_ = prep(so.unary_union([trails.buffer(.8), houses.buffer(-3), water.buffer(1), crag.buffer(2), washes, turf.buffer(2)] + runs)); sc = [q for q in sc if not off_.contains(sg.Point(q[0], q[1]))]
     out['scatter'] = sc; out['kinds'] = kinds
     # small things that belong to the place, set down where they really are: a mule train on a named trail, rafts drawn up where a
     # trail meets the river, a tent, white water. In the design: {"kind": "mules", "trail": name, "near": [x, y], "n": 6},
@@ -356,13 +365,19 @@ def build(path, probe=None):
     for pr in D.get('props', []):
         trail = [f for f in F['path'] if f['name'] == pr.get('trail')]
         if pr['kind'] == 'mules' and trail:
-            tr = min(trail, key=lambda f: sg.LineString(f['p']).distance(sg.Point(*pr['near']))); ls = sg.LineString(tr['p']); s0 = max(0, min(ls.project(sg.Point(*pr['near'])), ls.length - pr.get('n', 6) * 3.7 - 1))
+            tr = min(trail, key=lambda f: sg.LineString(f['p']).distance(sg.Point(*pr['near']))); ls = sg.LineString(tr['p']); long_ = pr.get('n', 6) * 3.7; s0 = max(0, min(ls.project(sg.Point(*pr['near'])), ls.length - long_ - 1))
+            # a mule train keeps to a stretch of trail well clear of anything mown: it is moved along the trail to the nearest such
+            clear_ = lambda a: all(ls.interpolate(a + k * 3.7).distance(turf) >= 12 for k in range(pr.get('n', 6)))
+            ok_ = [a for a in np.arange(0, max(1, ls.length - long_), 4) if clear_(a)]
+            if not ok_: notes.append('the mule train on %s has no stretch clear of the holes and was left out' % pr.get('trail')); continue
+            s0 = min(ok_, key=lambda a: abs(a - s0))
             for k in range(pr.get('n', 6)): a = ls.interpolate(s0 + k * 3.7); b = ls.interpolate(s0 + k * 3.7 + 1); props.append({'k': 'mule', 'x': round(a.x, 1), 'y': round(a.y, 1), 'a': round(math.atan2(b.y - a.y, b.x - a.x), 2), 'v': k})
         elif pr['kind'] == 'rafts' and (trail or 'near' in pr) and not water.is_empty:
             edge = water.boundary; best = sg.Point(*pr['near']) if 'near' in pr else min((sg.Point(*q) for f in trail for q in f['p']), key=lambda q: edge.distance(q)); s0 = edge.project(best)
             for k in range(pr.get('n', 3)):
                 a = edge.interpolate(s0 + (k - 1) * 7.5); b = edge.interpolate(s0 + (k - 1) * 7.5 + 1); nx, ny = -(b.y - a.y), b.x - a.x; side = 1 if water.contains(sg.Point(a.x + nx * 2, a.y + ny * 2)) else -1
                 props.append({'k': 'raft', 'x': round(a.x + nx * side * 1.2, 1), 'y': round(a.y + ny * side * 1.2, 1), 'a': round(math.atan2(ny * side, nx * side), 2), 'v': k})
+        elif 'at' in pr and sg.Point(*pr['at']).distance(turf) < (0 if pr['kind'] == 'rapid' else 8): notes.append('the %s at %s is on or beside something mown and was left out' % (pr['kind'], pr['at']))
         elif 'at' in pr: props.append({'k': pr['kind'], 'x': pr['at'][0], 'y': pr['at'][1], 'a': round(math.radians(pr.get('a', 0)), 2), 'r': pr.get('r', 30), 'v': len(props)})
     out['props'] = props
     # the ground itself, painted from the elevation (and, in the mountains, from the photograph's own colours)

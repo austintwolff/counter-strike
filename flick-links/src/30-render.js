@@ -272,13 +272,15 @@ function drawPreview(now){const g=S.g,b=S.ball,c=S.club,h=cur();
     const dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy)||1,off=Math.round(((S.mark.x-h.pin.x)*-dy+(S.mark.y-h.pin.y)*dx)/d*36);
     txt(Math.round(markDist()*3)+' ft'+(Math.abs(off)>=1?' · '+Math.abs(off)+' in '+(off>0?'right':'left'):''),pm.x+26,pm.y,16,K.cream,'left');return}
   if(!g||g.drag||!g.aim||g.power<.04)return;
-  const aw=rotv(g.aim.x,g.aim.y,-cam.r),carry=g.power*c.carry*lieMult(S.lie,c),ll=lieAt(h,{x:b.x+aw.x*carry,y:b.y+aw.y*carry}),total=carry*(1+c.roll*ROLLX[ll]);
+  const aw=rotv(g.aim.x,g.aim.y,-cam.r),carry=g.power*S.pk*c.carry*lieMult(S.lie,c),ll=lieAt(h,{x:b.x+aw.x*carry,y:b.y+aw.y*carry}),total=c.style!=null?carry+runOut(h,{x:b.x+aw.x*carry,y:b.y+aw.y*carry},aw.x,aw.y,carry,c):carry*(1+c.roll*ROLLX[ll]);
   const p0=toScreen(b.x,b.y),p1=toScreen(b.x+aw.x*carry,b.y+aw.y*carry),p2=toScreen(b.x+aw.x*total,b.y+aw.y*total);
   const col=ll==='water'?'#bfeee6':ll==='woods'?'#ff9a8a':ll==='bunker'||ll==='native'?K.sand:K.cream;
   ctx.lineCap='round';ctx.strokeStyle='rgba(6,22,17,.5)';ctx.lineWidth=5.5;ctx.setLineDash([1,11]);ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.stroke();
   ctx.strokeStyle=K.cream;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.stroke();ctx.setLineDash([]);
   ctx.globalAlpha=.6;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();ctx.globalAlpha=1;
   ctx.strokeStyle='rgba(6,22,17,.65)';ctx.lineWidth=5.5;ctx.beginPath();ctx.arc(p1.x,p1.y,9,0,TAU);ctx.stroke();ctx.strokeStyle=col===K.cream?K.gold:col;ctx.lineWidth=3;ctx.stroke();
+  // in the short game what matters is where the ball stops: that point is marked and carries the figure
+  if(c.style!=null&&ROLLX[ll]>.3){ctx.fillStyle='rgba(6,22,17,.65)';disc(p2.x,p2.y,7);ctx.fillStyle=K.gold;disc(p2.x,p2.y,4.6);txt(Math.round(total)+' yd',p2.x+14,p2.y,17,K.cream,'left');return}
   txt(Math.round(carry)+' yd'+(ll==='water'?' · water':ll==='woods'?' · trees':ll==='bunker'?' · sand':ll==='native'?' · native':''),p1.x+16,p1.y,17,col,'left')}
 function drawFlag(now){const h=cur(),p=toScreen(h.pin.x,h.pin.y),ph=clamp(18+cam.s*.9,24,58),near=hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)<2&&!S.ball.gone;
   const ws=rotv(h.wind.x,h.wind.y,cam.r),dir=ws.x<0?-1:1,fl=ph*.5,wav=Math.sin(now/260)*2*(h.wind.sp/14+.25),sd=rotv(SUN.x,SUN.y,cam.r),sl=ph*.75;
@@ -327,7 +329,7 @@ function drawGesture(now){const g=S.g;
   if(first&&g.phase==='aim'&&g.power>.25)txt('Flick up',g.ox,g.oy-R-58,26,K.gold)}
   ctx.fillStyle='rgba(6,22,17,.45)';disc(g.ox,g.oy,R-7);ctx.fillStyle=K.gold;disc(g.ox,g.oy,3.5);
   ctx.fillStyle='rgba(244,236,214,.3)';disc(g.x,g.y,24);
-  if(!S.club.putt&&g.power>.04)txt(Math.round(g.power*100)+'%',g.ox,g.oy-R-24,g.power>=1?28:24,g.power>=1?K.gold:K.cream)}
+  if(!S.club.putt&&S.club.style==null&&g.power>.04)txt(Math.round(g.power*100)+'%',g.ox,g.oy-R-24,g.power>=1?28:24,g.power>=1?K.gold:K.cream)}
 // ───────── the ghost thumb
 // A see-through thumb that makes the swing where the player can watch it: down, wait for gold, up. It plays on the practice
 // range while the player is idle, for a new player who sits on a real shot for a few seconds, and straight after anyone pulls

@@ -39,14 +39,14 @@ assert.equal(s.me.stats.hcp, null); assert.equal(s.me.stats.streak, 2); assert.e
 assert.equal(s.club.count, 3); assert.equal(s.club.member, true); assert.equal(s.club.founder, true);
 assert.deepEqual(s.club.today.map(t => [t.nick, t.round && t.round.tot]), [['Austin b', 10], ['Sam', 13], ['Kim', null]]);
 assert.equal(s.club.standings.find(x => x.nick === 'Sam').wins, 1); assert.equal(s.club.standings.find(x => x.nick === 'Austin b').wins, 0);
-assert.equal(s.club.records.low.nick, 'Sam'); assert.equal(s.club.records.holes.lp6.score, 1); assert.equal(s.club.records.holes.lp6.nick, 'Austin b'); assert.equal(s.club.records.holes.gr5.nick, 'Sam');
+assert.equal(s.club.records.low.nick, 'Sam'); assert.deepEqual(s.club.records.courses, {}, 'no practice rounds yet, so no course records'); assert.equal(s.club.records.holes, undefined);
 assert.deepEqual(s.club.records.feed.map(f => f.id + ':' + f.nick), ['ace:Austin b', 'hat:Sam']);
 assert.equal((await stranger('GET', '/state?day=' + today + '&club=' + code)).club.member, false);
-// handicap appears at three rounds: best differential of 3, times 6
+// handicap needs eighteen holes of any play: three daily threes are nine
 const st2 = new MemStore(), solo = (() => { let c = ''; return async (m, pth, b) => { const r = await handle(new Request('https://golf.test/api' + pth, { method: m, headers: { cookie: c, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }), st2, { local: true }); const j = await r.json(); if (j.session) c = 'fl=' + j.session; return j; }; })();
 assert.match((await solo('POST', '/player', { name: 'Solo', user: 'solo' })).session, /^[a-f0-9]{64}$/);
 for (const [k, sc] of [[-1, [5, 4, 6]], [0, [4, 4, 6]], [1, [4, 3, 6]]]) { const d = new Date(Date.now() + k * 864e5).toISOString().slice(0, 10); assert.ok((await solo('POST', '/round', { day: d, holes, pars, scores: sc })).ok); }
-assert.equal((await solo('GET', '/state?day=' + today)).me.stats.hcp, 6);
+{ const st = (await solo('GET', '/state?day=' + today)).me.stats; assert.equal(st.hcp, null); assert.equal(st.holes, 9); }
 assert.ok((await sam('POST', '/leave', { code })).ok); assert.equal((await sam('GET', '/state?day=' + today + '&club=' + code)).club.count, 2);
 // the full record of play: kept once per round id, refused without a player, and bad shapes are dropped
 const hole = (k, par, sc) => ({ k, par, s: sc, p: 2, pen: 0, sw: sc - 2, pure: 1, fw: par > 3 ? 1 : null, gir: 1, dr: par > 3 ? 255 : null, fp: 22, hf: 3, chip: 0 });
@@ -62,6 +62,15 @@ await pro('POST', '/player', { name: 'Pro', user: 'pro' });
 const H18 = (c, f) => Array.from({ length: 18 }, (_, i) => { const par = [4, 3, 4, 5, 3, 4, 5, 4, 4][i % 9]; return { k: c + (i + 1), par, s: f(par, i), p: 1, pen: 0, sw: 2, pure: 2, fw: par > 3 ? 1 : null, gir: 1, dr: par > 3 ? 270 : null, fp: 10, hf: 10, chip: 0 }; });
 const full = (id, c, f, n = 18) => ({ id, kind: 'practice', day: today, course: c, part: n > 9 ? 'a' : 'f', holes: H18(c, f).slice(0, n), t: 1, b: 1 });
 assert.equal((await pro('POST', '/log', { rounds: [full('roundaa1', 'jc', (par, i) => i < 9 ? par - 1 : par), full('roundaa2', 'hk', par => par, 9), full('roundaa3', 'mu', (par, i) => i === 3 ? par + 1 : par)] })).saved, 3);
+// handicap arithmetic: nine-hole stretches in the order played, doubled; the best 40% of them averaged
+const st4 = new MemStore(), cap = (() => { let c = ''; return async (m, pth, b) => { const r = await handle(new Request('https://golf.test/api' + pth, { method: m, headers: { cookie: c, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }), st4, { local: true }); const j = await r.json(); if (j.session) c = 'fl=' + j.session; return j; }; })();
+await cap('POST', '/player', { name: 'Cap', user: 'cap' }); const capHcp = async () => (await cap('GET', '/state?day=' + today)).me.stats;
+await cap('POST', '/log', { rounds: [full('capaaaa1', 'hk', par => par + 1, 9)] }); assert.equal((await capHcp()).hcp, null, 'nine holes is not enough');
+await cap('POST', '/log', { rounds: [full('capaaaa2', 'hk', par => par, 9)] }); assert.equal((await capHcp()).hcp, 0, 'stretches of +18 and 0: the better one'); assert.equal((await capHcp()).holes, 18);
+await cap('POST', '/log', { rounds: [full('capaaaa3', 'hk', par => par - 1, 9)] }); assert.equal((await capHcp()).hcp, -18, 'three stretches: still the best one, a plus handicap');
+await cap('POST', '/log', { rounds: [full('capaaaa4', 'hk', par => par + 2, 9), full('capaaaa5', 'hk', par => par + 2, 9)] }); assert.equal((await capHcp()).hcp, -9, 'five stretches: the best two averaged');
+{ const st = (await solo('GET', '/state?day=' + today)).me.stats; assert.equal(st.holes, 15, 'two daily cards, and three logged threes (one of them the third daily card)'); assert.equal(st.hcp, null);
+  await solo('POST', '/log', { rounds: [rnd('abcdef09', 'practice')] }); assert.equal(typeof (await solo('GET', '/state?day=' + today)).me.stats.hcp, 'number', 'daily threes and practice chain together to eighteen holes'); }
 let ps = (await pro('GET', '/state?day=' + today)).me.stats;
 assert.deepEqual(ps.balls.jc, { b: 1, s: 0, g: 0, n: 9 }, 'nine under for eighteen: bronze, and nine holes toward silver');
 assert.deepEqual(ps.balls.hk, { b: 0, s: 0, g: 0, n: 0 }, 'level par earns nothing'); assert.deepEqual(ps.balls.mu, { b: 0, s: 0, g: 0, n: 0 });
@@ -72,4 +81,11 @@ ps = (await pro('GET', '/state?day=' + today)).me.stats;
 assert.deepEqual(ps.balls.jc, { b: 1, s: 1, g: 0, n: 18 }, 'the other nine birdied in a second round completes silver');
 assert.deepEqual(ps.balls.hk, { b: 1, s: 1, g: 1, n: 9 }, 'nine under on a nine-hole course is gold');
 assert.ok(ps.trophies.some(t => t.id === 'bomb') && ps.trophies.some(t => t.id === 'snake') && !ps.trophies.some(t => t.id === 'tour'));
+// course records in a clubhouse come from practice rounds: the full course and each nine, an eighteen counting for its nines
+const pc = (await pro('POST', '/club', { name: 'Pros', nick: 'Pro' })).code, cr = (await pro('GET', '/state?day=' + today + '&club=' + pc)).club;
+const rp = r => r && r.tot - r.par;
+assert.deepEqual([rp(cr.records.courses.jc.f), rp(cr.records.courses.jc.a), rp(cr.records.courses.jc.b)], [-9, -9, -9], 'each nine birdied in a different round');
+assert.deepEqual([rp(cr.records.courses.hk.f), cr.records.courses.hk.a], [-9, undefined], 'a nine-hole course has one record');
+assert.deepEqual([rp(cr.records.courses.mu.f), rp(cr.records.courses.mu.a), rp(cr.records.courses.mu.b)], [1, 1, 0]); assert.equal(rp(cr.records.courses.lp.f), -1); assert.equal(cr.records.courses.jc.f.nick, 'Pro');
+assert.equal(typeof cr.standings[0].hcp, 'number', 'practice rounds give a handicap in the standings');
 console.log('server core: all checks passed');

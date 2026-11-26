@@ -20,15 +20,18 @@ const numDay=n=>new Date(n*864e5).toISOString().slice(0,10);
 const CODE='ABCDEFGHJKMNPQRSTUVWXYZ23456789',COOKIE='fl';
 
 // ───────── a player's own numbers, all derived from their rounds (newest first)
-// Handicap: the average of your best few of the last 20 rounds, in strokes over par, scaled from 3 holes to 18.
-function handicap(rs){const d=rs.slice(0,20).map(r=>r.tot-r.par),n=d.length;if(n<3)return null;
-  const use=n<6?1:n<9?2:n<12?3:n<15?4:n<17?5:n<19?6:n<20?7:8;d.sort((a,b)=>a-b);return Math.round(total(d.slice(0,use))/use*6*10)/10}
+// Handicap. All play counts, daily threes and practice rounds alike. It is taken in the order played and cut into nine-hole
+// stretches; each stretch's strokes over par is doubled to an eighteen-hole figure, and the handicap is the average of the best
+// 40% of the last twenty stretches. It needs eighteen holes. A number below zero is a "plus" handicap: better than par.
+// (It used to be the single best daily three multiplied by six, so one birdie moved it six strokes and practice never counted.)
+function handicap(plays){const H=plays.flatMap(p=>p.holes),d=[];for(let i=0;i+9<=H.length;i+=9){let x=0;for(let j=i;j<i+9;j++)x+=H[j].s-H[j].par;d.push(x*2)}
+  const last=d.slice(-20),n=last.length;if(n<2)return null;const use=Math.max(1,Math.round(n*.4));last.sort((a,b)=>a-b);return Math.round(total(last.slice(0,use))/use*10)/10}
 function streakOf(rs,day){const set=new Set(rs.map(r=>r.day));let d=dayNum(day),n=0;if(!set.has(day))d--;while(set.has(numDay(d))){n++;d--}return n}
 function maxStreak(rs){const ds=[...new Set(rs.map(r=>dayNum(r.day)))].sort((a,b)=>a-b);let best=0,run=0,prev=null;for(const d of ds){run=prev!==null&&d===prev+1?run+1:1;best=Math.max(best,run);prev=d}return best}
 // A course here is nine or eighteen holes; the ball and tour awards need to know which. Keep in step with COURSES in src/20-course.js.
 export const SIZE={gr:9,lp:18,hk:9,jc:18,mu:18,om:18,ts:18,an:18,pb:18,sa:18};
-// rs: the daily cards (handicap, streak and best come from these alone, since everyone plays the same holes once).
-// logs: the full record of play, daily and practice. Trophies and balls count all of it.
+// rs: the daily cards (streak and best come from these alone, since everyone plays the same holes once).
+// logs: the full record of play, daily and practice. Handicap, trophies and balls count all of it.
 //   balls, per course: b bronze, a full round under par; s silver, a birdie or better on every hole (n so far, over any
 //   number of rounds); g gold, a full round ten under or better (five on a nine-hole course).
 function personal(rs,day,logs=[]){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{id,n:0,day:d}).n++},bird={},balls={},full={};
@@ -49,7 +52,7 @@ function personal(rs,day,logs=[]){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{i
   if(Object.keys(SIZE).every(c=>full[c]))tro.tour={id:'tour',n:1};
   const ms=maxStreak(rs);if(ms>=7)tro.week={id:'week',n:1};if(ms>=30)tro.month={id:'month',n:1};
   const best=rs.reduce((b,r)=>!b||r.tot-r.par<b.tot-b.par?r:b,null);
-  return{rounds:rs.length,hcp:handicap(rs),best:best&&{tot:best.tot,par:best.par,day:best.day},streak:streakOf(rs,day),trophies:Object.values(tro),balls}}
+  return{rounds:rs.length,holes:total(plays.map(p=>p.holes.length)),hcp:handicap(plays),best:best&&{tot:best.tot,par:best.par,day:best.day},streak:streakOf(rs,day),trophies:Object.values(tro),balls}}
 
 // ───────── storage helpers
 const roundsOf=async(store,pid)=>(await store.list('r:'+pid+':')).map(x=>x.v).sort((a,b)=>a.day<b.day?1:-1);
@@ -61,21 +64,31 @@ const cookieFor=(tok,url)=>`${COOKIE}=${tok}; Path=/; Max-Age=34560000; HttpOnly
 
 // ───────── what a clubhouse shows
 async function clubView(store,club,pid,day){const ms=await store.list('m:'+club.code+':'),members=[];
-  for(const{k,v}of ms){const id=k.split(':')[2];members.push({id,nick:v.nick,rounds:await roundsOf(store,id)})}
+  for(const{k,v}of ms){const id=k.split(':')[2];members.push({id,nick:v.nick,rounds:await roundsOf(store,id),logs:(await store.list('g:'+id+':')).map(x=>x.v)})}
   // a day is won by the lowest score among members, once the day is over and at least two played
   const byDay={},wins={};for(const m of members)for(const r of m.rounds)if(r.day<day)(byDay[r.day]=byDay[r.day]||[]).push({id:m.id,tot:r.tot});
   for(const d in byDay){const a=byDay[d];if(a.length<2)continue;const best=Math.min(...a.map(x=>x.tot));for(const x of a)if(x.tot===best)wins[x.id]=(wins[x.id]||0)+1}
   const today=members.map(m=>{const r=m.rounds.find(x=>x.day===day);return{id:m.id,nick:m.nick,me:m.id===pid,round:r?{holes:r.holes,pars:r.pars,scores:r.scores,tot:r.tot,par:r.par}:null}})
     .sort((a,b)=>(a.round?a.round.tot-a.round.par:99)-(b.round?b.round.tot-b.round.par:99)||a.nick.localeCompare(b.nick));
-  const standings=members.map(m=>{const p=personal(m.rounds,day);return{id:m.id,nick:m.nick,me:m.id===pid,hcp:p.hcp,rounds:p.rounds,wins:wins[m.id]||0,streak:p.streak,best:p.best}})
+  const standings=members.map(m=>{const p=personal(m.rounds,day,m.logs);return{id:m.id,nick:m.nick,me:m.id===pid,hcp:p.hcp,rounds:p.rounds,wins:wins[m.id]||0,streak:p.streak,best:p.best}})
     .sort((a,b)=>(a.hcp==null?999:a.hcp)-(b.hcp==null?999:b.hcp)||b.wins-a.wins||b.rounds-a.rounds||a.nick.localeCompare(b.nick));
-  const holes={},feed=[];let low=null;const all=[];for(const m of members)for(const r of m.rounds)all.push({m,r});
+  const feed=[];let low=null;const all=[];for(const m of members)for(const r of m.rounds)all.push({m,r});
   all.sort((a,b)=>a.r.day<b.r.day?-1:a.r.day>b.r.day?1:a.r.ts-b.r.ts);
-  for(const{m,r}of all){r.holes.forEach((h,i)=>{const s=r.scores[i];if(!holes[h]||s<holes[h].score)holes[h]={score:s,par:r.pars[i],nick:m.nick,day:r.day};
+  for(const{m,r}of all){r.holes.forEach((h,i)=>{const s=r.scores[i];
       if(s===1)feed.push({id:'ace',nick:m.nick,day:r.day,hole:h});else if(s-r.pars[i]<=-3)feed.push({id:'alb',nick:m.nick,day:r.day,hole:h})});
     if(r.scores.every((s,i)=>s<r.pars[i]))feed.push({id:'hat',nick:m.nick,day:r.day});
     if(!low||r.tot-r.par<low.tot-low.par)low={tot:r.tot,par:r.par,nick:m.nick,day:r.day}}
-  return{code:club.code,name:club.name,founder:club.owner===pid,member:members.some(m=>m.id===pid),count:members.length,today,standings,records:{holes,low,feed:feed.reverse().slice(0,12)}}}
+  // Course records, from practice rounds: f the full course, a the nine holes keyed 1 to 9, b those keyed 10 to 18. A full
+  // eighteen counts for each of its nines too. The first to post a score holds the record until it is beaten outright.
+  const courses={},part=(H,c,lo,hi)=>{const P=H.filter(h=>h.k.slice(0,2)===c&&+h.k.slice(2)>=lo&&+h.k.slice(2)<=hi);
+    return P.length===hi-lo+1&&new Set(P.map(h=>h.k)).size===P.length?{tot:total(P.map(h=>h.s)),par:total(P.map(h=>h.par))}:null};
+  const played=[];for(const m of members)for(const l of m.logs)if(l.kind!=='daily'&&l.holes&&l.holes.length)played.push({m,l});
+  played.sort((a,b)=>a.l.day<b.l.day?-1:a.l.day>b.l.day?1:0);
+  for(const{m,l}of played){const c=l.holes[0].k.slice(0,2),n=SIZE[c];if(!n)continue;
+    for(const[key,lo,hi]of n>9?[['f',1,18],['a',1,9],['b',10,18]]:[['f',1,9]]){const r=part(l.holes,c,lo,hi),cur=(courses[c]=courses[c]||{})[key];
+      if(r&&(!cur||r.tot-r.par<cur.tot-cur.par))courses[c][key]={...r,nick:m.nick,day:l.day}}}
+  for(const c in courses)if(!Object.keys(courses[c]).length)delete courses[c];
+  return{code:club.code,name:club.name,founder:club.owner===pid,member:members.some(m=>m.id===pid),count:members.length,today,standings,records:{low,courses,feed:feed.reverse().slice(0,12)}}}
 async function state(store,ses,day,code){const out={me:null,club:null};
   if(ses){const rs=await roundsOf(store,ses.pid),logs=(await store.list('g:'+ses.pid+':')).map(x=>x.v),clubs=[];for(const c of ses.player.clubs||[]){const cl=await store.get('c:'+c);if(cl)clubs.push({code:c,name:cl.name})}
     out.me={id:ses.pid,user:ses.player.user||null,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day,logs),today:rs.find(r=>r.day===day)||null}}

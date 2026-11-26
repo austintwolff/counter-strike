@@ -43,13 +43,16 @@ const tabToday=c=>`<ol class="lb">${c.today.map((m,i)=>{const r=m.round;return`<
   r?`<span class="hs">${r.scores.map((s,j)=>mk(s,r.pars[j])).join('')}</span><span class="tt">${r.tot}<small>${rel(r.tot-r.par)}</small></span>`:'<span class="wait">yet to play</span>'}</li>`}).join('')}</ol>`;
 const tabStandings=c=>`<table class="st"><tr><th>Member</th><th>Hcp</th><th>Rounds</th><th>Wins</th><th>Streak</th></tr>${c.standings.map(m=>
   `<tr class="${m.me?'me':''}"><td>${esc(m.nick)}</td><td><b>${hcpStr(m.hcp)}</b></td><td>${m.rounds}</td><td>${m.wins}</td><td>${m.streak}</td></tr>`).join('')}</table>
-<p class="fine">Handicap after three rounds.</p>`;
-function tabRecords(c){const rec=c.records,by={};for(const k in rec.holes)(by[k.slice(0,2)]=by[k.slice(0,2)]||[]).push(k);
-  const courses=COURSES.filter(x=>by[x.id]).map(x=>`<p class="eyebrow">${x.club}</p><ul class="rec">${by[x.id].sort((a,b)=>holeNo(x.id,+a.slice(2))-holeNo(x.id,+b.slice(2))).map(k=>{const r=rec.holes[k];
-    return`<li><span>No. ${holeNo(x.id,+k.slice(2))}</span>${mk(r.score,r.par)}<span class="nm">${esc(r.nick)}</span><small>${shortDay(r.day)}</small></li>`}).join('')}</ul>`).join('');
-  return(rec.low?`<div class="stats"><div><b>${rec.low.tot} <small>${rel(rec.low.tot-rec.low.par)}</small></b><span>Low round · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No rounds yet.</p>')
-    +(rec.feed.some(f=>TROPHY[f.id])?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.filter(f=>TROPHY[f.id]).map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')
-    +courses}
+<p class="fine">Handicap counts every hole played, daily and practice.</p>`;
+// Records: the best daily three there has been, then each course's record from practice rounds (the full course and each nine),
+// then the honours board. The front nine is the holes numbered 1 to 9, whichever nine the course was built with first.
+function tabRecords(c){const rec=c.records,cr=rec.courses||{},cell=r=>r?`<b>${rel(r.tot-r.par)}</b><small>${esc(r.nick)}</small>`:'<i>·</i>';
+  const rows=COURSES.map(x=>{const r=cr[x.id]||{},flip=(x.first||1)!==1,nine=!x.more;
+    return`<tr><td>${x.club}</td><td>${cell(r.f)}</td><td>${nine?'':cell(flip?r.b:r.a)}</td><td>${nine?'':cell(flip?r.a:r.b)}</td></tr>`}).join('');
+  return(rec.low?`<div class="stats"><div><b>${rel(rec.low.tot-rec.low.par)}</b><span>Best daily three · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No daily three played yet.</p>')
+    +`<p class="eyebrow">Course records</p><table class="st cr"><tr><th>Course</th><th>Full</th><th>Front</th><th>Back</th></tr>${rows}</table>
+<p class="fine">Set in practice rounds. An eighteen counts for both nines.</p>`
+    +(rec.feed.some(f=>TROPHY[f.id])?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.filter(f=>TROPHY[f.id]).map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')}
 function clubStrip(){const c=C.club;
   if(C.invite&&c&&!c.member)return`<button class="strip" data-act="joinform"><span><b>${esc(c.name)}</b><i>You are invited · ${plural(c.count,'member')}</i></span><em>Join</em></button>`;
   if(c&&c.member){const played=c.today.filter(t=>t.round),lead=played[0];
@@ -89,7 +92,7 @@ async function syncLog(){if(!C.me)return false;const L=fetchKey('log')||[],todo=
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
   sheet(`<p class="eyebrow">Your stats${m.user?' · @'+esc(m.user):''}</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
-<p class="fine">${st.hcp==null?'Handicap in '+plural(Math.max(1,3-st.rounds),'round')+'.':''}</p>
+<p class="fine">${st.hcp==null?'Handicap after '+plural(Math.max(1,18-(st.holes||0)),'more hole')+', daily or practice.':'Handicap: your best nine-hole stretches, as strokes over par for eighteen.'}</p>
 ${gameTable()}<p class="eyebrow">Balls</p><div class="balls">${COURSES.map(c=>{const b=(st.balls||{})[c.id]||{},n=courseIds(c.id,'a').length;
   return`<div><b>${c.club}</b><i class="ball bz${b.b?' on':''}"></i><i class="ball sv${b.s?' on':''}"></i><i class="ball gd${b.g?' on':''}"></i><small>${b.n||0}/${n}</small></div>`}).join('')}</div>
 <p class="fine">Bronze: a full round under par. Silver: a birdie on every hole. Gold: ten under.</p>

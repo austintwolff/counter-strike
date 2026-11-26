@@ -7,8 +7,17 @@ const GREEN_IN=3.4,muFor=(lie,b)=>lie==='green'&&!b.putt?GREEN_IN:MU[lie];
 const ROLLX={green:1.1,fringe:1,fairway:1,tee:1,rough:.35,bunker:.04,woods:.3,ob:.5,native:.18,creekbed:.5,water:0,rock:.6};
 const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Rough',bunker:'Bunker',native:'Native',creekbed:'Creek bed'};
 // carry is a pure strike from a good lie, in yards; roll is added on top (a pure driver finishes near 290)
+// The short game is its own kind of shot, as putting is. In chipping range the player picks how to play it:
+//   bump and run  low, lands early and runs a long way: for a clear run of fairway and green. Poor out of sand.
+//   chip          the standard: carries about two thirds of the way and rolls the rest
+//   flop          high and soft, stops close to where it lands: over a bunker, or to a pin tucked just beyond one. The hardest to time.
+// A full pull is not the shot's whole reach but a little past the pin (S.pk, see setPk), so a ten-yard chip uses most of the pull
+// and can be judged finely enough to hole.
+const CHIPS=[{id:'CH',style:0,name:'Bump & run',carry:20,loft:14,roll:1.9,tw:100},
+  {id:'CH',style:1,name:'Chip',carry:38,loft:33,roll:.55,tw:90,sand:true},
+  {id:'CH',style:2,name:'Flop',carry:48,loft:62,roll:.08,tw:68,sand:true}];
 const CLUBS=[
-  {id:'CH',name:'Chip',carry:38,loft:33,roll:.55,tw:90,sand:true},
+  CHIPS[1],
   {id:'SW',name:'Sand Wedge',carry:85,loft:52,roll:.03,tw:82,sand:true},
   {id:'PW',name:'Wedge',carry:125,loft:47,roll:.04,tw:75,sand:true},
   {id:'8I',name:'8 Iron',carry:155,loft:41,roll:.05,tw:66},
@@ -32,7 +41,7 @@ function dailyIds(key){const r=mulberry32(hashStr('fl-day:'+key)),n=COURSES.leng
   return out.sort((a,b)=>ALL[a].n-ALL[b].n)}
 
 const S={mode:'title',key:'',day:1,holes:[],round:{type:'daily',ids:[0,1,2],scores:[]},hi:0,strokes:0,lie:'tee',clubs:[],ci:0,club:CLUBS[6],
-  ball:{x:0,y:0,z:0,vx:0,vy:0,vz:0,air:false,spin:0,club:null,putt:false,gone:false,tree:null,rollK:1},prev:{x:0,y:0},g:null,trail:[],fx:[],parts:[],hintShots:0,muted:false,mark:{x:0,y:0},pmode:'aim',marks:[]};S.round.course='gr';
+  ball:{x:0,y:0,z:0,vx:0,vy:0,vz:0,air:false,spin:0,club:null,putt:false,gone:false,tree:null,rollK:1},prev:{x:0,y:0},g:null,trail:[],fx:[],parts:[],hintShots:0,chip:1,pk:1,muted:false,mark:{x:0,y:0},pmode:'aim',marks:[]};S.round.course='gr';
 // holes are built the first time they are needed; the day's pins and wind are part of the build
 const HOLE=i=>ALL[i]?S.holes[i]||(S.holes[i]=buildHole(i,S.key)):undefined;
 const cur=()=>HOLE(S.round.ids[S.hi]);
@@ -103,18 +112,25 @@ function updateCam(dt){
 
 // ───────── shot setup
 function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie='rough';S.lie=lie;
-  const d=hyp(b.x-h.pin.x,b.y-h.pin.y),long=CLUBS.filter(c=>c.id!=='DR'||lie==='tee');
+  const d=hyp(b.x-h.pin.x,b.y-h.pin.y),long=CLUBS.filter(c=>c.id!=='DR'||lie==='tee').map(c=>c.id==='CH'?CHIPS[S.chip]:c);
   const pickClub=l=>{const i=l.findIndex(c=>!c.putt&&c.carry*lieMult(lie,c)*(1+c.roll)*.94>=d);return i<0?l.length-1:i};
   let list,ci;
   if(lie==='green'){list=[PUTTER];ci=0}
   else if(lie==='fringe'){list=[PUTTER,...long];ci=d<=13?0:pickClub(list)}
   else{list=long;ci=pickClub(list)}
-  S.clubs=list;S.ci=ci;S.club=list[ci];placeMarker()}
+  S.clubs=list;S.ci=ci;S.club=list[ci];placeMarker();setPk()}
+// How far a ball landing at p and heading along (ux,uy) runs on level ground. It lands with the energy for its club's roll on that
+// surface, and spends it yard by yard at each surface's own rate, so a bump that lands on fairway and runs onto the green is read right.
+function runOut(h,p,ux,uy,carry,c){const l0=lieAt(h,p);let E=muFor(l0,{})*carry*c.roll*ROLLX[l0],d=0;
+  while(E>0&&d<90){const l=lieAt(h,{x:p.x+ux*(d+.5),y:p.y+uy*(d+.5)});if(l==='water')break;const m=muFor(l,{});if(E<m){d+=E/m;break}E-=m;d+=1}return d}
+// how much of the shot's reach a full pull gives: all of it, except in the short game, where it is 1.6 times the way to the pin
+function setPk(){const c=S.club,h=cur();S.pk=c.style!=null?clamp(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*1.6/reachOf(c),.3,1):1}
+function setChip(i){if(S.mode!=='ready'||S.club.style==null||S.g)return;S.chip=i;S.clubs=S.clubs.map(c=>c.id==='CH'?CHIPS[i]:c);S.club=S.clubs[S.ci];setPk();S.idle0=performance.now();aimCam();hud()}
 // the aim marker starts a little past the cup on the straight line; tap-ins go straight to the stroke
 function placeMarker(){const h=cur(),b=S.ball,dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy)||1,past=Math.min(.5,d*.25);
   S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode=d<1.4?'stroke':'aim'}
 function setBall(x,y){Object.assign(S.ball,{x,y,z:0,vx:0,vy:0,vz:0,air:false,spin:0,putt:false,gone:false,tree:null,rollK:1});S.trail.length=0}
-function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];placeMarker();aimCam();hud()}
+function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];placeMarker();setPk();aimCam();hud()}
 
 // ───────── swing
 // Pull back to set aim and power. A ring at the touch point fills in TU ms, slowly at first and quicker toward the top,
@@ -181,7 +197,7 @@ function sample(t,x,y){const g=S.g,len=hyp(x-g.ox,y-g.oy),dt=clamp(t-g.last.t,4,
     if(pr>=g.pull)commit(x,y);
     else if(vp<.05){if(++g.slow>=3){g.phase='aim';g.fast=0;g.frozen=null;g.lp=null;g.anc=null;g.peak={x,y,d:len};g.last.d=len;aimFrom(g,x,y,len,t)}}else g.slow=0}}
 function commit(x,y){const g=S.g,fx=x-g.top.x,fy=y-g.top.y,b=S.ball;
-  const dev=Math.atan2(g.aim.x*fy-g.aim.y*fx,g.aim.x*fx+g.aim.y*fy);let aw=rotv(g.aim.x,g.aim.y,-cam.r),p=g.power;
+  const dev=Math.atan2(g.aim.x*fy-g.aim.y*fx,g.aim.x*fx+g.aim.y*fy);let aw=rotv(g.aim.x,g.aim.y,-cam.r),p=g.power*S.pk;
   if(S.club.putt){const d=markDist()||1;aw={x:(S.mark.x-b.x)/d,y:(S.mark.y-b.y)/d};p=1}
   S.fx.push({type:'swing',pts:g.trail.slice(),t0:performance.now()});
   const te=g.e,tf=g.frozen;endGesture();fire(p,aw,dev,{x:g.ox,y:g.oy},te,tf)}
@@ -212,6 +228,7 @@ function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)t
   else{const th=(shank?c.loft*.6:c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.4:pure?c.bomb||1:onTime?.985:.965-.28*Math.pow(q,1.3)),v=Math.sqrt(carry*G/Math.sin(2*th)),
       k=shank?0:clamp((kf*1.1+(onTime?0:ts*(.07+q*.8)))*wild,-1.5,1.5),d=rotv(aim.x,aim.y,shank?.6:(over*.33+(onTime?0:ts*(.01+q*.06)))*(1+.5*(wild-1))); // a shank squirts low and hard right
     b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
+    if(c.style!=null)store('chips',(fetchKey('chips')||0)+1);
     word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}
   if(pure&&!c.putt&&S.hs&&!onRange())S.hs.pure++;
@@ -298,6 +315,7 @@ function hudDist(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y),ft=d<20
   $('hDist').textContent=ft?Math.max(1,Math.round(d*3)):Math.round(d);$('hUnit').textContent=ft?'ft to pin':'yd to pin'}
 function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textContent=c.name;
   if(c.putt)$('clubMax').textContent=Math.round(markDist()*3)+' ft pace';
+  else if(c.style!=null)$('clubMax').textContent='to '+Math.round(reachOf(c)*S.pk)+' yd · '+(LIE[S.lie]||'Rough');
   else $('clubMax').textContent=Math.round(c.carry*m)+' yd · '+(LIE[S.lie]||'Rough')+(m<1?' −'+Math.round((1-m)*100)+'%':'')}
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
@@ -306,12 +324,16 @@ function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready
   $('btnPutt').classList.toggle('pulse',!!(onRange()&&S.tut&&S.tut.step==='mark'&&S.tut.moved&&S.pmode==='aim'));$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
   const pb=$('btnPutt');pb.hidden=!(c.putt&&ready);pb.textContent=S.pmode==='aim'?'Putt':'Aim';
+  const cs=$('chipSeg'),chipping=c.style!=null&&ready&&!onRange();cs.hidden=!chipping;for(const x of cs.children)x.setAttribute('aria-pressed',String(+x.dataset.s===c.style));
+  if(chipping&&(fetchKey('chips')||0)<3){hintOn('Run, Chip or Flop: pick the shot');S.chipHint=true;return}
+  if(S.chipHint){S.chipHint=false;hintOff()}
   // the first few putts name the controls; after that the green is left to be read from its streaks. The range has its own card.
   if(c.putt&&ready&&!onRange()&&(fetchKey('putts')||0)<4)hintOn(S.pmode==='aim'?'Drag the marker, then press Putt':'Pull back, flick on gold');else if(c.putt||onRange())hintOff()}
 let toastT=0;function toast(s,sub,ms){if(typeof sub==='number'){ms=sub;sub=''}const t=$('toast');t.textContent=s;if(sub){const e=document.createElement('small');e.textContent=sub;t.appendChild(e)}
   t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms||1400)}
 function hintOn(s){const e=$('hint');e.textContent=s;e.style.opacity=1}
 function hintOff(){$('hint').style.opacity=0}
+$('chipSeg').onclick=e=>{const b=e.target.closest('[data-s]');if(b){ac();setChip(+b.dataset.s)}};
 $('clubPrev').onclick=()=>changeClub(-1);$('clubNext').onclick=()=>changeClub(1);
 $('btnSound').onclick=()=>{S.muted=!S.muted;$('btnSound').setAttribute('aria-pressed',String(!S.muted));store('muted',S.muted);if(!S.muted)sfx.putt()};
 $('btnHelp').onclick=()=>{if(S.mode==='ready')helpCard()};

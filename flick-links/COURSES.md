@@ -77,6 +77,15 @@ Never insert one in the middle: saved rounds keep hole indexes, and the day's co
 See `COURSE_LESSONS.md` for the look settings added for the sea (`sea`), sand colour (`sand`), flower beds (`blooms`),
 treeless ground (`clumps:0`) and salt water (`wet:false`).
 
+## Birds
+
+A course can have a bird of its own: `bird:'<kind>'` in its `th`. Every half minute or so one crosses the wider views (a
+line of three, for pelicans). They are drawn in `src/35-birds.js`, each from above as two pictures, wings and body, so the
+wings can beat. So far: `condor` (Grand Canyon), `hawk` (red-tailed: Texas, Georgia), `egret` (great egret: Florida, and
+the Texas courses with water), `pelican` (brown: Monterey), `gannet` (Fife) and `nutcracker` (Clark's: the high Sierra).
+A course with none gets a small distant flock. A new bird must be native to the place and must look right both large and
+at its size in the game: in a `#dev` page, `__fl.birdArt(kind, 760)` returns its pictures for looking at.
+
 ## Fantasy courses: holes that do not exist, on ground that does
 
 Bright Angel (the Grand Canyon) and Twenty Lakes (the Sierra Nevada) were laid out by hand on real terrain. The ground, water,

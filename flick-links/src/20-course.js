@@ -9,11 +9,11 @@
 const COURSES=[
 {id:'gr',code:'GR',club:'Grey Rock',tee:'Gold',
  // Hill Country south-west of Austin: live oak and Ashe juniper, dry limestone creek beds, holes threaded between neighbourhoods and under Highway 45
- th:{out:'native',floor:'#70783f',rough:'#4b7735',fair:'#69a547',stripe:1,outer:'#59663f',woods:'#2f4a26',mix:[['liveoak',.46],['juniper',.36],['elm',.18]],marker:'#e6cf8a',bloom:'bloom',bridge:'wood',cart:true,belt:30,houses:false},
+ th:{bird:'hawk',out:'native',floor:'#70783f',rough:'#4b7735',fair:'#69a547',stripe:1,outer:'#59663f',woods:'#2f4a26',mix:[['liveoak',.46],['juniper',.36],['elm',.18]],marker:'#e6cf8a',bloom:'bloom',bridge:'wood',cart:true,belt:30,houses:false},
  holes:[['Underpass',4,423,7],['Danz Creek',5,509,9],['Stock Tank',3,193,15],['Escarpment',4,446,3],['The Far Corner',4,380,13],['Cedar Brake',4,445,5],['Long Draw',5,542,1],['Grey Rock',3,187,17],['Homestead',4,317,11]]},
 {id:'lp',code:'LP',club:'Lost Pines',tee:'Black',
  // prairie ridges above the Colorado River: post oak and cedar elm mottes, loblolly pine, native grass, sprawling white bunkers
- th:{out:'native',floor:'#978a4b',rough:'#557f39',fair:'#6ba748',stripe:1,outer:'#978a4b',woods:'#33502b',mix:[['postoak',.32],['elm',.2],['juniper',.14],['pine',.16],['pecan',.1],['mesquite',.08]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,houses:false},
+ th:{bird:'hawk',out:'native',floor:'#978a4b',rough:'#557f39',fair:'#6ba748',stripe:1,outer:'#978a4b',woods:'#33502b',mix:[['postoak',.32],['elm',.2],['juniper',.14],['pine',.16],['pecan',.1],['mesquite',.08]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,houses:false},
  holes:[['Loblolly',4,420,17],['Prairie Ridge',4,431,3],['Long Horizon',5,603,1],["Wolf's Den",3,233,5],['Bastrop Run',5,594,7],['Pine Hollow',3,166,15],['Short Grass',4,337,13],['McKinney Roughs',4,483,11],['The Perch',4,428,9]],
  // the back nine drops off the ridge to the pecan bottoms along the Colorado
  more:[['River Road',4,473,6],['Colorado',4,352,8],['Pecan Bottom',3,191,16],['The Long Walk',5,636,2],['Lost Pines',4,401,12],['Wilbarger',4,345,14],['Little Wolf',3,155,18],['Wolfdancer',4,470,4],['Riverside',5,586,10]]},
@@ -24,20 +24,20 @@ const COURSES=[
 {id:'jc',code:'JC',club:'Jimmy Clay',tee:'Black',
  // Austin's 1974 muni in the fork of Onion and Williamson creeks: open parkland, rows and clumps of old pecan, live oak and cedar elm
  // between the holes, thick bottomland woods all round the edge, a green set in a pond at the 6th, McKinney Falls limestone over the creek
- th:{out:'rough',floor:'#62803b',rough:'#62803b',fair:'#72a648',stripe:.8,outer:'#5a6a3e',woods:'#2f4a26',mix:[['pecan',.3],['liveoak',.3],['elm',.3],['juniper',.1]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,belt:46,clumps:.8,clumpAt:.45,houses:false},
+ th:{bird:'egret',out:'rough',floor:'#62803b',rough:'#62803b',fair:'#72a648',stripe:.8,outer:'#5a6a3e',woods:'#2f4a26',mix:[['pecan',.3],['liveoak',.3],['elm',.3],['juniper',.1]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,belt:46,clumps:.8,clumpAt:.45,houses:false},
  holes:[['Dove Springs',4,408,7],['Nuckols',3,155,15],['Williamson Creek',4,392,3],['The Long Bend',5,564,9],['The Point',3,114,17],['Pond Green',4,316,11],['Onion Creek',5,502,13],['Pecan Row',4,444,1],["Clay's Way",4,407,5]],
  more:[['The Turn',5,519,8],['Roy Kizer',4,426,10],['Long Iron',3,227,14],['McKinney Falls',4,405,6],['Cedar Elm',3,204,12],['Pleasant Valley',4,378,16],['Three Shotter',5,559,18],['Bottomland',4,437,4],['Last Light',4,474,2]]},
 {id:'mu',code:'MU',club:'Lions',tee:'Blue',first:10,
  // Lions Municipal, Tarrytown, 1924: short, tight holes cut through thick live oak woods, open stands of big oaks over dry ground
  // between the fairways, small dark ponds, hardly a bunker, city streets on three sides. The 16th is Hogan's Hole.
- th:{out:'rough',floor:'#687d3c',rough:'#687d3c',fair:'#74a14a',stripe:.5,outer:'#5c6740',woods:'#2c4724',mix:[['liveoak',.52],['elm',.22],['pecan',.14],['juniper',.12]],marker:'#4f86e8',bloom:'bloom',bridge:'stone',cart:true,clumps:.34,clumpAt:-.5,houses:true},
+ th:{bird:'hawk',out:'rough',floor:'#687d3c',rough:'#687d3c',fair:'#74a14a',stripe:.5,outer:'#5c6740',woods:'#2c4724',mix:[['liveoak',.52],['elm',.22],['pecan',.14],['juniper',.12]],marker:'#4f86e8',bloom:'bloom',bridge:'stone',cart:true,clumps:.34,clumpAt:-.5,houses:true},
  holes:[['Enfield',4,287,16],['Tarrytown',4,320,8],['Brackenridge',5,493,4],['Short Carry',3,146,12],['Lake Austin',5,509,10],['Deep Eddy',3,128,14],["Hogan's Hole",4,395,2],['Live Oak',3,166,6],['Clubhouse Turn',4,301,18]],
  // `holes` is the back nine here, since that was built first; `more` is holes 1 to 9
  more:[['Opening Drive',4,359,5],['Exposition',5,495,9],['Old Oak',4,393,3],['West Austin',3,155,15],['The Doke',4,375,7],['The Hard One',4,367,1],['Lions Club',3,157,11],['Long Way Round',5,467,17],['Since 1924',4,312,13]]},
 {id:'om',code:'OM',club:'Olmos Basin',tee:'Blue',
  // San Antonio's flood basin behind Olmos Dam: flat, open parkland of scattered live oak, pecan and mesquite, Olmos Creek and its
  // drainage washes wandering through, a railroad cutting the course in two, Highway 281 along the east side
- th:{out:'rough',floor:'#6c8540',rough:'#6c8540',fair:'#70a548',stripe:.6,outer:'#636f40',woods:'#2f4a26',mix:[['liveoak',.4],['pecan',.2],['mesquite',.22],['elm',.18]],marker:'#4f86e8',bloom:'bloomGold',bridge:'wood',cart:true,clumps:.4,clumpAt:-.2,houses:true},
+ th:{bird:'egret',out:'rough',floor:'#6c8540',rough:'#6c8540',fair:'#70a548',stripe:.6,outer:'#636f40',woods:'#2f4a26',mix:[['liveoak',.4],['pecan',.2],['mesquite',.22],['elm',.18]],marker:'#4f86e8',bloom:'bloomGold',bridge:'wood',cart:true,clumps:.4,clumpAt:-.2,houses:true},
  holes:[['The Basin',4,410,3],['McCullough',4,434,1],['Mesquite Flat',3,198,5],['Across the Tracks',4,280,11],['Two Eighty-One',5,532,17],['Whistle Stop',3,195,9],['Basse Road',4,376,13],['Huisache',4,400,7],['Green Tank',5,526,15]],
  more:[['Olmos Creek',4,380,10],['Dam Site',5,381,16],['Channel',3,200,8],['The Terrace',4,366,4],['Long Three',3,221,2],['Floodplain',4,380,6],['Alamo Heights',4,378,14],['San Antonio',4,393,12],['The Quarry',5,518,18]]},
 // The four below were added after the six above were in play. New courses go at the end: the day's course is taken in turn
@@ -45,26 +45,26 @@ const COURSES=[
 {id:'ts',code:'TS',club:'TPC Sawgrass',tee:'Players',
  // The Stadium Course, Ponte Vedra Beach, Florida (Pete Dye, 1980): cut out of swamp, so there is water on every hole, long waste
  // bunkers, pine, live oak and sabal palm pressing in, and the island green at the 17th
- th:{out:'rough',floor:'#4d7d3a',rough:'#4d7d3a',fair:'#62a848',stripe:.9,outer:'#48683a',woods:'#294424',mix:[['pine',.36],['liveoak',.3],['palm',.24],['elm',.1]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,belt:34,houses:false},
+ th:{bird:'egret',out:'rough',floor:'#4d7d3a',rough:'#4d7d3a',fair:'#62a848',stripe:.9,outer:'#48683a',woods:'#294424',mix:[['pine',.36],['liveoak',.3],['palm',.24],['elm',.1]],marker:'#1c1c1c',bloom:'bloomGold',bridge:'wood',cart:true,belt:34,houses:false},
  holes:[['Ponte Vedra',4,423,11],['Pine Straw',5,532,15],['First Water',3,177,17],['The Moat',4,384,9],['Waste Bunker',4,471,3],['Sabal Palm',4,393,13],['Long Lagoon',4,451,1],['Mounds',3,237,7],['Three Shots',5,583,5]],
  more:[['Back Door',4,424,12],['The Fork',5,558,8],['Short Four',4,335,16],['Gator Pond',3,181,18],['Spectator Mounds',4,481,4],['The Chute',4,470,6],['Go For It',5,523,10],['Island Green',3,137,14],['The Lake',4,462,2]]},
 {id:'an',code:'AN',club:'Augusta National',tee:'Masters',
  // Augusta, Georgia (Jones and MacKenzie, 1933): wide emerald fairways with hardly any rough, tall loblolly pines over pine straw,
  // azaleas, white sand, and Rae's Creek across Amen Corner (11, 12, 13). The holes carry their real names, each a plant on the hole.
- th:{out:'rough',floor:'#3f7d38',rough:'#3f7d38',fair:'#55a646',stripe:1,outer:'#466a3a',woods:'#6a5a36',mix:[['pine',.68],['liveoak',.16],['elm',.08],['pecan',.08]],marker:'#f4f4ec',bloom:'bloomPink',blooms:20,beds:'bloomGold',sand:'#fbfaf3',bridge:'stone',cart:false,belt:30,houses:true},
+ th:{bird:'hawk',out:'rough',floor:'#3f7d38',rough:'#3f7d38',fair:'#55a646',stripe:1,outer:'#466a3a',woods:'#6a5a36',mix:[['pine',.68],['liveoak',.16],['elm',.08],['pecan',.08]],marker:'#f4f4ec',bloom:'bloomPink',blooms:20,beds:'bloomGold',sand:'#fbfaf3',bridge:'stone',cart:false,belt:30,houses:true},
  holes:[['Tea Olive',4,445,9],['Pink Dogwood',5,585,1],['Flowering Peach',4,350,13],['Flowering Crab Apple',3,240,15],['Magnolia',4,495,5],['Juniper',3,180,17],['Pampas',4,450,11],['Yellow Jasmine',5,570,3],['Carolina Cherry',4,460,7]],
  more:[['Camellia',4,495,6],['White Dogwood',4,520,8],['Golden Bell',3,155,16],['Azalea',5,545,4],['Chinese Fir',4,440,12],['Firethorn',5,550,2],['Redbud',3,170,18],['Nandina',4,440,14],['Holly',4,465,10]]},
 {id:'pb',code:'PB',club:'Pebble Beach',tee:'Blue',
  // Pebble Beach Golf Links, California (Neville and Grant, 1919): the 4th to the 10th and the 17th and 18th run along the cliffs
  // above Stillwater Cove and Carmel Bay; tiny greens, Monterey cypress and pine, big houses along the inland holes
- th:{out:'rough',floor:'#5f8540',rough:'#5f8540',fair:'#6fae4c',stripe:.8,outer:'#687448',woods:'#2c4526',mix:[['montcyp',.5],['pine',.28],['liveoak',.22]],marker:'#4f86e8',bloom:'bloomGold',bridge:'wood',cart:true,clumps:.5,clumpAt:.1,houses:true,sea:true,wet:false},
+ th:{bird:'pelican',out:'rough',floor:'#5f8540',rough:'#5f8540',fair:'#6fae4c',stripe:.8,outer:'#687448',woods:'#2c4526',mix:[['montcyp',.5],['pine',.28],['liveoak',.22]],marker:'#4f86e8',bloom:'bloomGold',bridge:'wood',cart:true,clumps:.5,clumpAt:.1,houses:true,sea:true,wet:false},
  holes:[['The Lodge',4,377,8],['Seventeen Mile Drive',5,511,10],['To the Sea',4,390,12],['Stillwater Cove',4,326,16],['The Bluff',3,192,14],['Arrowhead Point',5,506,2],['The Little One',3,106,18],['Over the Chasm',4,427,6],['Carmel Bay',4,523,4]],
  more:[['Carmel Beach',4,491,7],['Turn Inland',4,373,5],['Del Monte',3,201,17],['Uphill',4,444,9],['Long Dogleg',5,572,1],['Cypress Row',4,396,13],['The Barranca',4,401,11],['The Hourglass',3,177,15],['Sea Wall',5,543,3]]},
 {id:'sa',code:'SA',club:'St Andrews',tee:'Medal',
  // The Old Course, St Andrews, Scotland: the original links. No trees, only whin (gorse) and fescue; seven huge double greens;
  // more than a hundred pot bunkers; the Swilcan Burn across the 1st and 18th; the town and the Road Hole hotel hard against the last holes.
  // The holes carry their real names.
- th:{out:'native',floor:'#8d8a52',rough:'#6f8a45',fair:'#7da551',stripe:.3,outer:'#8d8a52',woods:'#56632f',mix:[['gorse',1]],marker:'#f4f4ec',bloom:'bloomGold',bridge:'stone',cart:false,clumps:0,houses:true,wet:false,pot:true,sea:true},
+ th:{bird:'gannet',out:'native',floor:'#8d8a52',rough:'#6f8a45',fair:'#7da551',stripe:.3,outer:'#8d8a52',woods:'#56632f',mix:[['gorse',1]],marker:'#f4f4ec',bloom:'bloomGold',bridge:'stone',cart:false,clumps:0,houses:true,wet:false,pot:true,sea:true},
  holes:[['Burn',4,376,10],['Dyke',4,411,6],['Cartgate Out',4,400,16],['Ginger Beer',4,464,8],["Hole O'Cross Out",5,514,2],['Heathery Out',4,413,12],['High Out',4,359,4],['Short',3,189,14],['End',4,347,18]],
  more:[['Bobby Jones',4,380,15],['High In',3,174,7],['Heathery In',4,316,3],["Hole O'Cross In",4,418,11],['Long',5,530,1],['Cartgate In',4,414,9],['Corner of the Dyke',4,412,13],['Road',4,455,5],['Tom Morris',4,357,17]]},
 // Two courses that do not exist, on ground that does (tools/terrain.py and tools/fantasy.py; COURSES.md, "Fantasy courses").
@@ -75,14 +75,14 @@ const COURSES=[
  // falls 1,459 feet), across the river by the Silver Bridge and up Bright Angel Creek to Phantom Ranch.
  // Emerald fairways on sage and red rock; the cliffs are the hazard.
  th:{out:'native',floor:'#b0aa86',rough:'#8f9a62',fair:'#5cab49',stripe:.9,outer:'#b0aa86',woods:'#3a4a2a',mix:[['juniper',1]],marker:'#d9693a',bloom:'bloomGold',bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
-  collar:.5,span:175,condor:true,sand:'#e4bc90',wat:{water:'#3f8f7d',deep:'#2a6e66',shallow:'#9ad8c2',rim:'#2f7f72'}},
+  collar:.5,span:175,bird:'condor',sand:'#e4bc90',wat:{water:'#3f8f7d',deep:'#2a6e66',shallow:'#9ad8c2',rim:'#2f7f72'}},
  holes:[["Havasupai Gardens",4,414,11,0],["Tonto Trail",5,620,5,59],["Dry Fall",3,215,15,12],["Horn Creek",4,460,7,60],["Inner Gorge",4,429,3,-15],["The Bite",5,635,1,-57],["Garden Creek",4,467,9,47],["Tapeats Rim",3,196,17,63],["Plateau Point",4,312,13,-54]],
  more:[["Tonto East",4,441,10,74],["The Tipoff",4,430,6,21],["Cremation",4,345,12,24],["Burro Spring",5,540,4,-30],["Pipe Creek",4,374,14,36],["Zoroaster",3,122,16,-35],["The Plunge",3,490,18,1459],["Silver Bridge",4,474,2,-2],["Phantom Ranch",5,573,8,-71]]},
 {id:'tl',code:'TL',club:'Twenty Lakes',tee:'Granite',
  // The Sierra Nevada at 10,000 feet, north of Tioga Pass. Out: the Twenty Lakes Basin, lake to lake from Greenstone past Wasco and
  // Steelhead to Shamrock (a green on an island) and Lake Helen, grey granite to the west, red rock to the east. In: up Lee Vining
  // Creek and its cascades to the Conness Lakes, milky turquoise with glacier flour, under North Peak and the Conness Glacier.
- th:{out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:3,bridge:'wood',cart:false,clumps:0,houses:false,wet:false,lilies:false,
+ th:{bird:'nutcracker',out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:3,bridge:'wood',cart:false,clumps:0,houses:false,wet:false,lilies:false,
   collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
  th2:{wat:{water:'#3fa7b5',deep:'#2a8aa0',shallow:'#b4ece4',rim:'#3597a6'}},
  holes:[["Greenstone",4,407,9,-107],["Wasco",3,170,15,0],["Hidden Lake",5,555,5,-152],["Steelhead",4,486,3,155],["Excelsior",3,180,13,-12],["Shamrock",4,247,7,17],["Mill Creek",5,522,1,280],["Lake Helen",3,227,5,-17],["Twin Lakes",4,344,17,-206]],

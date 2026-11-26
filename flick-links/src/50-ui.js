@@ -168,4 +168,4 @@ if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==
     if(m&&+m[1]>BUILD_TS){try{sessionStorage.setItem(KEY+'resume',JSON.stringify(snap()))}catch(e){}location.replace(location.pathname+'?v='+m[1]+location.hash)}}catch(e){}},20000);
 
 if(location.hash==='#dev')for(const c of COURSES)if(LocalServer.SIZE[c.id]!==courseIds(c.id,'a').length)console.error('server/core.js SIZE is out of step for course '+c.id);
-if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,INFO,courseIds,dailyIds,gameTable,demoKind,C,Net,refresh,startRange,setupShot,setBall,CHIPS,meterAt,groundAt,flightCarry,runOut,condorArt};
+if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,INFO,courseIds,dailyIds,gameTable,demoKind,C,Net,refresh,startRange,setupShot,setBall,CHIPS,meterAt,groundAt,flightCarry,runOut,birdArt,BIRDS,wingSpan};

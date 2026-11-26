@@ -66,16 +66,36 @@ const COURSES=[
  // The holes carry their real names.
  th:{out:'native',floor:'#8d8a52',rough:'#6f8a45',fair:'#7da551',stripe:.3,outer:'#8d8a52',woods:'#56632f',mix:[['gorse',1]],marker:'#f4f4ec',bloom:'bloomGold',bridge:'stone',cart:false,clumps:0,houses:true,wet:false,pot:true,sea:true},
  holes:[['Burn',4,376,10],['Dyke',4,411,6],['Cartgate Out',4,400,16],['Ginger Beer',4,464,8],["Hole O'Cross Out",5,514,2],['Heathery Out',4,413,12],['High Out',4,359,4],['Short',3,189,14],['End',4,347,18]],
- more:[['Bobby Jones',4,380,15],['High In',3,174,7],['Heathery In',4,316,3],["Hole O'Cross In",4,418,11],['Long',5,530,1],['Cartgate In',4,414,9],['Corner of the Dyke',4,412,13],['Road',4,455,5],['Tom Morris',4,357,17]]}];
+ more:[['Bobby Jones',4,380,15],['High In',3,174,7],['Heathery In',4,316,3],["Hole O'Cross In",4,418,11],['Long',5,530,1],['Cartgate In',4,414,9],['Corner of the Dyke',4,412,13],['Road',4,455,5],['Tom Morris',4,357,17]]},
+// Two courses that do not exist, on ground that does (tools/terrain.py and tools/fantasy.py; COURSES.md, "Fantasy courses").
+// Each hole entry carries a fifth figure: the fall from tee to green in feet (a climb is negative).
+{id:'ba',code:'BA',club:'Bright Angel',tee:'Condor',
+ // The Grand Canyon, below the South Rim. Out: across the Tonto platform from the cottonwoods of Havasupai Gardens to the tip of
+ // Plateau Point, 1,300 feet straight above the river. In: over the east Tonto, off the rim and down to the Colorado (The Plunge
+ // falls 1,459 feet), across the river by the Silver Bridge and up Bright Angel Creek to Phantom Ranch.
+ // Emerald fairways on sage and red rock; the cliffs are the hazard.
+ th:{out:'native',floor:'#b0aa86',rough:'#8f9a62',fair:'#5cab49',stripe:.9,outer:'#b0aa86',woods:'#3a4a2a',mix:[['juniper',1]],marker:'#d9693a',bloom:'bloomGold',bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
+  collar:.5,span:175,condor:true,sand:'#e4bc90',wat:{water:'#3f8f7d',deep:'#2a6e66',shallow:'#9ad8c2',rim:'#2f7f72'}},
+ holes:[["Havasupai Gardens",4,414,11,0],["Tonto Trail",5,606,5,43],["Dry Fall",3,215,15,12],["Horn Creek",4,476,7,61],["Inner Gorge",4,461,3,-40],["The Bite",5,602,1,-48],["Garden Creek",4,406,9,10],["Tapeats Rim",3,213,17,74],["Plateau Point",4,301,13,-55]],
+ more:[["Tonto East",4,441,10,74],["The Tipoff",4,430,6,21],["Cremation",4,345,12,24],["Burro Spring",5,497,4,37],["Pipe Creek",4,295,14,-12],["Zoroaster",3,131,16,-59],["The Plunge",3,481,18,1459],["Silver Bridge",4,479,2,-38],["Phantom Ranch",5,653,8,-73]]},
+{id:'tl',code:'TL',club:'Twenty Lakes',tee:'Granite',
+ // The Sierra Nevada at 10,000 feet, north of Tioga Pass. Out: the Twenty Lakes Basin, lake to lake from Greenstone past Wasco and
+ // Steelhead to Shamrock (a green on an island) and Lake Helen, grey granite to the west, red rock to the east. In: up Lee Vining
+ // Creek and its cascades to the Conness Lakes, milky turquoise with glacier flour, under North Peak and the Conness Glacier.
+ th:{out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:3,bridge:'wood',cart:false,clumps:0,houses:false,wet:false,lilies:false,
+  collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
+ th2:{wat:{water:'#3fa7b5',deep:'#2a8aa0',shallow:'#b4ece4',rim:'#3597a6'}},
+ holes:[["Greenstone",4,409,9,-116],["Wasco",3,172,15,1],["Hidden Lake",5,555,5,-152],["Steelhead",4,470,3,137],["Excelsior",3,180,13,-12],["Shamrock",4,237,7,17],["Mill Creek",5,608,1,99],["Lake Helen",3,220,11,12],["Twin Lakes",4,365,17,-239]],
+ more:[["Lee Vining Creek",5,533,12,-19],["The Cascade",5,581,4,-298],["Conness Lake",3,156,14,43],["North Peak",4,288,10,-189],["Glacial Flour",4,466,2,-327],["Snowmelt Tarn",3,136,16,-88],["Mount Conness",4,454,6,387],["Alpenglow",3,170,18,0],["Tioga Crest",5,505,8,-13]]}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
 // data/<id>.json; its other nine, if it has one, is `more`, drawn from data/<id>2.json. The second nines are added after all the
 // first ones so that the index of a hole never changes once it has been published (saved rounds keep indexes).
 //   k  0 to 17, the hole's fixed place in its course (used for seeds and for the key sent to the clubhouse server)
 //   n  the number on the tee sign
 const ALL=[];
-for(const set of[COURSES.slice(0,6),COURSES.slice(6)]){
-for(const c of set)c.holes.forEach((d,k)=>ALL.push({c,k,n:k+(c.first||1),map:c.id,def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));
-for(const c of set)(c.more||[]).forEach((d,k)=>ALL.push({c,k:k+9,n:k+((c.first||1)===1?10:1),map:c.id+'2',def:{name:d[0],par:d[1],yd:d[2],hcp:d[3]}}));}
+for(const set of[COURSES.slice(0,6),COURSES.slice(6,10),COURSES.slice(10)]){ // in the batches they were published in, so no index ever moves
+for(const c of set)c.holes.forEach((d,k)=>ALL.push({c,k,n:k+(c.first||1),map:c.id,def:{name:d[0],par:d[1],yd:d[2],hcp:d[3],drop:d[4]||0}}));
+for(const c of set)(c.more||[]).forEach((d,k)=>ALL.push({c,k:k+9,n:k+((c.first||1)===1?10:1),map:c.id+'2',def:{name:d[0],par:d[1],yd:d[2],hcp:d[3],drop:d[4]||0}}));}
 // the indexes of a course's holes in playing order: part 'f' the front nine, 'b' the back nine, 'a' all eighteen
 const courseIds=(id,part)=>ALL.map((e,i)=>e.c.id===id&&(part==='a'||(part==='b')===(e.n>9))?i:-1).filter(i=>i>=0).sort((a,b)=>ALL[a].n-ALL[b].n);
 // what a scorecard needs to know about a hole, without building it
@@ -88,11 +108,13 @@ const SPECIES=[[/quercus|oak/i,'liveoak'],[/carya|pecan/i,'pecan'],[/ulmus|elm/i
 // Only the hole being played is built: its own ground and whatever of the course lies within sight of it.
 // Past FADE0 yards from the line of play the picture fades out, and by FADE1 it is gone (and the ball is off the map).
 const FADE0=94,FADE1=165,PAD=FADE1+30;
-function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32(hashStr('geo:'+c.id+k)),R=g.route=mkRoute(catmull(pts(m.lines[e.n]),3));
+// a course's second nine can have a look of its own (th2 over th)
+const themeOf=e=>e.th||(e.th=e.map!==e.c.id&&e.c.th2?{...e.c.th,...e.c.th2}:e.c.th);
+function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=themeOf(e),g={},rng=mulberry32(hashStr('geo:'+c.id+k)),R=g.route=mkRoute(catmull(pts(m.lines[e.n]),3));
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of R.pts){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}
   g.box=[x0-PAD,y0-PAD,x1-x0+2*PAD,y1-y0+2*PAD];
   const local=f=>{const P=f.p||f;let a=1e9,b=1e9,c2=-1e9,d=-1e9;for(let i=0;i<P.length;i+=2){a=Math.min(a,P[i]);b=Math.min(b,P[i+1]);c2=Math.max(c2,P[i]);d=Math.max(d,P[i+1])}return c2>x0-PAD&&a<x1+PAD&&d>y0-PAD&&b<y1+PAD};
-  const shp=f=>polyShape(pts(f.p||f)),box=f=>polyShape(pts(f.p||f),true),shapes=(list,mk)=>list.filter(local).map(mk);
+  const shp=f=>polyShape(pts(f.p||f),false,f.h&&f.h.map(pts)),box=f=>polyShape(pts(f.p||f),true),shapes=(list,mk)=>list.filter(local).map(mk);
   // which 30-yard squares lie within reach of a hole: one lookup then rules out far-off ground
   const NEAR=FADE1+8,CELL=30,reach=d=>{const set=new Set(),n=Math.ceil(d/CELL);for(let i=0;i<R.pts.length;i+=2){const q=R.pts[i];
       for(let a=-n;a<=n;a++)for(let b=-n;b<=n;b++)if(a*a+b*b<=(n+.7)*(n+.7))set.add((Math.floor(q.x/CELL)+a)+','+(Math.floor(q.y/CELL)+b))}return p=>set.has(Math.floor(p.x/CELL)+','+Math.floor(p.y/CELL))};
@@ -104,6 +126,9 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
   for(const s of g.building){let best=0;s.poly.forEach((p,i)=>{const q=s.poly[(i+1)%s.poly.length],l=hyp(q.x-p.x,q.y-p.y);if(l>best){best=l;s.ax=Math.atan2(q.y-p.y,q.x-p.x)}})}
   // water: ponds are outlines; creeks are lines given a width. A creek the map marks as seasonal is drawn as a dry limestone bed.
   g.water=shapes(m.water,f=>Object.assign(shp(f),{pond:true}));g.dry=[];
+  // wild ground: cliffs too steep to play (a hazard, like water), snow and ice, and the painted relief the hole is drawn on
+  g.void=shapes(m.void||[],shp);g.snow=shapes(m.snow||[],shp);g.land=m.relief?m:null;g.elev=elevOf(m);
+  g.ledges=(m.ledges||[]).filter(local).map(p=>{const P=pts(p),path=new Path2D();let a=1e9,b=1e9,c2=-1e9,d=-1e9;P.forEach((q,i)=>{i?path.lineTo(q.x,q.y):path.moveTo(q.x,q.y);a=Math.min(a,q.x);b=Math.min(b,q.y);c2=Math.max(c2,q.x);d=Math.max(d,q.y)});return{path,bb:[a,b,c2,d]}});
   // a river can run for miles past the course: keep only the stretches that pass the holes
   const runs=[];for(const s of m.streams){let run=null;for(const q of pts(s.p)){if(inPlay(q)){if(!run)runs.push(run={...s,P:[]});run.P.push(q)}else run=null}}
   for(const s of runs){if(s.P.length<2)continue;const r=mkRoute(catmull(s.P,3));if(r.len<8)continue;const n=Math.max(1,Math.round(r.len/22)),prof=[];for(let i=0;i<=n;i++)prof.push([i/n,s.w/2*(s.dry?1.1+rng()*1.1:.9+rng()*.3)]);
@@ -119,9 +144,9 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
   const wet=(p,d)=>g.water.some(w=>inSh(w,p,d)),line=f=>{const P=pts(f.p),path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;P.forEach((q,i)=>{i?path.lineTo(q.x,q.y):path.moveTo(q.x,q.y);x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)});return{...f,pts:P,path,bb:[x0-9,y0-9,x1+9,y1+9]}};
   g.roads=m.roads.filter(r=>local(r)&&(th.houses||r.w>=9)).map(line);g.rails=shapes(m.rails||[],f=>line({...f,w:4}));g.paths=shapes(m.paths,line);
   // details the map gives for some courses: stone walls and timber bulkheads, piers (beaches and flower beds are shapes, above)
-  g.walls=shapes(m.walls||[],line);g.piers=shapes(m.piers||[],line);
+  g.walls=shapes(m.walls||[],line);g.piers=shapes(m.piers||[],line);g.falls=shapes(m.falls||[],line);g.props=(m.props||[]).filter(q=>nearHoles(q));
   // a bridge wherever a path or road runs over water
-  g.bridges=[];for(const w of g.paths.concat(g.roads)){const r=mkRoute(w.pts);let a=null;for(let s=0;s<=r.len;s+=1.5){const q=rAt(r,s),in1=wet(q,0);if(in1&&a===null)a=s;if((!in1||s+1.5>r.len)&&a!==null){if(s-a>2&&s-a<70){const p0=rAt(r,a-2.5),p1=rAt(r,s+1);
+  g.bridges=[];for(const w of g.paths.concat(g.roads)){const r=mkRoute(w.pts);let a=null;for(let s=0;s<=r.len;s+=1.5){const q=rAt(r,s),in1=wet(q,0);if(in1&&a===null)a=s;if((!in1||s+1.5>r.len)&&a!==null){if(s-a>2&&s-a<(th.span||70)){const p0=rAt(r,a-2.5),p1=rAt(r,s+1);
         g.bridges.push({x:(p0.x+p1.x)/2,y:(p0.y+p1.y)/2,a:Math.atan2(p1.y-p0.y,p1.x-p0.x),len:hyp(p1.x-p0.x,p1.y-p0.y),wide:w.w||0})}a=null}}}
   // trees. Mapped single trees stand where they really are and stop a low ball. Woods are filled with the course's native mix.
   const pick=()=>{let u=rng();for(const[k,w]of th.mix)if((u-=w)<0)return k;return th.mix[0][0]},tree=(x,y,kind,r,solid)=>({x,y,kind,r:r*TREES[kind].size,v:Math.floor(rng()*4),solid,h:r*1.15+3});
@@ -144,7 +169,9 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
   const noise=p=>Math.sin(p.x*.031+c.id.length)+Math.sin(p.y*.027+1.3)+Math.sin((p.x+p.y)*.017);
   const inWood=p=>any(g.woods,p,0),inB=p=>!g.boundary||inSh(g.boundary,p),clear=(p,r)=>!any(g.fair,p,r)&&!any(g.green,p,r+4)&&!any(g.tee,p,r+2)&&!any(g.bunker,p,r)&&!any(g.building,p,r*.5)&&!any(g.beach,p,r*.5)&&!any(g.bed,p,r*.4);
   const paths=g.paths.map(w=>({...w,w:5}));
-  for(let x=x0-NEAR;x<x1+NEAR;x+=10.5)for(let y=y0-NEAR;y<y1+NEAR;y+=10.5){const p={x:x+rng()*10.5,y:y+rng()*10.5},r=lerp(4.6,9.5,rng()*rng()+.1),u=rng();
+  // on wild ground the plants were placed from the photograph (m.scatter: x, y, radius, kind): take those near this hole
+  if(m.scatter)for(const[x,y,r,ki]of m.scatter){const p={x,y};if(nearHoles(p)&&!inWay(p,r*.6,50,8))g.trees.push({x,y,kind:m.kinds[ki],r,v:Math.floor(rng()*4),solid:false,h:r*1.15+3})}
+  if(!m.scatter)for(let x=x0-NEAR;x<x1+NEAR;x+=10.5)for(let y=y0-NEAR;y<y1+NEAR;y+=10.5){const p={x:x+rng()*10.5,y:y+rng()*10.5},r=lerp(4.6,9.5,rng()*rng()+.1),u=rng();
     if(!nearHoles(p)||inWay(p,r*.6,50,8))continue;
     if(inWood(p)){if(u<.14||wet(p,r*.5)||!clear(p,r*.45))continue}
     else{if(wet(p,r*.5)||lineNear(g.roads,p,r*.4)||lineNear(g.rails,p,r*.5+2)||lineNear(paths,p,r*.2)||any(g.dry,p,2))continue;
@@ -161,14 +188,14 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=c.th,g={},rng=mulberry32
   for(const w of g.water){const big=Math.sqrt(w.area/Math.PI);
     for(const ring of[w.poly,...(w.holes||[])])for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],L=hyp(b.x-a.x,b.y-a.y)||1,nx=(b.y-a.y)/L,ny=-(b.x-a.x)/L,sg=inSh(w,{x:(a.x+b.x)/2+nx*.6,y:(a.y+b.y)/2+ny*.6})?-1:1;
       for(let t=rd()*3;t<L;t+=w.pond?3.4:1.5){const q={x:a.x+(b.x-a.x)*t/L,y:a.y+(b.y-a.y)*t/L},u=rd(),v=rd();
-        if(w.sea);else if(w.pond){if(u<.22&&w.area>120)g.reeds.push({x:q.x+nx*sg*.3,y:q.y+ny*sg*.3,a:Math.atan2(ny*sg,nx*sg),s:lerp(.8,1.4,v)})}
+        if(w.sea);else if(w.pond){if(u<.22&&w.area>120&&th.lilies!==false)g.reeds.push({x:q.x+nx*sg*.3,y:q.y+ny*sg*.3,a:Math.atan2(ny*sg,nx*sg),s:lerp(.8,1.4,v)})}
         else if(u<.3)g.pebbles.push({x:q.x+nx*sg*(.3+v*.9),y:q.y+ny*sg*(.3+v*.9),r:lerp(.3,.8,rd())})}}
-    if(w.pond&&w.area>120&&!w.sea){for(const p of w.spots)if(rd()<.55&&inSh(w,p,-1.6))for(let i=0,n=1+Math.floor(rd()*3);i<n;i++){const q={x:p.x+(rd()-.5)*5,y:p.y+(rd()-.5)*5};if(inSh(w,q,-1.6))g.lilies.push({...q,r:lerp(.7,1.4,rd()),a:rd()*TAU,fl:rd()<.35})}
+    if(w.pond&&w.area>120&&!w.sea&&th.lilies!==false){for(const p of w.spots)if(rd()<.55&&inSh(w,p,-1.6))for(let i=0,n=1+Math.floor(rd()*3);i<n;i++){const q={x:p.x+(rd()-.5)*5,y:p.y+(rd()-.5)*5};if(inSh(w,q,-1.6))g.lilies.push({...q,r:lerp(.7,1.4,rd()),a:rd()*TAU,fl:rd()<.35})}
       // a duck or two, idling in a small circle well out from the bank
       if(big>14&&w.spots.length)for(let i=0,n=1+(rd()<.4?1:0);i<n;i++){const p=w.spots[Math.floor(rd()*w.spots.length)];g.ducks.push({w,x:p.x,y:p.y,rad:lerp(1.2,2.2,rd()),T:lerp(50,80,rd())*1000,ph:rd()*TAU,dir:rd()<.5?1:-1})}}}
   for(const w of g.dry)for(const q of w.c)for(let i=0;i<3;i++)if(rng()<.6)g.pebbles.push({x:q.x+q.nx*(rng()*2-1)*(q.w+.3),y:q.y+q.ny*(rng()*2-1)*(q.w+.3),r:lerp(.35,1.5,Math.pow(rng(),1.6))});
   for(const b of g.bunker){if(b.area<25)continue;const q=b.poly[Math.floor(rng()*b.poly.length)],a=Math.atan2(q.y-b.y,q.x-b.x);g.rakes.push({x:q.x+Math.cos(a)*1.3,y:q.y+Math.sin(a)*1.3,a:a+1.2+rng()})}
-  for(let i=0;i<(th.blooms||7);i++){const r=R,sd=rng()<.5?-1:1,q=rAt(r,lerp(20,r.len-20,rng())),d=lerp(32,58,rng()),p={x:q.x-q.dy*sd*d,y:q.y+q.dx*sd*d};
+  for(let i=0;i<(th.blooms==null?7:th.blooms);i++){const r=R,sd=rng()<.5?-1:1,q=rAt(r,lerp(20,r.len-20,rng())),d=lerp(32,58,rng()),p={x:q.x-q.dy*sd*d,y:q.y+q.dx*sd*d};
     if(clear(p,10)&&!wet(p,6)&&!inWood(p)&&inB(p))g.blooms.push(blob(p.x,p.y,lerp(6,11,rng()),lerp(3.5,6.5,rng()),rng()*TAU,g.blooms.length+7,.22))}
   if(th.cart){const w=g.paths.find(w=>w.cart&&w.pts.length>3)||g.paths[0];if(w){const a=w.pts[1],b=w.pts[2],ca=Math.atan2(b.y-a.y,b.x-a.x);g.cart={x:a.x-Math.sin(ca)*2.6,y:a.y+Math.cos(ca)*2.6,a:ca}}}
   // buckets so only what is on screen is drawn
@@ -181,7 +208,7 @@ function buildHole(i,dayKey){const e=ALL[i],c=e.c,g=buildGeo(e),n=e.n,r=g.route,
   const green=g.green.find(s=>inSh(s,end,-1))||g.green.reduce((b,s)=>hyp(s.x-end.x,s.y-end.y)<hyp(b.x-end.x,b.y-end.y)?s:b);
   // a double green (St Andrews) is one huge shape serving two holes: this hole's part of it is round the end of its line
   const dbl=green.R>34&&inSh(green,end,-3),gc=dbl?{x:end.x,y:end.y}:{x:green.x,y:green.y};
-  const h={course:c,th:c.th,geo:g,n,k:e.k+1,name:e.def.name,par:e.def.par,yards:e.def.yd,hcp:e.def.hcp,route:r,total:L,tee:{x:t0.x,y:t0.y,a:Math.atan2(t0.dy,t0.dx)},axis:Math.atan2(end.dy,end.dx),green,fringe:grown(green,2.4)};
+  const h={course:c,th:themeOf(e),drop:e.def.drop||0,geo:g,n,k:e.k+1,name:e.def.name,par:e.def.par,yards:e.def.yd,hcp:e.def.hcp,route:r,total:L,tee:{x:t0.x,y:t0.y,a:Math.atan2(t0.dy,t0.dx)},axis:Math.atan2(end.dy,end.dx),green,fringe:grown(green,2.4)};
   h.oaks=g.solid.filter(t=>distLine(r.pts,t)<160);
   // the day's pin: one of several spots well inside the green
   const dr=mulberry32(hashStr('fl-cond:'+dayKey+':'+c.id+n)),gr=dbl?Math.min(green.rx,14):green.rx,spots=[[0,0]];for(let k=0;k<6;k++)spots.push([Math.cos(k*1.047+.4)*gr*.5,Math.sin(k*1.047+.4)*gr*.5]);
@@ -189,6 +216,7 @@ function buildHole(i,dayKey){const e=ALL[i],c=e.c,g=buildGeo(e),n=e.n,r=g.route,
   const wsp=Math.round(lerp(0,14,dr())),wa=dr()*TAU;h.wind={x:Math.cos(wa)*wsp,y:Math.sin(wa)*wsp,sp:wsp};
   // the putting surface: a gentle overall tilt plus a few humps and hollows, fixed for each green
   const fr=mulberry32(hashStr('green:'+c.id+n)),sa=fr()*TAU,sm=lerp(.18,.32,fr());h.slope={x:Math.cos(sa)*sm,y:Math.sin(sa)*sm,m:sm};h.bumps=[];
+  {const t=(MAPS[e.map].tilt||{})[n];if(t)h.slope={x:t[0],y:t[1],m:hyp(t[0],t[1])}} // on real terrain the green tilts the way the ground does
   for(let k=0,nb=3+Math.floor(fr()*2);k<nb;k++){const a=fr()*TAU,d=Math.sqrt(fr())*gr*.85,sg=lerp(3.2,5.8,fr())*clamp(gr/12,.7,1.1),peak=lerp(.28,.72,fr())*(fr()<.5?-1:1);
     h.bumps.push({x:gc.x+Math.cos(a)*d,y:gc.y+Math.sin(a)*d,s:sg,a:peak*sg/.607})}
   return h}
@@ -204,6 +232,8 @@ function lieAt(h,q){const g=h.geo,off=distLine(h.route.pts,q);
   for(const b of g.beach)if(inSh(b,q))return'bunker';
   for(const w of g.water)if(inSh(w,q))return'water';
   if(hyp(q.x-h.tee.x,q.y-h.tee.y)<6)return'tee';
+  for(const v of g.void)if(inSh(v,q))return'void';
+  for(const v of g.snow)if(inSh(v,q))return'snow';
   for(const f of g.fair)if(inSh(f,q))return'fairway';
   for(const s of g.green)if(inSh(s,q))return'fairway';
   for(const s of g.tee)if(inSh(s,q))return'fairway';

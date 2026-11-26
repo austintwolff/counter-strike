@@ -1,11 +1,11 @@
 // ───────── rules of this little world
 const G=22,KW=0.18,CUP_R=0.28,CAP_V=4.2,MAX_OVER=5;
-const MU={green:2.2,fringe:4,fairway:5,tee:5,rough:13,bunker:26,woods:15,ob:12,native:17,creekbed:15,water:13,rock:13};
+const MU={green:2.2,fringe:4,fairway:5,tee:5,rough:13,bunker:26,woods:15,ob:12,native:17,creekbed:15,water:13,rock:13,void:13,snow:30};
 // A putt rolls on the green at MU.green. A ball that has been chipped or pitched there still has some check on it and slows faster
 // (GREEN_IN), so one that lands short on fairway (5) or fringe (4) and runs on does not suddenly go half as far again.
 const GREEN_IN=3.4,muFor=(lie,b)=>lie==='green'&&!b.putt?GREEN_IN:MU[lie];
-const ROLLX={green:1.1,fringe:1,fairway:1,tee:1,rough:.35,bunker:.04,woods:.3,ob:.5,native:.18,creekbed:.5,water:0,rock:.6};
-const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Rough',bunker:'Bunker',native:'Native',creekbed:'Creek bed'};
+const ROLLX={green:1.1,fringe:1,fairway:1,tee:1,rough:.35,bunker:.04,woods:.3,ob:.5,native:.18,creekbed:.5,water:0,rock:.6,void:0,snow:.03};
+const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Rough',bunker:'Bunker',native:'Native',creekbed:'Creek bed',snow:'Snow'};
 // carry is a pure strike from a good lie, in yards; roll is added on top (a pure driver finishes near 290)
 // The short game is its own kind of shot, as putting is. In chipping range the player picks how to play it:
 //   bump and run  low, lands early and runs a long way: for a clear run of fairway and green. Poor out of sand.
@@ -28,7 +28,7 @@ const CLUBS=[
   {id:'3W',name:'3 Wood',carry:232,loft:30,roll:.09,tw:50,bomb:1.05,tempo:1.03,rush:.06},
   {id:'DR',name:'Driver',carry:262,loft:27,roll:.11,tw:45,bomb:1.05,tempo:1.05,rush:.08}]; // bomb: a pure strike with the long clubs flies this much farther
 const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
-const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
+const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='snow'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
 const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=__BUILD_TS__; // build.sh stamps the build time here
@@ -96,7 +96,21 @@ function overviewCam(ay,frac,snap){const h=cur(),t=h.tee,p=h.pin,L=hyp(p.x-t.x,p
   const am=(a0+a1)/2,lm=(l0+l1)/2;
   camT.x=t.x+ux*am-uy*lm;camT.y=t.y+uy*am+ux*lm;camT.s=Math.min(H*frac/(a1-a0+56),W/(l1-l0+150));camT.r=-Math.PI/2-Math.atan2(uy,ux);camT.ay=ay;if(snap)Object.assign(cam,camT)}
 const markDist=()=>hyp(S.mark.x-S.ball.x,S.mark.y-S.ball.y);
-function reachOf(c){return c.putt?markDist():c.carry*lieMult(S.lie,c)*(1+c.roll)}
+// ───────── real ground under the ball. A course on wild terrain carries a coarse grid of heights (yards above sea level), and a
+// shot there flies over it: off a rim it keeps falling and goes much further, up a slope it comes down early.
+function elevOf(m){const e=m.elev;if(!e)return null;if(!e.a){const s=atob(e.z),a=e.a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i)}return e}
+function groundAt(h,x,y){const e=h.geo.elev;if(!e)return 0;const fx=clamp((x-e.x0)/e.step,0,e.w-1.001),fy=clamp((y-e.y0)/e.step,0,e.h-1.001),i=Math.floor(fx),j=Math.floor(fy),u=fx-i,v=fy-j,a=e.a,o=j*e.w+i;
+  return e.lo+e.k*(a[o]*(1-u)*(1-v)+a[o+1]*u*(1-v)+a[o+e.w]*(1-u)*v+a[o+e.w+1]*u*v)}
+// Height of the ground at (x,y) against where the shot was struck (g0), as the flight feels it. A drop counts in full: off a rim
+// the ball keeps falling. A climb counts for only UPHILL of itself. A golf ball rises about a hundred feet, so real headwalls of
+// two and three hundred feet would simply be unplayable; the cliff is drawn as a hazard to carry instead, and the hole plays
+// longer uphill without becoming impossible.
+const UPHILL=.3,rise=(h,x,y,g0)=>{const d=groundAt(h,x,y)-g0;return d>0?d*UPHILL:d};
+// how far a shot whose carry on the level would be `carry` really flies from p along (ux,uy)
+function flightCarry(h,p,ux,uy,carry,loft){if(!h.geo.elev||carry<3)return carry;const th=loft*DEG,v=Math.sqrt(carry*G/Math.sin(2*th)),vx=v*Math.cos(th),vz=v*Math.sin(th),g0=groundAt(h,p.x,p.y);
+  let pz=0,pg=0;for(let t=.05;t<40;t+=.05){const d=vx*t,z=vz*t-.5*G*t*t,g=rise(h,p.x+ux*d,p.y+uy*d,g0);if(z<=g)return vx*(t-.05+.05*(pz-pg)/(((pz-pg)-(z-g))||1));pz=z;pg=g}return vx*40}
+const toPin=()=>{const h=cur(),b=S.ball,d=hyp(h.pin.x-b.x,h.pin.y-b.y)||1;return{x:(h.pin.x-b.x)/d,y:(h.pin.y-b.y)/d}};
+function reachOf(c){if(c.putt)return markDist();const u=toPin();return flightCarry(cur(),S.ball,u.x,u.y,c.carry*lieMult(S.lie,c),c.loft)+c.carry*lieMult(S.lie,c)*c.roll}
 function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
   const t=d<=285?h.pin:rAt(h.route,Math.min(h.total,rProj(h.route,b)+250));
   const view=S.club.putt?clamp(Math.max(d,markDist())*1.3,7,70):clamp(Math.min(d*1.18,reachOf(S.club)*1.15),7,430);
@@ -104,7 +118,7 @@ function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
 function updateCam(dt){
   const b=S.ball;let ease=0;
   if(S.mode==='flight'&&!b.putt){const h=cur(),d=hyp(b.x-h.pin.x,b.y-h.pin.y);
-    if(!b.onGreen&&b.z<.6&&d<45&&inSh(h.fringe,b))b.onGreen=true;
+    if(!b.onGreen&&!b.air&&b.z<.6&&d<45&&inSh(h.fringe,b))b.onGreen=true;
     // once an approach has come down on the green the camera eases in on the cup, so the roll past it (or into it) can be watched
     if(b.onGreen&&d<45){const view=clamp(d*2.3+9,11,60);camT.x=lerp(h.pin.x,b.x,.4);camT.y=lerp(h.pin.y,b.y,.4);camT.ay=.5;camT.s=Math.max(camT.s,H*.6/view);ease=3}
     else if(camT.s<5){camT.x=b.x;camT.y=b.y;camT.ay=.6}}
@@ -116,7 +130,7 @@ function updateCam(dt){
 // ───────── shot setup
 function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie='rough';S.lie=lie;
   const d=hyp(b.x-h.pin.x,b.y-h.pin.y),long=CLUBS.filter(c=>c.id!=='DR'||lie==='tee').map(c=>c.id==='CH'?CHIPS[S.chip]:c);
-  const pickClub=l=>{const i=l.findIndex(c=>!c.putt&&c.carry*lieMult(lie,c)*(1+c.roll)*.94>=d);return i<0?l.length-1:i};
+  S.lie=lie;const pickClub=l=>{const i=l.findIndex(c=>!c.putt&&reachOf(c)*(h.geo.elev?.98:.94)>=d);return i<0?l.length-1:i};
   let list,ci;
   if(lie==='green'){list=[PUTTER];ci=0}
   else if(lie==='fringe'){list=[PUTTER,...long];ci=d<=13?0:pickClub(list)}
@@ -125,14 +139,14 @@ function setupShot(){const h=cur(),b=S.ball;let lie=lieAt(h,b);if(!LIE[lie])lie=
 // How far a ball landing at p and heading along (ux,uy) runs on level ground. It lands with the energy for its club's roll on that
 // surface, and spends it yard by yard at each surface's own rate, so a bump that lands on fairway and runs onto the green is read right.
 function runOut(h,p,ux,uy,carry,c){const l0=lieAt(h,p);let E=muFor(l0,{})*carry*c.roll*ROLLX[l0],d=0;
-  while(E>0&&d<90){const l=lieAt(h,{x:p.x+ux*(d+.5),y:p.y+uy*(d+.5)});if(l==='water')break;const m=muFor(l,{});if(E<m){d+=E/m;break}E-=m;d+=1}return d}
+  while(E>0&&d<90){const l=lieAt(h,{x:p.x+ux*(d+.5),y:p.y+uy*(d+.5)});if(l==='water'||l==='void')break;const m=muFor(l,{});if(E<m){d+=E/m;break}E-=m;d+=1}return d}
 // how much of the shot's reach a full pull gives: all of it, except in the short game, where it is 1.6 times the way to the pin
 function setPk(){const c=S.club,h=cur();S.pk=c.style!=null?clamp(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*1.6/reachOf(c),.3,1):1}
 function setChip(i){if(S.mode!=='ready'||S.club.style==null||S.g)return;S.chip=i;S.clubs=S.clubs.map(c=>c.id==='CH'?CHIPS[i]:c);S.club=S.clubs[S.ci];setPk();S.idle0=performance.now();aimCam();hud()}
 // the aim marker starts a little past the cup on the straight line; tap-ins go straight to the stroke
 function placeMarker(){const h=cur(),b=S.ball,dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy)||1,past=Math.min(.5,d*.25);
   S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode=d<1.4?'stroke':'aim'}
-function setBall(x,y){Object.assign(S.ball,{x,y,z:0,vx:0,vy:0,vz:0,air:false,spin:0,putt:false,gone:false,tree:null,rollK:1});S.trail.length=0}
+function setBall(x,y){Object.assign(S.ball,{x,y,z:0,zv:0,vx:0,vy:0,vz:0,air:false,spin:0,putt:false,gone:false,tree:null,rollK:1});S.trail.length=0}
 function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];placeMarker();setPk();aimCam();hud()}
 
 // ───────── swing
@@ -146,7 +160,7 @@ const DEAD=.035,FLICK_V=.5,TU=1140,TD=415,EASE=2.05,WIN=.62,SHANK=.25;
 const pullMax=()=>clamp(H*.18,84,132);
 // The woods get wilder the harder they are swung: past 70% power the window narrows, the flick must be straighter, and a miss bends further.
 const reachFor=pw=>S.club.bomb?clamp(((pw==null?(S.g?S.g.power:0):pw)-.7)/.3,0,1):0;
-const timingWindow=pw=>Math.max(22,S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*WIN*(1-.35*reachFor(pw)));
+const timingWindow=pw=>Math.max(22,S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'||S.lie==='snow'?.7:1)*WIN*(1-.35*reachFor(pw)));
 // where the ring stands at time t: f how full it is, and e the timing error in ms (early is negative)
 // The ring does not always run at the same speed (see tempo, above), and for the woods its speed changes with the pull. So the
 // ring keeps a phase: ph, in standard milliseconds, as of time pt, moved on at the current rate each time the finger reports.
@@ -230,7 +244,7 @@ function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)t
   save();
   const wild=1+.7*reachFor(p),dead=DEAD/(1+.4*reachFor(p)),{onTime,q,shank}=judge(te,tf,p),ts=Math.sign(te);
   const ad=Math.abs(dev),kf=ad<=dead?0:Math.sign(dev)*clamp((ad-dead)/.35,0,1),over=Math.sign(dev)*Math.max(0,ad-dead),pure=onTime&&kf===0;
-  b.club=c;b.putt=!!c.putt;b.z=0;b.gone=false;b.onGreen=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
+  b.club=c;b.putt=!!c.putt;b.z=0;b.zv=0;b.g0=groundAt(cur(),b.x,b.y);b.gone=false;b.onGreen=false;b.rollK=1;b.rocked=false;S.trail.length=0;b.dry={x:b.x,y:b.y};
   b.tree=cur().oaks.find(t=>hyp(b.x-t.x,b.y-t.y)<t.r)||null; // a ball already under an oak can be played out from beneath it
   let word,sub=onTime?'Perfect tempo':shank?(ts<0?'Far too early':'Far too late'):(q<.3?'A touch ':'')+(ts<0?'early':'late');
   if(c.putt){const pace=shank?.4:onTime?1:ts<0?.95-.27*q:1.05+.25*q,d=rotv(aim.x,aim.y,over*.6+(onTime?0:ts*(.01+q*.06))),v=Math.sqrt(2*MU.green*markDist()*p*pace);b.vx=d.x*v;b.vy=d.y*v;b.vz=0;b.air=false;b.spin=0;
@@ -252,10 +266,11 @@ const STEP=1/240;
 function stepBall(dt){const b=S.ball,h=cur();
   if(b.air){const sp=hyp(b.vx,b.vy)||1,px=-b.vy/sp,py=b.vx/sp;
     b.vx+=(h.wind.x*KW+px*b.spin)*dt;b.vy+=(h.wind.y*KW+py*b.spin)*dt;b.vz-=G*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;
-    {const l=lieAt(h,b);if(l!=='water'&&l!=='woods'&&l!=='ob')b.dry={x:b.x,y:b.y}} // the last dry ground the ball passed over
-    for(const t of h.oaks)if(b.tree!==t&&b.z>2.5&&b.z<t.h&&hyp(b.x-t.x,b.y-t.y)<t.r*.85){b.tree=t;b.vx*=.12;b.vy*=.12;b.vz=Math.min(b.vz,0)-1;b.spin=0;b.rollK=.2;sfx.leaf();burst(b.x,b.y,'#4b8134',16,10,5);toast('Into the oak',1000)}
-    if(b.z<=0){b.z=0;let lie=lieAt(h,b);
-      if(lie==='water')return hazard('water');
+    {const l=lieAt(h,b);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='void')b.dry={x:b.x,y:b.y}} // the last dry ground the ball passed over
+    const gz=h.geo.elev?rise(h,b.x,b.y,b.g0):0,up=b.z-gz;b.zv=up<45?up:45+(up-45)*.12; // height over the ground below; drawn compressed when it is very great
+    for(const t of h.oaks)if(b.tree!==t&&up>2.5&&up<t.h&&hyp(b.x-t.x,b.y-t.y)<t.r*.85){b.tree=t;b.vx*=.12;b.vy*=.12;b.vz=Math.min(b.vz,0)-1;b.spin=0;b.rollK=.2;sfx.leaf();burst(b.x,b.y,'#4b8134',16,10,5);toast('Into the oak',1000)}
+    if(b.z<=gz){b.z=0;b.zv=0;b.g0=groundAt(h,b.x,b.y);let lie=lieAt(h,b);
+      if(lie==='water'||lie==='void')return hazard(lie);
       if(hyp(b.x-h.pin.x,b.y-h.pin.y)<CUP_R)return holed();
       if(lie==='creekbed'&&b.vz<-5&&!b.rocked){b.rocked=true;const a=(hashStr(Math.round(b.x*8)+':'+Math.round(b.y*8))%1000/1000-.5)*1.7,d=rotv(b.vx,b.vy,a);
         b.vx=d.x*.42;b.vy=d.y*.42;b.vz=Math.min(15,-b.vz*.5);b.z=.02;b.spin=0;b.rollK=.3;sfx.clack();burst(b.x,b.y,K.stone,8,7,5);return}
@@ -263,9 +278,9 @@ function stepBall(dt){const b=S.ball,h=cur();
       b.vx=b.vx/s2*v;b.vy=b.vy/s2*v;b.vz=Math.min(9,-b.vz*.22)*(lie==='bunker'?0:lie==='fairway'||lie==='green'||lie==='fringe'||lie==='tee'?1:.5);b.air=false;
       if(lie==='bunker'){sfx.sand();burst(b.x,b.y,K.sand,18,8,6)}else{sfx.land();if(lie==='green'&&S.marks.length<40)S.marks.push({t:'pitch',x:b.x,y:b.y})}}
     return}
-  if(b.z>0||b.vz>0){b.vz-=G*dt;b.z+=b.vz*dt;if(b.z<=0){b.z=0;b.vz=-b.vz*.4;if(b.vz<1.2)b.vz=0}}
+  if(b.z>0||b.vz>0){b.vz-=G*dt;b.z+=b.vz*dt;if(b.z<=0){b.z=0;b.vz=-b.vz*.4;if(b.vz<1.2)b.vz=0}}b.zv=b.z;
   const lie=lieAt(h,b),mu=muFor(lie,b);
-  if(lie==='water'&&b.z<=.01)return hazard('water');
+  if((lie==='water'||lie==='void')&&b.z<=.01)return hazard(lie);
   if(lie!=='woods'&&lie!=='ob')b.dry={x:b.x,y:b.y};
   if(lie==='green'||lie==='fringe'){const a=slopeAt(h,b);b.vx+=a.x*dt;b.vy+=a.y*dt}
   const sp=hyp(b.vx,b.vy);
@@ -275,15 +290,15 @@ function stepBall(dt){const b=S.ball,h=cur();
   b.x+=b.vx*dt;b.y+=b.vy*dt}
 // Where to drop after water: a couple of yards back from the point of entry, on the line toward where the shot was played.
 function dropSpot(){const h=cur(),d=S.ball.dry,p=S.prev,L=hyp(p.x-d.x,p.y-d.y);if(L<4)return p;const ux=(p.x-d.x)/L,uy=(p.y-d.y)/L;
-  for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker'&&!h.geo.water.some(w=>inSh(w,q,2)))return q}return p} // two clear yards from the bank
+  for(let k=2.5;k<Math.min(L,40);k+=2.5){const q={x:d.x+ux*k,y:d.y+uy*k},l=lieAt(h,q);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='bunker'&&l!=='void'&&l!=='snow'&&!h.geo.water.some(w=>inSh(w,q,2))&&!h.geo.void.some(w=>inSh(w,q,2)))return q}return p} // two clear yards from the bank
 const shotLen=()=>({d:hyp(S.ball.x-S.prev.x,S.ball.y-S.prev.y),ft:S.club.putt});
-function hazard(kind){const b=S.ball,water=kind==='water',spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';S.shot=back?null:shotLen();b.gone=true;
+function hazard(kind){const b=S.ball,fell=kind==='void',water=kind==='water'||fell,spot=water?dropSpot():S.prev,back=spot===S.prev;S.mode='wait';S.shot=back?null:shotLen();b.gone=true;
   if(onRange()){S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});water?sfx.splash():sfx.bad();return setTimeout(()=>rangeAfter(false,water?'In the water.':'Out of play.'),900)}
   S.strokes++;if(S.hs){S.hs.pen++;if(S.hs.tee){S.hs.tee=false;if(cur().par>3)S.hs.fw=0}}
-  S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water});
-  if(water){sfx.splash();burst(b.x,b.y,'#d8f4f0',22,9,9)}else sfx.bad();
-  toast(water?'In the water':kind==='ob'?'Out of bounds':'Lost in the trees',(water&&!back?'Drop':'Replay')+' · +1',1900);hud();
-  setTimeout(()=>{setBall(spot.x,spot.y);afterShot()},1500)}
+  S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now(),water:water&&!fell});
+  if(fell){sfx.clack();burst(b.x,b.y,'#c9a184',18,9,8)}else if(water){sfx.splash();burst(b.x,b.y,'#d8f4f0',22,9,9)}else sfx.bad();
+  toast(fell?'Over the edge':water?'In the water':kind==='ob'?'Out of bounds':'Lost in the trees',(water&&!back?'Drop':'Replay')+' · +1',1900);hud();
+  S.hzT=setTimeout(()=>{setBall(spot.x,spot.y);afterShot()},1500)} // startHole cancels this: a drop must not land in the next hole
 function atRest(){const l=lieAt(cur(),S.ball);if(!onRange()&&(l==='woods'||l==='ob'))return hazard(l);S.shot=shotLen();noteRest(l);afterShot()} // on the range a wild one is just fetched back
 function afterShot(){if(onRange())return rangeAfter(false);if(S.strokes>=maxScore()){toast('Picked up','Max '+maxScore(),1600);return finishHole(maxScore())}
   setupShot();
@@ -304,7 +319,7 @@ function bumpStreak(){const m=fetchKey('meta')||{last:0,streak:0};if(m.last===S.
 let last=0,acc=0,hudTick=0,windDeg=1e9,Q=2,slowFrames=0;const LOCKQ=location.hash==='#dev';
 function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1000||0);last=now;if(!cur())return;
   if(S.mode==='flight'){acc+=dt;while(acc>=STEP&&S.mode==='flight'){stepBall(STEP);acc-=STEP}
-    const b=S.ball;S.trail.push({x:b.x,y:b.y,z:b.z});if(S.trail.length>(b.putt?10:26))S.trail.shift();
+    const b=S.ball;S.trail.push({x:b.x,y:b.y,z:b.zv||0});if(S.trail.length>(b.putt?10:26))S.trail.shift();
     if((hudTick+=dt)>.1){hudTick=0;hudDist()}}else acc=0;
   // step the picture quality down on a phone that cannot hold thirty frames a second
   if(dt>.034)slowFrames++;else slowFrames=Math.max(0,slowFrames-2);if(slowFrames>70&&Q>0&&!LOCKQ){Q--;slowFrames=0;resize()}
@@ -329,7 +344,7 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
   else $('clubMax').textContent=Math.round(c.carry*m)+' yd · '+(LIE[S.lie]||'Rough')+(m<1?' −'+Math.round((1-m)*100)+'%':'')}
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
-  $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n);
+  $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n)+(Math.abs(h.drop)>=60?' · '+(h.drop>0?'drops ':'climbs ')+Math.abs(h.drop).toLocaleString()+' ft':'');
   $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();S.fresh=!fetchKey('seen');S.fewPutts=(fetchKey('putts')||0)<2;
   $('btnPutt').classList.toggle('pulse',!!(onRange()&&S.tut&&S.tut.step==='mark'&&S.tut.moved&&S.pmode==='aim'));$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;

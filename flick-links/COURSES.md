@@ -76,3 +76,41 @@ Add it at the end of `COURSES` in `src/20-course.js`, and add its id and hole co
 Never insert one in the middle: saved rounds keep hole indexes, and the day's course is taken in turn from the list.
 See `COURSE_LESSONS.md` for the look settings added for the sea (`sea`), sand colour (`sand`), flower beds (`blooms`),
 treeless ground (`clumps:0`) and salt water (`wet:false`).
+
+## Fantasy courses: holes that do not exist, on ground that does
+
+Bright Angel (the Grand Canyon) and Twenty Lakes (the Sierra Nevada) were laid out by hand on real terrain. The ground, water,
+cliffs, snow, trails and plants are real; only the tees, fairways, greens and bunkers are invented.
+
+1. **Fetch the ground.** `python3 tools/terrain.py fetch <id> <south> <west> <north> <east>` downloads elevation (AWS terrain
+   tiles; USGS 3DEP in the US), aerial photography (USGS National Map, public domain) and the OpenStreetMap extract, and puts
+   elevation and photograph on one grid of 3-yard cells: yards east (x) and south (y) of the box's centre. The session needs
+   `s3.amazonaws.com`, `basemap.nationalmap.gov` and `api.openstreetmap.org`. Needs numpy, scipy, contourpy, shapely, Pillow.
+2. **Look at it.** `python3 tools/fantasy.py view <id> out.jpg [x0 y0 x1 y1] --slope` draws the photograph with the map's water and
+   trails, a yard grid, and the steep ground tinted (red: too steep to play). Find the flat ground first; route the holes over it.
+3. **Write the design**, `data/<id>.design.json` (one file a nine; the second nine is `<id>2`):
+   `{"id", "terrain", "look": "canyon" or "alpine", "pad": 235, "steep": 33, "holes": {"1": {"name", "par", "hcp",
+   "line": [[x, y], ...], "green": [rx, ry, rot], "fw": [[from, to, half-width], ...], "bunkers": [[along, side, rx, ry, rot, "rel"]],
+   ...}}, "props": [...], "snowline": feet}`. A hole is its line from tee to pin. Everything else has a default.
+4. **Build and check the plan.** `python3 tools/fantasy.py build data/<id>.design.json` writes `data/<id>.json`, prints the card
+   (with each hole's fall or climb in feet) and the `holes:[...]` line to paste into `COURSES`, and notes any tee or green that
+   landed in water or on a cliff. `python3 tools/fantasy.py plan <id> out.jpg [x0 y0 x1 y1 scale]` draws what was built on the
+   painted ground with a grid: move points, rebuild, look again.
+5. **Add it to the game**: a `COURSES` entry (each hole has a fifth figure, the fall in feet), the id in `SIZE` in
+   `server/core.js`, and in `WILD` in `src/50-ui.js` so it is listed under "Fantasy".
+6. **Check it like any course**: `./build.sh && node tools/check_course.js <id> f` and `b`, and look at the pictures.
+
+What the builder makes from the terrain, and how the game uses it:
+
+| From | The game gets | And does with it |
+|---|---|---|
+| Elevation | `relief`: the ground painted by height, slope and light | drawn under the hole in place of a flat floor |
+| Slope over `steep` degrees | `void`: cliffs and crags | a hazard like water (drop, one stroke); shaded, with a hard edge |
+| Level lines on steep faces | `ledges` | drawn as lit edges, so cliffs look layered |
+| Elevation, coarse | `elev`: a grid of heights | the ball flies over it: much further off a drop (in full), a little shorter up a slope (a climb counts for 30%, `UPHILL` in `src/40-game.js`, or real headwalls would be unplayable). The preview and club choice follow. |
+| Gradient at each green | `tilt` | the green breaks the way the real ground falls |
+| The map | water with islands, creeks (dry washes where the map says), trails, buildings | as on any course |
+| Creek gradient | `falls` | white water where the creek really drops |
+| The photograph | `scatter`: trees and brush where they really grow; snow patches; in the mountains, the ground's own colours | plants are scenery (they do not stop a ball); snow plays like deep sand |
+| The design's `props` | mule trains on named trails, rafts where a trail meets the river, tents, white water | small things that belong to the place |
+

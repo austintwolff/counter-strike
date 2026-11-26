@@ -16,11 +16,21 @@ const ROOFS=['#8b8478','#7c6f62','#9a8f7d','#6f7377','#94705a','#a39a8a','#5f666
 // Scenery. Everything here stands still, so it is drawn once and kept (see the scene cache below), not once a frame.
 // RZ is the scale it is being drawn at, in CSS pixels per yard; the caller has set the transform and VR, the area to cover.
 let RZ=1;
+// The painted ground of a course on wild terrain is one picture, decoded the first time it is wanted. Until it is ready the
+// plain floor shows; when it arrives every kept picture of the scene is thrown away and drawn again with it.
+function reliefOf(m){const r=m.relief;if(!r.img){r.img=new Image();r.img.onload=()=>{r.ok=true;for(const h of S.holes)if(h)h.fog=null;SC.farHole=SC.midHole=null;SC.key=''};r.img.src=r.src}return r.ok?r.img:null}
 function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),tF=clamp(1.15-(z-2)/10,.2,1);ctx.lineJoin='round';ctx.lineCap='round';
   const native=th.out==='native';
   // the land: what lies outside the property, then the property itself
   if(G.boundary){grass(null,th.outer,tG*.5,tF,.6);ctx.strokeStyle=th.floor;ctx.globalAlpha=.5;ctx.lineWidth=5;ctx.stroke(G.boundary.path);ctx.globalAlpha=1;grass(G.boundary.path,th.floor,tG*.6,tF,native?.55:.7);if(native)texFill(G.boundary.path,'straw',.75,.09,.3)}
-  else{grass(null,th.floor,tG*.6,tF,native?.55:.7);if(native)texFill(null,'straw',.75,.09,.3)}
+  else{grass(null,th.floor,tG*.6,tF,native?.55:.7);if(native&&!G.land)texFill(null,'straw',.75,.09,.3)}
+  if(G.land){const img=reliefOf(G.land),b=G.land.relief.box;if(img){ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,b[0],b[1],b[2],b[3]);texFill(null,'grain',.45*tG,.09)}
+    // cliffs: the picture shows them; a shade and a hard edge say plainly where the ground stops
+    for(const v of G.void)if(seen(v)){ctx.fillStyle=th.cliff||'rgba(34,14,10,.2)';ctx.fill(v.path);inner(v.path,-SUN.x*2.2,-SUN.y*2.2,'#1c0c08',.34,5);ctx.strokeStyle='rgba(40,18,12,.6)';ctx.lineWidth=.7;ctx.stroke(v.path)}
+    // ledges: each level line a lit edge with a shadow beneath it, so the faces look layered
+    ctx.lineCap='butt';ctx.lineWidth=clamp(1.5/z,.35,1.1);ctx.save();ctx.translate(SUN.x*.7,SUN.y*.7);ctx.strokeStyle=th.ledgeLo||'rgba(24,10,8,.34)';for(const l of G.ledges)if(seen(l))ctx.stroke(l.path);ctx.restore();
+    ctx.strokeStyle=th.ledgeHi||'rgba(255,224,190,.2)';for(const l of G.ledges)if(seen(l))ctx.stroke(l.path);ctx.lineCap='round';
+    for(const v of G.snow)if(seen(v)){ctx.fillStyle='#eef4f8';ctx.fill(v.path);inner(v.path,SUN.x*2.4,SUN.y*2.4,'#8fb0c8',.5,5);inner(v.path,-SUN.x,-SUN.y,'#ffffff',.9,2.2);texFill(v.path,'glint',.5,.16,.8)}}
   // streets and the neighbourhood
   for(const r of G.roads)if(seen2(r)){ctx.strokeStyle='#3d4038';ctx.lineWidth=r.w+1.6;ctx.stroke(r.path);ctx.strokeStyle='#5d5f58';ctx.lineWidth=r.w;ctx.stroke(r.path);
     if(r.w>=9&&z>1.6){ctx.setLineDash([3,4]);ctx.strokeStyle='rgba(240,214,110,.7)';ctx.lineWidth=.35;ctx.stroke(r.path);ctx.setLineDash([])}}
@@ -29,7 +39,7 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
     if(z>1.4){ctx.setLineDash([.45,1.1]);ctx.strokeStyle='#4f4636';ctx.lineWidth=2.5;ctx.stroke(r.path);ctx.setLineDash([])}ctx.strokeStyle='#2b2a27';ctx.lineWidth=.3;for(const o of[-.8,.8]){ctx.save();ctx.translate(o,o*.4);ctx.stroke(r.path);ctx.restore()}ctx.lineCap='round'}
   for(const s of G.parking)if(seen(s)){ctx.fillStyle='#62645d';ctx.fill(s.path);if(z>1.8){const b=s.bb;for(let x=b[0]+3;x<b[2]-3;x+=3.4)for(let y=b[1]+4;y<b[3]-4;y+=11){const q={x,y};if(((x*7+y*3)|0)%5<3&&inSh(s,q,-2.5)){ctx.fillStyle=['#d9d4c7','#7b2f33','#2f4a63','#1f1f1f','#b9b9b4'][((x*13+y*7)|0)%5];rrect(x-1.1,y-2.3,2.2,4.6,.5)}}}}
   // the rough: a mown band around every fairway, tee and green
-  if(native){ctx.strokeStyle=th.rough;for(const[list,w]of[[G.fair,50],[G.green,56],[G.tee,24]]){ctx.lineWidth=w;for(const s of list)if(seen(s)){ctx.globalAlpha=.4;ctx.lineWidth=w+12;ctx.stroke(s.path);ctx.globalAlpha=1;ctx.lineWidth=w;ctx.stroke(s.path)}}
+  if(native){const ck=th.collar==null?1:th.collar;ctx.strokeStyle=th.rough;for(const[list,w0]of[[G.fair,50],[G.green,56],[G.tee,24]]){const w=w0*ck;ctx.lineWidth=w;for(const s of list)if(seen(s)){ctx.globalAlpha=.4;ctx.lineWidth=w+12*ck;ctx.stroke(s.path);ctx.globalAlpha=1;ctx.lineWidth=w;ctx.stroke(s.path)}}
     for(const s of G.rough)if(seen(s))grass(s.path,th.rough,tG,tF,.75);
   }
   for(const s of G.woods)if(seen(s)){ctx.fillStyle=th.woods;ctx.fill(s.path);texFill(s.path,'mottle',.8,.35,.9)}
@@ -56,11 +66,12 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   // water: a soft shade on the grass, a thin muddy rim, then the water with pale shallows along the bank
   // the sea: a strand of pale sand and rock along the shore, under the water's edge
   for(const w of G.water)if(w.sea&&seen(w)){ctx.lineJoin='round';ctx.strokeStyle='#8f8468';ctx.lineWidth=17;ctx.stroke(w.path);ctx.strokeStyle='#d6c9a2';ctx.lineWidth=12;ctx.stroke(w.path)}
+  const WC=th.wat||K; // a course can have water of its own colour: a silty river, a glacial lake
   ctx.strokeStyle='rgba(16,32,12,.2)';for(const w of G.water)if(seen(w)){ctx.lineWidth=w.pond?6:4;ctx.stroke(w.path)}
   for(const w of G.water)if(seen(w)){ctx.strokeStyle=K.bank;ctx.globalAlpha=.8;ctx.lineWidth=w.pond?1.5:1.1;ctx.stroke(w.path);ctx.globalAlpha=1;
-    if(w.round){if(!w.grad){const g=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.R*1.05);g.addColorStop(0,K.deep);g.addColorStop(.62,K.water);g.addColorStop(1,'#2f8686');w.grad=g}ctx.fillStyle=w.grad}
-    else ctx.fillStyle=w.sea?'#2a7f93':K.water;
-    ctx.fill(w.path);if(w.sea){inner(w.path,0,0,'#7fd0cf',.3,26);inner(w.path,0,0,'#c9f2ea',.4,11);inner(w.path,0,0,'#ffffff',.75,3.4);texFill(w.path,'glint',.6,.2,.3,0,0);continue}inner(w.path,0,0,K.shallow,.26,w.pond?7:2.6);inner(w.path,0,0,K.shallow,.2,w.pond?2.4:1);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.38,2.4);
+    if(w.round){if(!w.grad){const g=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.R*1.05);g.addColorStop(0,WC.deep);g.addColorStop(.62,WC.water);g.addColorStop(1,(WC.rim||'#2f8686'));w.grad=g}ctx.fillStyle=w.grad}
+    else ctx.fillStyle=w.sea?'#2a7f93':WC.water;
+    ctx.fill(w.path);if(w.sea){inner(w.path,0,0,'#7fd0cf',.3,26);inner(w.path,0,0,'#c9f2ea',.4,11);inner(w.path,0,0,'#ffffff',.75,3.4);texFill(w.path,'glint',.6,.2,.3,0,0);continue}inner(w.path,0,0,WC.shallow,.26,w.pond?7:2.6);inner(w.path,0,0,WC.shallow,.2,w.pond?2.4:1);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.38,2.4);
     texFill(w.path,'glint',.6,.2,.3,0,0);inner(w.path,0,0,'#eafffb',.2,.6);
     if(w.round&&w.area>150){const Rr=w.rx,sx=w.x-SUN.x*Rr*.3,sy=w.y-SUN.y*Rr*.3,gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rr*.7);gl.addColorStop(0,'rgba(255,250,215,.24)');gl.addColorStop(1,'rgba(255,250,215,0)');
       ctx.save();ctx.clip(w.path);ctx.globalAlpha=.8;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr);ctx.restore()}}
@@ -72,6 +83,9 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
     for(const q of G.pebbles)if(vis(q)){ctx.fillStyle='rgba(20,24,16,.35)';disc(q.x+.12,q.y+.14,q.r);ctx.fillStyle='#bdb8a8';disc(q.x,q.y,q.r);ctx.fillStyle='#e4e0d3';disc(q.x-q.r*.25,q.y-q.r*.28,q.r*.5)}}
   // beaches lie over the water's edge: the map's coastline is the high-water mark and the sand runs out past it
   for(const s of G.beach)if(seen(s)){ctx.fillStyle='#dccfa6';ctx.fill(s.path);texFill(s.path,'grain',.5,.11);inner(s.path,0,0,'#c2b388',.45,4);inner(s.path,0,0,'#f3ecd2',.35,1.2)}
+  // white water, where the creek really falls
+  ctx.lineCap='round';for(const f of G.falls)if(seen2(f)){ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=f.w*1.15;ctx.stroke(f.path);ctx.setLineDash([.9,1.5]);ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=f.w*.8;ctx.stroke(f.path);ctx.setLineDash([])}
+  for(const q of G.props||[])if(vis(q))drawProp(q);
   for(const b of G.bridges)if(vis(b))drawBridge(b,b.wide>6?'road':th.bridge,now);
   // every green on the property, bunkers, then the one being played with its contours
   ctx.lineJoin='round';for(const s of G.green)if(seen(s)){ctx.strokeStyle=K.fringe;ctx.lineWidth=4.8;ctx.stroke(s.path);ctx.fillStyle=K.fringe;ctx.fill(s.path)}
@@ -198,15 +212,34 @@ function drawBridge(b,style,now){const sv=rotv(SUN.x,SUN.y,-b.a),l=b.len,hl=l/2,
   }
   ctx.restore()}
 // a little cream golf cart with a green roof and a bag on the back
+// Small things that belong to a wild place. Sizes are in yards; each is drawn with its shadow.
+function drawProp(q){ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.a);const sv=rotv(SUN.x,SUN.y,-q.a),r=mulberry32(77+q.v*13+Math.round(q.x));ctx.lineCap='round';ctx.lineJoin='round';
+  const pill=(x,y,w,h,rad)=>{ctx.beginPath();ctx.moveTo(x+rad,y);ctx.arcTo(x+w,y,x+w,y+h,rad);ctx.arcTo(x+w,y+h,x,y+h,rad);ctx.arcTo(x,y+h,x,y,rad);ctx.arcTo(x,y,x+w,y,rad);ctx.closePath()};
+  if(q.k==='raft'){const col=['#f0c02c','#3f82dc','#e56a2a'][q.v%3],dk=['#b78a12','#2a5ca8','#a8461a'][q.v%3];   // a river raft, bow on the sand
+    ctx.fillStyle='rgba(4,16,14,.34)';pill(-3+sv.x*.5,-1.3+sv.y*.5,6.2,2.6,1.25);ctx.fill();ctx.fillStyle=col;pill(-3,-1.3,6,2.6,1.25);ctx.fill();ctx.fillStyle='#343a3e';pill(-2,-.62,4,1.24,.5);ctx.fill();
+    ctx.strokeStyle=dk;ctx.lineWidth=.28;for(const x of[-1,0,1]){ctx.beginPath();ctx.moveTo(x,-.62);ctx.lineTo(x,.62);ctx.stroke()}ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=.16;pill(-2.7,-1.02,5.4,2.04,.95);ctx.stroke();
+    ctx.strokeStyle='#d9cfb2';ctx.lineWidth=.18;for(const s of[-1,1]){ctx.beginPath();ctx.moveTo(.3,s*.9);ctx.lineTo(1.6,s*2.6);ctx.stroke()}}
+  else if(q.k==='mule'){const coat=['#6a4a30','#7a5a3c','#54392a','#806446'][q.v%4];                                       // one of a pack string, nose to tail up the trail
+    ctx.fillStyle='rgba(8,14,6,.36)';ctx.beginPath();ctx.ellipse(sv.x*.45,sv.y*.45,1.25,.5,0,0,TAU);ctx.fill();ctx.fillStyle=coat;ctx.beginPath();ctx.ellipse(0,0,1.15,.44,0,0,TAU);ctx.fill();
+    ctx.beginPath();ctx.ellipse(1.3,0,.42,.22,0,0,TAU);ctx.fill();ctx.fillStyle='#2e2018';ctx.beginPath();ctx.ellipse(1.52,-.2,.16,.07,-.5,0,TAU);ctx.ellipse(1.52,.2,.16,.07,.5,0,TAU);ctx.fill();
+    if(q.v===0){ctx.fillStyle='#3d5a8a';ctx.beginPath();ctx.ellipse(-.05,0,.36,.3,0,0,TAU);ctx.fill();ctx.fillStyle='#e9dfc4';disc(.02,0,.42);ctx.fillStyle='#cdbf9c';disc(.02,0,.2)} // the wrangler, under a hat
+    else{ctx.fillStyle=q.v%2?'#c7b48a':'#9c8a66';pill(-.75,-.5,1.3,1,.22);ctx.fill();ctx.strokeStyle='rgba(40,28,16,.6)';ctx.lineWidth=.08;ctx.beginPath();ctx.moveTo(-.1,-.5);ctx.lineTo(-.1,.5);ctx.stroke()}}
+  else if(q.k==='tent'){const a=['#e8862a','#d4a82c','#4f9a8a'][q.v%3],b2=['#b85f16','#a57f14','#34756a'][q.v%3];              // a backpacker's dome tent
+    ctx.fillStyle='rgba(8,14,10,.34)';ctx.beginPath();ctx.ellipse(sv.x*.7,sv.y*.7,1.9,1.5,0,0,TAU);ctx.fill();ctx.fillStyle=a;ctx.beginPath();ctx.ellipse(0,0,1.75,1.35,0,0,TAU);ctx.fill();
+    ctx.fillStyle=b2;ctx.beginPath();ctx.moveTo(0,-1.35);ctx.quadraticCurveTo(.9,0,0,1.35);ctx.quadraticCurveTo(1.75,1.2,1.75,0);ctx.quadraticCurveTo(1.75,-1.2,0,-1.35);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.45)';ctx.lineWidth=.1;ctx.beginPath();ctx.moveTo(-1.75,0);ctx.quadraticCurveTo(0,-.5,1.75,0);ctx.moveTo(0,-1.35);ctx.quadraticCurveTo(-.5,0,0,1.35);ctx.stroke();ctx.fillStyle='#2a2a26';ctx.beginPath();ctx.ellipse(-1.25,0,.3,.5,0,0,TAU);ctx.fill()}
+  else if(q.k==='rapid'){const R=q.r||30;ctx.strokeStyle='rgba(255,255,255,.85)';                                              // white water across the river
+    for(let i=0;i<34;i++){const x=(r()*2-1)*R,y=(r()*2-1)*R*.42*(1-Math.abs(x)/R*.5),l=1.5+r()*4.5;ctx.globalAlpha=.35+r()*.55;ctx.lineWidth=.35+r()*.8;ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+l*.5,y+(r()-.5)*1.6,x+l,y+(r()-.5)*.8);ctx.stroke()}ctx.globalAlpha=1}
+  ctx.restore()}
 function drawCart(x,y,a){const sv=rotv(SUN.x,SUN.y,-a);ctx.save();ctx.translate(x,y);ctx.rotate(a);
   ctx.fillStyle='rgba(5,15,10,.35)';rrect(-1.5+sv.x*.6,-.85+sv.y*.6,3,1.7,.4);ctx.fillStyle='#22241f';for(const[wx,wy]of[[-1,-.85],[-1,.85],[1,-.85],[1,.85]])rrect(wx-.28,wy-.14,.56,.28,.1);
   ctx.fillStyle='#efe6cd';rrect(-1.5,-.78,3,1.56,.4);ctx.fillStyle='#5d4a2c';rrect(-1.45,-.5,.5,1,.15);ctx.fillStyle='#c9283a';disc(-1.2,-.25,.14);ctx.fillStyle='#e6cf8a';disc(-1.2,.25,.14);
   ctx.fillStyle='#14493a';rrect(-.75,-.72,1.75,1.44,.3);ctx.fillStyle='rgba(255,255,255,.14)';rrect(-.75,-.72,1.75,.5,.3);ctx.restore()}
 // a small, distant flock across a corner of the widest views only, and specks carried on the wind
 function drawSky(now,h){const z=cam.s,R=hyp(W,H)/z*.62,T=17000,k=Math.floor(now/T),u=(now%T)/T;
-  if(u<.5&&z<2.6){const r=mulberry32(k*977+h.n*31),ang=r()*TAU,off=(r()<.5?-1:1)*R*(.52+r()*.16),t=u*4-1,ca=Math.cos(ang),sa=Math.sin(ang),bx=cam.x-sa*off+ca*t*R*1.2,by=cam.y+ca*off+sa*t*R*1.2,sz=3.2/z;
-    ctx.lineCap='round';ctx.lineJoin='round';for(let i=0;i<3;i++){const x=bx-ca*i*sz*2.4-sa*(i===1?1:i===2?-1:0)*sz*1.6,y=by-sa*i*sz*2.4+ca*(i===1?1:i===2?-1:0)*sz*1.6,fl=Math.sin(now/95+i*1.7)*.55;
-      for(const[ox,oy,col,lw]of[[SUN.x*sz*5,SUN.y*sz*5,'rgba(6,18,8,.22)',.34],[0,0,'#f6f1e2',.26]]){ctx.strokeStyle=col;ctx.lineWidth=sz*lw;ctx.beginPath();
+  if(u<.5&&z<2.6){const r=mulberry32(k*977+h.n*31),ang=r()*TAU,off=(r()<.5?-1:1)*R*(.52+r()*.16),t=u*4-1,ca=Math.cos(ang),sa=Math.sin(ang),bx=cam.x-sa*off+ca*t*R*1.2,by=cam.y+ca*off+sa*t*R*1.2,sz=(h.th.condor?8.3:3.2)/z;
+    const big=h.th.condor;ctx.lineCap='round';ctx.lineJoin='round';for(let i=0;i<(big?1:3);i++){const x=bx-ca*i*sz*2.4-sa*(i===1?1:i===2?-1:0)*sz*1.6,y=by-sa*i*sz*2.4+ca*(i===1?1:i===2?-1:0)*sz*1.6,fl=big?Math.sin(now/900)*.08-.35:Math.sin(now/95+i*1.7)*.55;
+      for(const[ox,oy,col,lw]of[[SUN.x*sz*5,SUN.y*sz*5,'rgba(6,18,8,.22)',.34],[0,0,big?'#191715':'#f6f1e2',big?.36:.26]]){ctx.strokeStyle=col;ctx.lineWidth=sz*lw;ctx.beginPath();
         const wing=sgn=>{const wa=ang+sgn*(1.95+fl);return[x+ox+Math.cos(wa)*sz*1.25,y+oy+Math.sin(wa)*sz*1.25]},L=wing(1),Rr=wing(-1);ctx.moveTo(L[0],L[1]);ctx.lineTo(x+ox,y+oy);ctx.lineTo(Rr[0],Rr[1]);ctx.stroke()}}}
 }
 // The wind, as pale streaks drifting across the screen the way it blows as the camera sees it. Their pace follows the wind
@@ -272,16 +305,16 @@ function drawPreview(now){const g=S.g,b=S.ball,c=S.club,h=cur();
     const dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy)||1,off=Math.round(((S.mark.x-h.pin.x)*-dy+(S.mark.y-h.pin.y)*dx)/d*36);
     txt(Math.round(markDist()*3)+' ft'+(Math.abs(off)>=1?' · '+Math.abs(off)+' in '+(off>0?'right':'left'):''),pm.x+26,pm.y,16,K.cream,'left');return}
   if(!g||g.drag||!g.aim||g.power<.04)return;
-  const aw=rotv(g.aim.x,g.aim.y,-cam.r),carry=g.power*S.pk*c.carry*lieMult(S.lie,c),ll=lieAt(h,{x:b.x+aw.x*carry,y:b.y+aw.y*carry}),total=c.style!=null?carry+runOut(h,{x:b.x+aw.x*carry,y:b.y+aw.y*carry},aw.x,aw.y,carry,c):carry*(1+c.roll*ROLLX[ll]);
+  const aw=rotv(g.aim.x,g.aim.y,-cam.r),carry=flightCarry(h,b,aw.x,aw.y,g.power*S.pk*c.carry*lieMult(S.lie,c),c.loft),flat=g.power*S.pk*c.carry*lieMult(S.lie,c),ll=lieAt(h,{x:b.x+aw.x*carry,y:b.y+aw.y*carry}),total=c.style!=null?carry+runOut(h,{x:b.x+aw.x*carry,y:b.y+aw.y*carry},aw.x,aw.y,flat,c):carry+flat*c.roll*ROLLX[ll];
   const p0=toScreen(b.x,b.y),p1=toScreen(b.x+aw.x*carry,b.y+aw.y*carry),p2=toScreen(b.x+aw.x*total,b.y+aw.y*total);
-  const col=ll==='water'?'#bfeee6':ll==='woods'?'#ff9a8a':ll==='bunker'||ll==='native'?K.sand:K.cream;
+  const col=ll==='water'?'#bfeee6':ll==='woods'||ll==='void'?'#ff9a8a':ll==='snow'?'#e8f2f8':ll==='bunker'||ll==='native'?K.sand:K.cream;
   ctx.lineCap='round';ctx.strokeStyle='rgba(6,22,17,.5)';ctx.lineWidth=5.5;ctx.setLineDash([1,11]);ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.stroke();
   ctx.strokeStyle=K.cream;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.stroke();ctx.setLineDash([]);
   ctx.globalAlpha=.6;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();ctx.globalAlpha=1;
   ctx.strokeStyle='rgba(6,22,17,.65)';ctx.lineWidth=5.5;ctx.beginPath();ctx.arc(p1.x,p1.y,9,0,TAU);ctx.stroke();ctx.strokeStyle=col===K.cream?K.gold:col;ctx.lineWidth=3;ctx.stroke();
   // in the short game what matters is where the ball stops: that point is marked and carries the figure
   if(c.style!=null&&ROLLX[ll]>.3){ctx.fillStyle='rgba(6,22,17,.65)';disc(p2.x,p2.y,7);ctx.fillStyle=K.gold;disc(p2.x,p2.y,4.6);txt(Math.round(total)+' yd',p2.x+14,p2.y,17,K.cream,'left');return}
-  txt(Math.round(carry)+' yd'+(ll==='water'?' · water':ll==='woods'?' · trees':ll==='bunker'?' · sand':ll==='native'?' · native':''),p1.x+16,p1.y,17,col,'left')}
+  txt(Math.round(carry)+' yd'+(ll==='water'?' · water':ll==='void'?' · cliff':ll==='snow'?' · snow':ll==='woods'?' · trees':ll==='bunker'?' · sand':ll==='native'?' · native':''),p1.x+16,p1.y,17,col,'left')}
 function drawFlag(now){const h=cur(),p=toScreen(h.pin.x,h.pin.y),ph=clamp(18+cam.s*.9,24,58),near=hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)<2&&!S.ball.gone;
   const ws=rotv(h.wind.x,h.wind.y,cam.r),dir=ws.x<0?-1:1,fl=ph*.5,wav=Math.sin(now/260)*2*(h.wind.sp/14+.25),sd=rotv(SUN.x,SUN.y,cam.r),sl=ph*.75;
   ctx.globalAlpha=near?.25:1;ctx.lineCap='round';
@@ -298,8 +331,8 @@ function drawBall(dt){const b=S.ball,sd=rotv(SUN.x,SUN.y,cam.r);
   S.parts=S.parts.filter(q=>q.life>0);ctx.globalAlpha=1;
   if(b.gone)return;const rb=clamp(.11*cam.s,4.5,7.5);
   for(let i=1;i<S.trail.length;i++){const q=S.trail[i],p=toScreen(q.x,q.y);ctx.globalAlpha=i/S.trail.length*.5;ctx.fillStyle='#fff';disc(p.x,p.y-q.z*cam.s*.55,rb*.45*(1+q.z/45))}
-  ctx.globalAlpha=1;const p=toScreen(b.x,b.y),lift=b.z*cam.s*.55,r=rb*(1+b.z/45),so=rb*.45+lift*.55,sr=rb*(1.5+b.z/60);
-  ctx.globalAlpha=clamp(1-b.z/70,.35,1);ctx.drawImage(SPR.shadow,p.x+sd.x*so-sr,p.y+sd.y*so-sr,sr*2,sr*2);ctx.globalAlpha=1;
+  ctx.globalAlpha=1;const bz=b.zv||0,p=toScreen(b.x,b.y),lift=bz*cam.s*.55,r=rb*(1+bz/45),so=rb*.45+lift*.55,sr=rb*(1.5+bz/60);
+  ctx.globalAlpha=clamp(1-bz/70,.35,1);ctx.drawImage(SPR.shadow,p.x+sd.x*so-sr,p.y+sd.y*so-sr,sr*2,sr*2);ctx.globalAlpha=1;
   const gr=ctx.createRadialGradient(p.x-r*.35,p.y-lift-r*.4,r*.1,p.x,p.y-lift,r);const bc=BALLC[S.tier]||BALLC[''];gr.addColorStop(0,bc[0]);gr.addColorStop(.7,bc[1]);gr.addColorStop(1,bc[2]);
   ctx.fillStyle=gr;disc(p.x,p.y-lift,r);ctx.strokeStyle='rgba(6,22,17,.5)';ctx.lineWidth=1;ctx.stroke()}
 function drawGesture(now){const g=S.g;

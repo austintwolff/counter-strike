@@ -47,7 +47,11 @@ const TREES={
   postoak:{pal:['#22371a','#385826','#547833','#7c9848'],n:10,sp:.5,r0:.3,r1:.16,size:1},       // the savanna oak of the Lost Pines
   mesquite:{pal:['#36462b','#55693d','#788d57','#a8b882'],n:30,sp:.72,r0:.09,r1:.07,size:.85,lacy:.82},
   montcyp:{pal:['#14241a','#203a26','#30523a','#4f7450'],n:12,sp:.66,r0:.22,r1:.13,size:1.12},     // Monterey cypress: dark, flat-topped, windswept
-  gorse:{pal:['#2a381c','#41531f','#5f7226','#e0c63a'],n:9,sp:.52,r0:.3,r1:.14,size:.4}};          // whin: a low dark bush, in yellow flower // low, wide and see-through
+  gorse:{pal:['#2a381c','#41531f','#5f7226','#e0c63a'],n:9,sp:.52,r0:.3,r1:.14,size:.4},
+  // wild ground (the fantasy courses): sizes are 1 because these are placed at their true size from the photograph
+  cottonwood:{pal:['#2c4a1e','#4d7d2c','#7aa83c','#b6d466'],n:16,sp:.66,r0:.2,r1:.13,size:1},   // Fremont cottonwood, along the canyon's creeks
+  brush:{pal:['#3a3d2b','#55583b','#70734c','#96986a'],n:6,sp:.4,r0:.34,r1:.16,size:1},          // blackbrush, the grey scrub of the Tonto platform
+  willow:{pal:['#3a5a22','#5c8a30','#8cb444','#c4dc74'],n:7,sp:.45,r0:.32,r1:.14,size:1}};       // alpine willow, knee high beside the water          // whin: a low dark bush, in yellow flower // low, wide and see-through
 function treeSprite(kind,seed){const t=TREES[kind];return tex(128,128,g=>{const r=mulberry32(seed),R=50,pal=t.pal,cl=[];
   for(let i=0;i<t.n;i++){const a=r()*TAU,d=Math.sqrt(r())*R*t.sp;cl.push({x:64+Math.cos(a)*d,y:64+Math.sin(a)*d,r:R*(t.r0+r()*t.r1)})}
   const lay=(col,k,sh)=>{g.fillStyle=col;for(const c of cl){g.beginPath();g.arc(c.x+sh*c.r,c.y+sh*c.r,c.r*k,0,TAU);g.fill()}};
@@ -57,14 +61,14 @@ function treeSprite(kind,seed){const t=TREES[kind];return tex(128,128,g=>{const 
 function starSprite(seed,pal,soft,kk){return tex(128,128,g=>{const r=mulberry32(seed),n=(soft?13:9)+Math.floor(r()*4),rot=r()*TAU;
   const star=(R,k,col,dx)=>{g.fillStyle=col;g.beginPath();for(let i=0;i<n*2;i++){const a=rot+i/(n*2)*TAU,d=i%2?R*k*(.85+r()*.3):R*(.86+r()*.14);g.lineTo(64+dx+Math.cos(a)*d,64+dx+Math.sin(a)*d)}g.closePath();g.fill()};
   const k=kk||(soft?.74:.58);star(50,k,pal[0],3);star(47,k-.02,pal[1],0);star(36,k-.08,pal[2],-4);g.globalAlpha=.85;star(22,k-.13,pal[3],-8);g.globalAlpha=1;g.fillStyle=pal[4];g.beginPath();g.arc(54,54,4,0,TAU);g.fill()})}
-TREES.pine={size:.9};TREES.cypress={size:.84};TREES.palm={size:.62};
-const SPR={palm:[71,72,73,74].map(x=>starSprite(x,['#1c3a1c','#2c6a2e','#4a973f','#84c45c','#8a7a4a'],false,.3)),pine:[41,42,43,44].map(x=>starSprite(x,['#12281c','#1e4028','#2c5a34','#44774a','#5c8c58'])),cypress:[61,62,63,64].map(x=>starSprite(x,['#1b3a20','#2c6431','#479043','#7cc061','#a6dc84'],true)),
+TREES.pine={size:.9};TREES.cypress={size:.84};TREES.palm={size:.62};TREES.agave={size:1};
+const SPR={agave:[81,82,83,84].map(x=>starSprite(x,['#2f4036','#4a6656','#74947e','#b4cbaa','#d9c264'],false,.26)),palm:[71,72,73,74].map(x=>starSprite(x,['#1c3a1c','#2c6a2e','#4a973f','#84c45c','#8a7a4a'],false,.3)),pine:[41,42,43,44].map(x=>starSprite(x,['#12281c','#1e4028','#2c5a34','#44774a','#5c8c58'])),cypress:[61,62,63,64].map(x=>starSprite(x,['#1b3a20','#2c6431','#479043','#7cc061','#a6dc84'],true)),
   shadow:tex(64,64,g=>softDot(g,32,32,32,'6,18,8',.62)),
   rock:[31,32,33].map(s=>tex(96,96,g=>{const r=mulberry32(s),n=7+Math.floor(r()*3),p=[];for(let i=0;i<n;i++){const a=i/n*TAU+r()*.5,d=28+r()*13;p.push([48+Math.cos(a)*d,48+Math.sin(a)*d])}
     const poly=(dx,dy)=>{g.beginPath();p.forEach(([x,y],i)=>i?g.lineTo(x+dx,y+dy):g.moveTo(x+dx,y+dy));g.closePath()};
     poly(0,0);g.fillStyle='#8f8a7b';g.fill();g.save();g.clip();poly(-5,-6);g.fillStyle='#c9c4b4';g.fill();poly(-12,-14);g.fillStyle='#e6e2d6';g.fill();
     g.strokeStyle='rgba(60,55,45,.5)';g.lineWidth=1.5;for(let i=0;i<3;i++){g.beginPath();g.moveTo(20+r()*56,20+r()*56);g.lineTo(20+r()*56,20+r()*56);g.stroke()}g.restore()}))};
-for(const k of['liveoak','juniper','elm','pecan','postoak','mesquite','montcyp','gorse'])SPR[k]=[11,12,13,14].map(x=>treeSprite(k,x+k.length*10));
+for(const k of['liveoak','juniper','elm','pecan','postoak','mesquite','montcyp','gorse','cottonwood','brush','willow'])SPR[k]=[11,12,13,14].map(x=>treeSprite(k,x+k.length*10));
 
 // ───────── geometry (world units are yards; +x east, +y south)
 function catmull(P,step){const out=[];for(let i=0;i<P.length-1;i++){const a=P[Math.max(0,i-1)],b=P[i],c=P[i+1],d=P[Math.min(P.length-1,i+2)],n=Math.max(2,Math.ceil(hyp(c.x-b.x,c.y-b.y)/step));

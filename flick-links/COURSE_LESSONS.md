@@ -46,6 +46,15 @@ someone who has played it.
 | A wall or pier drawn on the map as a closed outline came through as a single point: the line simplifier treats a line that ends where it starts as having no length. The timber ring round Sawgrass's island green vanished. | Closed lines are simplified as outlines and closed again; a pier drawn as an outline keeps its long axis and width. After importing a detail, check its point count before looking for it in the picture. |
 | The downloaded map stops at its own edge, so the St Andrews coastline ended inside the area being built and no sea was made. | The importer carries such a coastline straight on to the edge and says so. That stretch is a guess: confirm it is more than 165 yards from every hole, where nothing is drawn. |
 | A beach on the map runs out past the coastline (the coastline is the high-water mark). Drawn under the sea it disappeared. | Beaches are drawn over the water's edge, and a ball on one lies in sand, not water. |
+| A fantasy course's design file sat in `data/` and the build tried to load it as a map; the page failed to start. | `build.sh` skips `*.design.json`. Any new kind of file in `data/` needs the same thought. |
+| The Colorado River came in with no water at all: a long river's outline runs far beyond the download and arrives unclosed. | An unclosed outline is closed by joining its ends when both lie well outside the course; the builder says so if they do not. Check the plan for blue before anything else. |
+| A green placed by eye on a peninsula or a rim was in the lake or over the edge, three times. | The builder notes a tee or green that is in water or on a cliff, and how much green is left. Read the notes; draw the plan at 2 pixels a yard for anything tight. |
+| A lake just outside the holes was left out of the data, and showed as a blue stain in the painted ground. | Every lake inside the painted picture is kept, however far from play. |
+| With true heights a ball could not out-climb a 200-foot headwall: on two Conness holes every club died against the cliff a few yards in front, and the test bot took ten. A golf ball rises about a hundred feet. | A drop counts in full in the flight, a climb for 30% (`UPHILL`). The cliff is a hazard to carry, drawn as one. Probe a climbing hole from the fairway with every club before trusting it: does anything land on grass? |
+| A statement and its comment were put on one line in the builder, and the code after the comment silently stopped running: every creek came out 30 yards wide. | In these one-line-heavy files a comment goes on its own line above. After any builder change, print one fact about each layer (here: creek widths) before looking at pictures. |
+| A penalty drop was still pending when the next hole began, and put the ball back on the previous hole. | `startHole` cancels it. |
+| With real heights the test bot's club for a 481-yard drop hole was a 3 wood that flew 100 yards long. | On real ground the club offered is the shortest whose true carry reaches. |
+| Adding courses moved the second nines of the four famous courses in the hole list. | The list is built in the batches the courses were published in. After adding a course, compare a few hole indexes and the daily holes with the live build. |
 | Overpass does not work from the cloud session. | The tool uses `api.openstreetmap.org` and Nominatim. The session's network allowlist must include those, the tile hosts for imagery, and nothing else is needed. |
 
 ## The look: what stays the same, what makes each course its own
@@ -96,6 +105,8 @@ recognise. The importer keeps these, and they are drawn only where the map puts 
 Walls, piers and bulkheads are scenery: they do not stop a ball. They are drawn after the greens, or a green's collar covers a
 bulkhead that rings it. Not everything is on the map: the wetlands at Sawgrass lie outside the holes, and Pebble Beach has no
 cliffs or offshore rocks mapped near play, so none were drawn.
+| Bright Angel (Grand Canyon, fantasy) | The Tonto platform between the rims: sage flats cut off by sheer drops, layered cliffs, the jade Colorado far below, cottonwoods only where there is water | painted relief by rock layer, cliffs as the hazard, ledge lines, blackbrush and agave scatter, mule trains on the real trails, rafts at Boat Beach, a condor; The Plunge falls 1,459 feet |
+| Twenty Lakes (Sierra Nevada, fantasy) | Granite and red rock at 10,000 feet, a lake at every turn, whitebark pine, cascades, snow that lasts the summer | the photograph's own colours under the game's light, sapphire lakes (turquoise glacial ones on the Conness nine, `th2`), islands kept, pines where they grow, snowfields above the snowline, tents |
 
 Rules of thumb that came out of this:
 

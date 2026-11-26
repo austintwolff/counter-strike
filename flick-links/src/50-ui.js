@@ -29,7 +29,7 @@ const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{w
 // a day's saved round keeps the holes it was drawn with, so a later change to the draw cannot scramble it
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
 // the practice menu lists the famous courses first, then the Texas ones; the order of COURSES itself never changes
-const FAMOUS=['ts','an','pb','sa'],tomorrowCourse=()=>{const n=COURSES.length;return COURSES[(dayNumber(S.key)%n+n)%n]};
+const FAMOUS=['ts','an','pb','sa'],WILD=['ba','tl'],tomorrowCourse=()=>{const n=COURSES.length;return COURSES[(dayNumber(S.key)%n+n)%n]};
 function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(cur().tee.x,cur().tee.y);setupShot();overviewCam(.2,.3,true);hud();hintOff();
   sheet(`<div class="mast">${CREST}<h1>Breakfast<br>Ball</h1>${meChip()}</div>
@@ -37,7 +37,7 @@ function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('see
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
 ${saveStrip()}${clubStrip()}
-${[['Famous courses',COURSES.filter(c=>FAMOUS.includes(c.id))],['Texas',COURSES.filter(c=>!FAMOUS.includes(c.id))]].map(([t,cs])=>`<p class="eyebrow">Practice · ${t}</p>
+${[['Famous courses',COURSES.filter(c=>FAMOUS.includes(c.id))],['Fantasy, on real ground',COURSES.filter(c=>WILD.includes(c.id))],['Texas',COURSES.filter(c=>!FAMOUS.includes(c.id)&&!WILD.includes(c.id))]].map(([t,cs])=>`<p class="eyebrow">Practice · ${t}</p>
 <div class="pick">${cs.map(c=>`<button class="btn green sm" data-act="course" data-c="${c.id}">${c.club}</button>`).join('')}</div>`).join('')}`,titleCard)}
 // a course with both nines asks which to play
 function courseCard(id){const c=COURSES.find(c=>c.id===id),opt=(p,l)=>{const hs=courseIds(id,p).map(INFO);
@@ -99,7 +99,7 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
 
 // ───────── flow
 let introT=0;
-function startHole(i,sv){closeSheet();S.hi=i;S.marks=[];S.shot=null;S.from=null;{const bl=C.me&&C.me.stats.balls&&C.me.stats.balls[INFO(S.round.ids[i]).course.id];S.tier=bl?(bl.g?'g':bl.s?'s':bl.b?'b':''):''}S.hs=sv&&sv.strokes&&sv.hs?sv.hs:newHs();const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
+function startHole(i,sv){clearTimeout(S.hzT);closeSheet();S.hi=i;S.marks=[];S.shot=null;S.from=null;{const bl=C.me&&C.me.stats.balls&&C.me.stats.balls[INFO(S.round.ids[i]).course.id];S.tier=bl?(bl.g?'g':bl.s?'s':bl.b?'b':''):''}S.hs=sv&&sv.strokes&&sv.hs?sv.hs:newHs();const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
   overviewCam(.5,.76,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,h.course.club,1800);
   hintOff();if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
@@ -168,4 +168,4 @@ if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==
     if(m&&+m[1]>BUILD_TS){try{sessionStorage.setItem(KEY+'resume',JSON.stringify(snap()))}catch(e){}location.replace(location.pathname+'?v='+m[1]+location.hash)}}catch(e){}},20000);
 
 if(location.hash==='#dev')for(const c of COURSES)if(LocalServer.SIZE[c.id]!==courseIds(c.id,'a').length)console.error('server/core.js SIZE is out of step for course '+c.id);
-if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,INFO,courseIds,dailyIds,gameTable,demoKind,C,Net,refresh,startRange,setupShot,setBall,CHIPS,meterAt};
+if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,INFO,courseIds,dailyIds,gameTable,demoKind,C,Net,refresh,startRange,setupShot,setBall,CHIPS,meterAt,groundAt,flightCarry};

@@ -1269,29 +1269,34 @@ function wingSpan(f,t){if(!f)return 1;const beats=f.beats||1e9,cyc=beats/f.hz+(f
 // hole has come into view from far enough off. Where a course has a bird of its own it is that bird (or a line of them),
 // soaring on a long curve, turning in circles, or beating straight across; elsewhere a small, distant flock crosses a corner.
 const SKY={wait:1+Math.floor(Math.random()*4)}; // holes still to go before the next one
-function drawSky(now,h){const z=cam.s,R=hyp(W,H)/z*.62,M=Math.min(W,H)/z,sp=BIRDS[h.th.bird]; // R: past the corners of the view; M: its narrow side
+function drawSky(now,h){const zc=cam.s,sp=BIRDS[h.th.bird];
   let k=h.sky;if(!k){if(S.mode==='title')return;k=h.sky={on:--SKY.wait<=0,wide:0,last:now}; // the hole behind the title screen does not count
     if(k.on){SKY.wait=3+Math.floor(Math.random()*3);k.seed=Math.floor(Math.random()*1e9);k.lead=2.5+Math.random()*7}}
   if(!k.on||k.done)return;const dt=Math.min(.1,(now-k.last)/1000);k.last=now;
-  if(k.t0==null){if(z<2.6&&(k.wide+=dt)>=k.lead)k.t0=now;else return}
-  const span=sp?sp.span:8.5,t0=(now-k.t0)/1000,u=t0/span;if(u>=1){k.done=true;return}if(z>=2.6)return;
+  // Its line across the sky is fixed in the world at the moment it sets out, from where the camera then was. After that it
+  // flies on regardless: when the camera follows a ball or closes on the green, the bird is left where it really is.
+  if(k.t0==null){if(zc<2.6&&(k.wide+=dt)>=k.lead){k.t0=now;k.cx=cam.x;k.cy=cam.y;k.z=zc}else return}
+  const span=sp?sp.span:8.5,t0=(now-k.t0)/1000,u=t0/span;if(u>=1){k.done=true;return}
+  // z: the scale it set out at, which fixes its size on the ground. R: past the corners of that view; M: its narrow side.
+  // Once the camera has come down well below where it flies (closing on a green) it passes out of sight overhead.
+  const z=k.z,cx=k.cx,cy=k.cy,R=hyp(W,H)/z*.62,M=Math.min(W,H)/z,fade=clamp((2.2-zc/z)/.7,0,1);if(fade<=0)return;
   if(sp){const art=birdArt(h.th.bird),E=art.E,sz=sp.sz/z;
     const r=mulberry32(k.seed),ang=r()*TAU,side=r()<.5?-1:1,ph=r()*TAU,ca=Math.cos(ang),sa=Math.sin(ang),fw=R*1.3;
     // where it is at a moment (seconds into its crossing), by the way it flies
-    const at=sp.way==='circle'?(off=>t=>{const q=t/span*2-1,a=ph+side*TAU*t/sp.lap,rr=sp.ring/z;return[cam.x+ca*q*fw*.8-sa*off+Math.cos(a)*rr,cam.y+sa*q*fw*.8+ca*off+Math.sin(a)*rr]})(side*M*(.05+r()*.2))
-      :sp.way==='soar'?(off=>t=>{const q=t/span*2-1,lat=off+R*.1*Math.sin(q*2.3+ph);return[cam.x+ca*q*fw-sa*lat,cam.y+sa*q*fw+ca*lat]})(side*M*(.12+r()*.26))
-      :(off=>t=>{const q=t/span*2-1,lat=off+R*.03*Math.sin(q*3+ph);return[cam.x+ca*q*fw-sa*lat,cam.y+sa*q*fw+ca*lat]})(side*M*(.1+r()*.28)); // never further off the middle than the narrow side of the screen shows
+    const at=sp.way==='circle'?(off=>t=>{const q=t/span*2-1,a=ph+side*TAU*t/sp.lap,rr=sp.ring/z;return[cx+ca*q*fw*.8-sa*off+Math.cos(a)*rr,cy+sa*q*fw*.8+ca*off+Math.sin(a)*rr]})(side*M*(.05+r()*.2))
+      :sp.way==='soar'?(off=>t=>{const q=t/span*2-1,lat=off+R*.1*Math.sin(q*2.3+ph);return[cx+ca*q*fw-sa*lat,cy+sa*q*fw+ca*lat]})(side*M*(.12+r()*.26))
+      :(off=>t=>{const q=t/span*2-1,lat=off+R*.03*Math.sin(q*3+ph);return[cx+ca*q*fw-sa*lat,cy+sa*q*fw+ca*lat]})(side*M*(.1+r()*.28)); // never further off the middle than the narrow side of the screen shows
     const n=sp.n||1,list=[];
     for(let i=0;i<n;i++){const t=t0-i*(sp.gap||0)*sp.sz/(2*fw*z/span),p=at(t),q=at(t+.05),hd=Math.atan2(q[1]-p[1],q[0]-p[0]),p2=at(t+.5),q2=at(t+.55);let turn=Math.atan2(q2[1]-p2[1],q2[0]-p2[0])-hd;turn=((turn+Math.PI)%TAU+TAU)%TAU-Math.PI;
       const bank=clamp(turn*2.2,-1,1),ox=i?-Math.sin(hd)*i*sz*.9*(i%2?1:.4):0,oy=i?Math.cos(hd)*i*sz*.9*(i%2?1:.4):0;
       list.push({x:p[0]+ox,y:p[1]+oy,hd,bank,fy:wingSpan(sp.flap,now/1000-i*((sp.flap&&sp.flap.lag)||0))*(1-.07*Math.abs(bank))*(sp.flap?1:1+.014*Math.sin(now/820))})}
-    const put=(img,b,px,py,k2,a,fy)=>{ctx.save();ctx.translate(px,py);ctx.rotate(b.hd);ctx.globalAlpha=a;ctx.scale(sz*k2,sz*k2);ctx.transform(1,0,.05*b.bank,1,0,0);ctx.scale(1,fy);ctx.drawImage(img,-E,-E,2*E,2*E);ctx.restore()};
+    const put=(img,b,px,py,k2,a,fy)=>{ctx.save();ctx.translate(px,py);ctx.rotate(b.hd);ctx.globalAlpha=a*fade;ctx.scale(sz*k2,sz*k2);ctx.transform(1,0,.05*b.bank,1,0,0);ctx.scale(1,fy);ctx.drawImage(img,-E,-E,2*E,2*E);ctx.restore()};
     const d=sz*(sp.high||3);for(const b of list){put(art.wingShade,b,b.x+SUN.x*d,b.y+SUN.y*d,.86,.26,b.fy);put(art.bodyShade,b,b.x+SUN.x*d,b.y+SUN.y*d,.86,.26,1)}
     for(const b of list){put(art.wings,b,b.x,b.y,1,1,b.fy);put(art.body,b,b.x,b.y,1,1,1)}return}
-  {const r=mulberry32(k.seed),ang=r()*TAU,off=(r()<.5?-1:1)*R*(.52+r()*.16),t=u*2-1,ca=Math.cos(ang),sa=Math.sin(ang),bx=cam.x-sa*off+ca*t*R*1.2,by=cam.y+ca*off+sa*t*R*1.2,sz=3.2/z;
-    ctx.lineCap='round';ctx.lineJoin='round';for(let i=0;i<3;i++){const x=bx-ca*i*sz*2.4-sa*(i===1?1:i===2?-1:0)*sz*1.6,y=by-sa*i*sz*2.4+ca*(i===1?1:i===2?-1:0)*sz*1.6,fl=Math.sin(now/95+i*1.7)*.55;
+  {const r=mulberry32(k.seed),ang=r()*TAU,off=(r()<.5?-1:1)*R*(.52+r()*.16),t=u*2-1,ca=Math.cos(ang),sa=Math.sin(ang),bx=cx-sa*off+ca*t*R*1.2,by=cy+ca*off+sa*t*R*1.2,sz=3.2/z;
+    ctx.lineCap='round';ctx.lineJoin='round';ctx.globalAlpha=fade;for(let i=0;i<3;i++){const x=bx-ca*i*sz*2.4-sa*(i===1?1:i===2?-1:0)*sz*1.6,y=by-sa*i*sz*2.4+ca*(i===1?1:i===2?-1:0)*sz*1.6,fl=Math.sin(now/95+i*1.7)*.55;
       for(const[ox,oy,col,lw]of[[SUN.x*sz*5,SUN.y*sz*5,'rgba(6,18,8,.22)',.34],[0,0,'#f6f1e2',.26]]){ctx.strokeStyle=col;ctx.lineWidth=sz*lw;ctx.beginPath();
-        const wing=sgn=>{const wa=ang+sgn*(1.95+fl);return[x+ox+Math.cos(wa)*sz*1.25,y+oy+Math.sin(wa)*sz*1.25]},L=wing(1),Rr=wing(-1);ctx.moveTo(L[0],L[1]);ctx.lineTo(x+ox,y+oy);ctx.lineTo(Rr[0],Rr[1]);ctx.stroke()}}}
+        const wing=sgn=>{const wa=ang+sgn*(1.95+fl);return[x+ox+Math.cos(wa)*sz*1.25,y+oy+Math.sin(wa)*sz*1.25]},L=wing(1),Rr=wing(-1);ctx.moveTo(L[0],L[1]);ctx.lineTo(x+ox,y+oy);ctx.lineTo(Rr[0],Rr[1]);ctx.stroke()}}ctx.globalAlpha=1}
 }
 // ───────── rules of this little world
 const G=22,KW=0.18,CUP_R=0.28,CAP_V=4.2,MAX_OVER=5;
@@ -1326,7 +1331,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='snow'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795728815000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795730235000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}

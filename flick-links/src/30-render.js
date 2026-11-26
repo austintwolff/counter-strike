@@ -326,15 +326,43 @@ function drawFlag(now){const h=cur(),p=toScreen(h.pin.x,h.pin.y),ph=clamp(18+cam
   ctx.fillStyle=K.gold;disc(p.x,p.y-ph,1.8);ctx.globalAlpha=1}
 // a player who holds a ball at the course in play plays with it: bronze, silver or gold
 const BALLC={'':['#ffffff','#eef0ea','#b9c0b6'],b:['#fbe6cf','#dba066','#8a5524'],s:['#ffffff','#d3d9de','#7f8890'],g:['#fff6c9','#ecc94b','#9a7810']};
+// Dimples: points spread evenly over a sphere and turned with the ball, so it can be seen to roll, and to spin back in the air.
+const DIMP=(()=>{const n=46,a=[];for(let i=0;i<n;i++){const z=1-2*(i+.5)/n,r=Math.sqrt(1-z*z),t=i*2.399963;a.push([r*Math.cos(t),r*Math.sin(t),z])}return a})();
+let BROT=[1,0,0,0,1,0,0,0,1];
+function turnBall(kx,ky,a){ // turn it by a about an axis lying in the screen
+  const c=Math.cos(a),n=Math.sin(a),t=1-c,R=[c+kx*kx*t,kx*ky*t,ky*n,kx*ky*t,c+ky*ky*t,-kx*n,-ky*n,kx*n,c],M=BROT,O=[];
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++)O[i*3+j]=R[i*3]*M[j]+R[i*3+1]*M[3+j]+R[i*3+2]*M[6+j];
+  // keep it a true rotation: after many small turns the rows drift
+  let l=hyp(O[0],O[1],O[2])||1;O[0]/=l;O[1]/=l;O[2]/=l;const d=O[0]*O[3]+O[1]*O[4]+O[2]*O[5];O[3]-=d*O[0];O[4]-=d*O[1];O[5]-=d*O[2];l=hyp(O[3],O[4],O[5])||1;O[3]/=l;O[4]/=l;O[5]/=l;
+  O[6]=O[1]*O[5]-O[2]*O[4];O[7]=O[2]*O[3]-O[0]*O[5];O[8]=O[0]*O[4]-O[1]*O[3];BROT=O}
 function drawBall(dt){const b=S.ball,sd=rotv(SUN.x,SUN.y,cam.r);
   for(const q of S.parts){q.vz-=G*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.z=Math.max(0,q.z+q.vz*dt);q.life-=dt;const p=toScreen(q.x,q.y);ctx.globalAlpha=clamp(q.life/q.max,0,1);ctx.fillStyle=q.col;disc(p.x,p.y-q.z*cam.s*.55,q.sz)}
   S.parts=S.parts.filter(q=>q.life>0);ctx.globalAlpha=1;
-  if(b.gone)return;const rb=clamp(.11*cam.s,4.5,7.5);
-  for(let i=1;i<S.trail.length;i++){const q=S.trail[i],p=toScreen(q.x,q.y);ctx.globalAlpha=i/S.trail.length*.5;ctx.fillStyle='#fff';disc(p.x,p.y-q.z*cam.s*.55,rb*.45*(1+q.z/45))}
-  ctx.globalAlpha=1;const bz=b.zv||0,p=toScreen(b.x,b.y),lift=bz*cam.s*.55,r=rb*(1+bz/45),so=rb*.45+lift*.55,sr=rb*(1.5+bz/60);
-  ctx.globalAlpha=clamp(1-bz/70,.35,1);ctx.drawImage(SPR.shadow,p.x+sd.x*so-sr,p.y+sd.y*so-sr,sr*2,sr*2);ctx.globalAlpha=1;
-  const gr=ctx.createRadialGradient(p.x-r*.35,p.y-lift-r*.4,r*.1,p.x,p.y-lift,r);const bc=BALLC[S.tier]||BALLC[''];gr.addColorStop(0,bc[0]);gr.addColorStop(.7,bc[1]);gr.addColorStop(1,bc[2]);
-  ctx.fillStyle=gr;disc(p.x,p.y-lift,r);ctx.strokeStyle='rgba(6,22,17,.5)';ctx.lineWidth=1;ctx.stroke()}
+  if(b.gone)return;const rb=clamp(.11*cam.s,4.5,7.5),hk=cam.s*.55,big=z=>1+z/28,T=S.trail;
+  // the tracer: a tapering ribbon along where the ball has just been, at the height it was. Gold behind a pure strike.
+  if(S.mode!=='flight')T.length=0;while(T.length&&simT-T[0].t>(b.putt?.16:.62))T.shift(); // by the flight's own clock, so it is as long on a slow phone
+  if(T.length>2){const n=T.length,P=T.map((q,i)=>{const p=toScreen(q.x,q.y);return{x:p.x,y:p.y-q.z*hk,w:rb*big(q.z)*.62*Math.pow(i/(n-1),.75)}}),a=P[0],z=P[n-1];
+    if(hyp(z.x-a.x,z.y-a.y)>rb*1.2){const L=[],R=[];for(let i=0;i<n;i++){const q0=P[Math.max(0,i-1)],q1=P[Math.min(n-1,i+1)],dx=q1.x-q0.x,dy=q1.y-q0.y,d=hyp(dx,dy)||1,nx=-dy/d*P[i].w,ny=dx/d*P[i].w;L.push(P[i].x+nx,P[i].y+ny);R.push(P[i].x-nx,P[i].y-ny)}
+      const g=ctx.createLinearGradient(a.x,a.y,z.x,z.y),col=b.pure&&!b.putt?'255,236,170':'255,255,255';g.addColorStop(0,'rgba('+col+',0)');g.addColorStop(.5,'rgba('+col+',.22)');g.addColorStop(1,'rgba('+col+',.7)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(L[0],L[1]);for(let i=2;i<L.length;i+=2)ctx.lineTo(L[i],L[i+1]);for(let i=R.length-2;i>=0;i-=2)ctx.lineTo(R[i],R[i+1]);ctx.closePath();ctx.fill()}}
+  const bz=b.zv||0,p=toScreen(b.x,b.y),lift=bz*hk,r=rb*big(bz),cy=p.y-lift,so=rb*.45+lift*.55,sr=rb*(1.5+bz/45);
+  // its shadow stays on the ground: wide and faint from high up, small and dark once it is down
+  ctx.globalAlpha=clamp(1-bz/80,.5,1);ctx.drawImage(SPR.shadow,p.x+sd.x*so-sr,p.y+sd.y*so-sr,sr*2,sr*2);
+  if(bz<1){ctx.globalAlpha=.55*(1-bz);ctx.drawImage(SPR.shadow,p.x+sd.x*rb*.2-rb*.95,p.y+sd.y*rb*.2-rb*.95,rb*1.9,rb*1.9)}ctx.globalAlpha=1;
+  // in the air it catches the light: a faint bloom, so it reads against any ground
+  if(bz>1){const g=ctx.createRadialGradient(p.x,cy,r*.9,p.x,cy,r*2.3),a=clamp(bz/16,0,1)*.2;g.addColorStop(0,'rgba(255,255,255,'+a+')');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;disc(p.x,cy,r*2.3)}
+  // it turns: forward as it rolls over the ground, back as it flies
+  const v=rotv(b.vx,b.vy,cam.r),sp=hyp(v.x,v.y);if(sp>.05&&S.mode==='flight')turnBall(-v.y/sp,v.x/sp,b.air?-clamp(sp*.3,3,13)*dt:Math.min(sp*cam.s*dt/rb,1.2));
+  const bc=BALLC[S.tier]||BALLC[''],lx=-sd.x,ly=-sd.y,gr=ctx.createRadialGradient(p.x+lx*r*.5,cy+ly*r*.5,r*.06,p.x+lx*r*.1,cy+ly*r*.1,r*1.1);gr.addColorStop(0,bc[0]);gr.addColorStop(.6,bc[1]);gr.addColorStop(1,bc[2]);
+  ctx.fillStyle=gr;disc(p.x,cy,r);
+  if(r*DPR>7){ctx.save();ctx.clip();const M=BROT,dr=r*.1;
+    for(let i=0;i<DIMP.length;i++){const d=DIMP[i],z=M[6]*d[0]+M[7]*d[1]+M[8]*d[2];if(z<.1)continue;const x=M[0]*d[0]+M[1]*d[1]+M[2]*d[2],y=M[3]*d[0]+M[4]*d[1]+M[5]*d[2],k=i?1:1.5;
+      ctx.fillStyle=i?'rgba(18,40,30,'+(.15*z).toFixed(3)+')':'rgba(196,40,54,'+(.85*z).toFixed(3)+')';ctx.beginPath();ctx.ellipse(p.x+x*r*.97,cy+y*r*.97,dr*k*z,dr*k,Math.atan2(y,x),0,TAU);ctx.fill()}
+    ctx.restore()}
+  // the side away from the sun falls into shade; a fine rim holds the edge; a bright point where the sun strikes
+  const sh=ctx.createRadialGradient(p.x+lx*r*.35,cy+ly*r*.35,r*.5,p.x,cy,r*1.02);sh.addColorStop(0,'rgba(8,26,18,0)');sh.addColorStop(1,'rgba(8,26,18,.26)');ctx.fillStyle=sh;disc(p.x,cy,r);
+  ctx.strokeStyle='rgba(6,22,17,.45)';ctx.lineWidth=.9;ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.9)';ctx.beginPath();ctx.ellipse(p.x+lx*r*.5,cy+ly*r*.5,r*.19,r*.12,Math.atan2(ly,lx)+Math.PI/2,0,TAU);ctx.fill()}
 function drawGesture(now){const g=S.g;
   for(const f of S.fx){const a=(now-f.t0)/1500;if(a>=1)continue;
     if(f.type==='swing'&&f.pts.length>1){ctx.globalAlpha=Math.max(0,1-a*1.6)*.9;ctx.strokeStyle=K.gold;ctx.lineWidth=6;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(f.pts[0].x,f.pts[0].y);for(const q of f.pts)ctx.lineTo(q.x,q.y);ctx.stroke();ctx.globalAlpha=1}

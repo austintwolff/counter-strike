@@ -18,7 +18,7 @@ const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Roug
 // quick, and quicker again the harder they are swung (rush: the extra at full power, coming in from 70%).
 const CHIPS=[{id:'CH',style:0,name:'Bump & run',carry:20,loft:14,roll:1.9,tw:110,tempo:.95},
   {id:'CH',style:1,name:'Chip',carry:38,loft:33,roll:.55,tw:90,sand:true},
-  {id:'CH',style:2,name:'Flop',carry:48,loft:62,roll:.08,tw:58,tempo:1.12,sand:true}];
+  {id:'CH',style:2,name:'Flop',carry:48,loft:62,roll:.08,tw:44,tempo:1.2,fin:1,sand:true}]; // fin: a finesse shot. Mistimed, it is chunked (early) or bladed low and running (late)
 const CLUBS=[
   CHIPS[1],
   {id:'SW',name:'Sand Wedge',carry:85,loft:52,roll:.03,tw:82,sand:true},
@@ -121,7 +121,7 @@ function updateCam(dt){
     if(!b.onGreen&&!b.air&&b.z<.6&&d<45&&inSh(h.fringe,b))b.onGreen=true;
     // once an approach has come down on the green the camera eases in on the cup, so the roll past it (or into it) can be watched
     if(b.onGreen&&d<45){const view=clamp(d*2.3+9,11,60);camT.x=lerp(h.pin.x,b.x,.4);camT.y=lerp(h.pin.y,b.y,.4);camT.ay=.5;camT.s=Math.max(camT.s,H*.6/view);ease=3}
-    else if(camT.s<5){camT.x=b.x;camT.y=b.y;camT.ay=.6}}
+    else if(camT.s<5){camT.x=b.x;camT.y=b.y;camT.ay=.6;if(b.s0&&b.s0<5)camT.s=b.s0/(1+Math.min(b.air?b.zv||0:0,45)/230)}} // and draws back a little as the ball climbs
   const k=1-Math.exp(-dt*(ease||(S.mode==='flight'?7:S.g?13:4.2))); // once a swing has begun the camera hurries to its place: the aim is read off the screen
   cam.x=lerp(cam.x,camT.x,k);cam.y=lerp(cam.y,camT.y,k);cam.s=lerp(cam.s,camT.s,k);cam.ay=lerp(cam.ay,camT.ay,k);cam.r=angTo(cam.r,camT.r,k);
   // once it is as good as there, snap to rest: the scenery can then be drawn crisp once and kept
@@ -249,14 +249,15 @@ function fire(p,aim,dev,at,te,tf){const b=S.ball,c=S.club;te=te||0;if(tf==null)t
   let word,sub=onTime?'Perfect tempo':shank?(ts<0?'Far too early':'Far too late'):(q<.3?'A touch ':'')+(ts<0?'early':'late');
   if(c.putt){const pace=shank?.4:onTime?1:ts<0?.95-.27*q:1.05+.25*q,d=rotv(aim.x,aim.y,over*.6+(onTime?0:ts*(.01+q*.06))),v=Math.sqrt(2*MU.green*markDist()*p*pace);b.vx=d.x*v;b.vy=d.y*v;b.vz=0;b.air=false;b.spin=0;
     word=pure?'Pure roll':shank?'Stubbed':kf>0?'Pushed':kf<0?'Pulled':ts<0?'Left short':'Hit firm';sfx.putt();store('putts',(fetchKey('putts')||0)+1)}
-  else{const th=(shank?c.loft*.6:c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.4:pure?c.bomb||1:onTime?.985:.965-.28*Math.pow(q,1.3)),v=Math.sqrt(carry*G/Math.sin(2*th)),
+  else{const fin=c.fin&&!onTime&&!shank?Math.min(1,.12+q*2.6):0,fat=fin&&ts<0,thin=fin&&ts>0; // how badly a finesse shot was missed, and which way
+    const th=(shank?c.loft*.6:thin?lerp(c.loft,22,fin):c.loft)*DEG,carry=p*c.carry*lieMult(S.lie,c)*(shank?.4:fat?1-.5*fin:thin?1+.45*fin:pure?c.bomb||1:onTime?.985:.965-.28*Math.pow(q,1.3)),v=Math.sqrt(carry*G/Math.sin(2*th)),
       k=shank?0:clamp((kf*1.1+(onTime?0:ts*(.07+q*.8)))*wild,-1.5,1.5),d=rotv(aim.x,aim.y,shank?.6:(over*.33+(onTime?0:ts*(.01+q*.06)))*(1+.5*(wild-1))); // a shank squirts low and hard right
-    b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.air=true;b.spin=k*.16*G/Math.tan(th);
+    b.vx=d.x*v*Math.cos(th);b.vy=d.y*v*Math.cos(th);b.vz=v*Math.sin(th);b.vz0=b.vz;b.s0=camT.s;b.air=true;b.spin=k*.16*G/Math.tan(th);if(thin)b.rollK=1+5*fin;
     if(c.style!=null)store('chips',(fetchKey('chips')||0)+1);
-    word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
+    word=pure?(c.bomb?'Bombed it':'Pured it'):shank?'Shank':fat?(fin>.6?'Chunked':'Fat'):thin?(fin>.6?'Bladed':'Thin'):Math.abs(k)<.06?'Straight':Math.abs(k)<.3?(k>0?'Fade':'Draw'):(k>0?'Slice':'Hook');shank?sfx.bad():sfx.hit(p);
     if(S.lie==='bunker'){burst(b.x,b.y,K.sand,22,10,7);sfx.sand()}else if(S.lie!=='tee'){burst(b.x,b.y,'#5a8d3d',8,6,5);if(S.lie==='fairway'&&p>.3)S.marks.push({t:'divot',x:b.x,y:b.y,a:Math.atan2(d.y,d.x)})}}
   if(pure&&!c.putt&&S.hs&&!onRange())S.hs.pure++;
-  S.last={shank,q,early:ts<0,pure,putt:!!c.putt,te};if(pure)sfx.pure();
+  S.last={shank,q,early:ts<0,pure,putt:!!c.putt,te};b.pure=pure;if(pure)sfx.pure();
   if(at)S.fx.push({type:'word',text:word,sub,good:pure,bad:shank,x:at.x,y:at.y-44,t0:performance.now()});
   try{navigator.vibrate&&navigator.vibrate(pure?[10,40,10]:shank?60:25)}catch(_){}
   S.mode='flight';hud()}
@@ -267,7 +268,7 @@ function stepBall(dt){const b=S.ball,h=cur();
   if(b.air){const sp=hyp(b.vx,b.vy)||1,px=-b.vy/sp,py=b.vx/sp;
     b.vx+=(h.wind.x*KW+px*b.spin)*dt;b.vy+=(h.wind.y*KW+py*b.spin)*dt;b.vz-=G*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;
     {const l=lieAt(h,b);if(l!=='water'&&l!=='woods'&&l!=='ob'&&l!=='void')b.dry={x:b.x,y:b.y}} // the last dry ground the ball passed over
-    const gz=h.geo.elev?rise(h,b.x,b.y,b.g0):0,up=b.z-gz;b.zv=up<45?up:45+(up-45)*.12; // height over the ground below; drawn compressed when it is very great
+    const gz=h.geo.elev?rise(h,b.x,b.y,b.g0):0,up=b.z-gz,hv=up*(b.vz0?.7+.65*clamp(.5-.5*b.vz/b.vz0,0,1):1);b.zv=hv<45?hv:45+(hv-45)*.12; // height over the ground below, drawn as a real shot climbs (low launch, late peak, steep fall) and compressed when very great
     for(const t of h.oaks)if(b.tree!==t&&up>2.5&&up<t.h&&hyp(b.x-t.x,b.y-t.y)<t.r*.85){b.tree=t;b.vx*=.12;b.vy*=.12;b.vz=Math.min(b.vz,0)-1;b.spin=0;b.rollK=.2;sfx.leaf();burst(b.x,b.y,'#4b8134',16,10,5);toast('Into the oak',1000)}
     if(b.z<=gz){b.z=0;b.zv=0;b.g0=groundAt(h,b.x,b.y);let lie=lieAt(h,b);
       if(lie==='water'||lie==='void')return hazard(lie);
@@ -316,10 +317,13 @@ function finishHole(score){if(onRange()){S.mode='wait';return setTimeout(()=>ran
 function bumpStreak(){const m=fetchKey('meta')||{last:0,streak:0};if(m.last===S.day)return;m.streak=m.last===S.day-1?m.streak+1:1;m.last=S.day;store('meta',m)}
 
 // ───────── frame loop
-let last=0,acc=0,hudTick=0,windDeg=1e9,Q=2,slowFrames=0;const LOCKQ=location.hash==='#dev';
+// A struck ball leaves fast and slows all the way: the same flight is played quicker off the club and gentler coming down.
+// Only the pace changes; where it goes does not. A ball falling far below where it was struck (off a rim) is not held back.
+const pace=b=>{if(!b.air||b.putt||!b.vz0)return 1;const k=1.06+.4*clamp(b.vz/b.vz0,-1,1);return b.z<0?lerp(k,1.15,clamp(-b.z/25,0,1)):k};
+let last=0,acc=0,simT=0,hudTick=0,windDeg=1e9,Q=2,slowFrames=0;const LOCKQ=location.hash==='#dev';
 function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1000||0);last=now;if(!cur())return;
-  if(S.mode==='flight'){acc+=dt;while(acc>=STEP&&S.mode==='flight'){stepBall(STEP);acc-=STEP}
-    const b=S.ball;S.trail.push({x:b.x,y:b.y,z:b.zv||0});if(S.trail.length>(b.putt?10:26))S.trail.shift();
+  if(S.mode==='flight'){acc+=dt*pace(S.ball);while(acc>=STEP&&S.mode==='flight'){stepBall(STEP);acc-=STEP;simT+=STEP}
+    const b=S.ball;S.trail.push({x:b.x,y:b.y,z:b.zv||0,t:simT});
     if((hudTick+=dt)>.1){hudTick=0;hudDist()}}else acc=0;
   // step the picture quality down on a phone that cannot hold thirty frames a second
   if(dt>.034)slowFrames++;else slowFrames=Math.max(0,slowFrames-2);if(slowFrames>70&&Q>0&&!LOCKQ){Q--;slowFrames=0;resize()}

@@ -76,8 +76,8 @@ const COURSES=[
  // Emerald fairways on sage and red rock; the cliffs are the hazard.
  th:{out:'native',floor:'#b0aa86',rough:'#8f9a62',fair:'#5cab49',stripe:.9,outer:'#b0aa86',woods:'#3a4a2a',mix:[['juniper',1]],marker:'#d9693a',bloom:'bloomGold',bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
   collar:.5,span:175,condor:true,sand:'#e4bc90',wat:{water:'#3f8f7d',deep:'#2a6e66',shallow:'#9ad8c2',rim:'#2f7f72'}},
- holes:[["Havasupai Gardens",4,414,11,0],["Tonto Trail",5,606,5,43],["Dry Fall",3,215,15,12],["Horn Creek",4,476,7,61],["Inner Gorge",4,461,3,-40],["The Bite",5,602,1,-48],["Garden Creek",4,406,9,10],["Tapeats Rim",3,213,17,74],["Plateau Point",4,301,13,-55]],
- more:[["Tonto East",4,441,10,74],["The Tipoff",4,430,6,21],["Cremation",4,345,12,24],["Burro Spring",5,497,4,37],["Pipe Creek",4,295,14,-12],["Zoroaster",3,131,16,-59],["The Plunge",3,481,18,1459],["Silver Bridge",4,479,2,-38],["Phantom Ranch",5,653,8,-73]]},
+ holes:[["Havasupai Gardens",4,414,11,0],["Tonto Trail",5,620,5,59],["Dry Fall",3,215,15,12],["Horn Creek",4,460,7,60],["Inner Gorge",4,427,3,-18],["The Bite",5,625,1,-51],["Garden Creek",4,467,9,47],["Tapeats Rim",3,213,17,74],["Plateau Point",4,316,13,-68]],
+ more:[["Tonto East",4,441,10,74],["The Tipoff",4,430,6,21],["Cremation",4,345,12,24],["Burro Spring",5,552,4,-20],["Pipe Creek",4,374,14,36],["Zoroaster",3,122,16,-35],["The Plunge",3,481,18,1459],["Silver Bridge",4,479,2,-38],["Phantom Ranch",5,624,8,-76]]},
 {id:'tl',code:'TL',club:'Twenty Lakes',tee:'Granite',
  // The Sierra Nevada at 10,000 feet, north of Tioga Pass. Out: the Twenty Lakes Basin, lake to lake from Greenstone past Wasco and
  // Steelhead to Shamrock (a green on an island) and Lake Helen, grey granite to the west, red rock to the east. In: up Lee Vining
@@ -85,8 +85,8 @@ const COURSES=[
  th:{out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:3,bridge:'wood',cart:false,clumps:0,houses:false,wet:false,lilies:false,
   collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
  th2:{wat:{water:'#3fa7b5',deep:'#2a8aa0',shallow:'#b4ece4',rim:'#3597a6'}},
- holes:[["Greenstone",4,409,9,-116],["Wasco",3,172,15,1],["Hidden Lake",5,555,5,-152],["Steelhead",4,470,3,137],["Excelsior",3,180,13,-12],["Shamrock",4,237,7,17],["Mill Creek",5,608,1,99],["Lake Helen",3,220,11,12],["Twin Lakes",4,365,17,-239]],
- more:[["Lee Vining Creek",5,533,12,-19],["The Cascade",5,581,4,-298],["Conness Lake",3,156,14,43],["North Peak",4,288,10,-189],["Glacial Flour",4,466,2,-327],["Snowmelt Tarn",3,136,16,-88],["Mount Conness",4,454,6,387],["Alpenglow",3,170,18,0],["Tioga Crest",5,505,8,-13]]}];
+ holes:[["Greenstone",4,407,9,-107],["Wasco",3,172,15,1],["Hidden Lake",5,555,5,-152],["Steelhead",4,486,3,155],["Excelsior",3,180,13,-12],["Shamrock",4,237,7,17],["Mill Creek",5,522,1,280],["Lake Helen",3,227,5,-17],["Twin Lakes",4,344,17,-204]],
+ more:[["Lee Vining Creek",5,524,12,-10],["The Cascade",5,594,4,-297],["Conness Lake",3,164,14,43],["North Peak",4,288,10,-189],["Glacial Flour",4,371,2,-303],["Snowmelt Tarn",3,140,16,-160],["Mount Conness",4,370,6,464],["Alpenglow",3,170,18,0],["Tioga Crest",4,453,8,-8]]}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
 // data/<id>.json; its other nine, if it has one, is `more`, drawn from data/<id>2.json. The second nines are added after all the
 // first ones so that the index of a hole never changes once it has been published (saved rounds keep indexes).
@@ -196,7 +196,8 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=themeOf(e),g={},rng=mulb
   for(const w of g.dry)for(const q of w.c)for(let i=0;i<3;i++)if(rng()<.6)g.pebbles.push({x:q.x+q.nx*(rng()*2-1)*(q.w+.3),y:q.y+q.ny*(rng()*2-1)*(q.w+.3),r:lerp(.35,1.5,Math.pow(rng(),1.6))});
   for(const b of g.bunker){if(b.area<25)continue;const q=b.poly[Math.floor(rng()*b.poly.length)],a=Math.atan2(q.y-b.y,q.x-b.x);g.rakes.push({x:q.x+Math.cos(a)*1.3,y:q.y+Math.sin(a)*1.3,a:a+1.2+rng()})}
   for(let i=0;i<(th.blooms==null?7:th.blooms);i++){const r=R,sd=rng()<.5?-1:1,q=rAt(r,lerp(20,r.len-20,rng())),d=lerp(32,58,rng()),p={x:q.x-q.dy*sd*d,y:q.y+q.dx*sd*d};
-    if(clear(p,10)&&!wet(p,6)&&!inWood(p)&&inB(p))g.blooms.push(blob(p.x,p.y,lerp(6,11,rng()),lerp(3.5,6.5,rng()),rng()*TAU,g.blooms.length+7,.22))}
+    const flat=!g.elev||hyp(groundAt({geo:g},p.x+7,p.y)-groundAt({geo:g},p.x-7,p.y),groundAt({geo:g},p.x,p.y+7)-groundAt({geo:g},p.x,p.y-7))/14<.2; // on wild ground: not on a slope, a cliff, snow or a trail
+    if(clear(p,10)&&!wet(p,6)&&!inWood(p)&&inB(p)&&flat&&!any(g.void,p,12)&&!any(g.snow,p,8)&&!lineNear(paths,p,8)&&!any(g.dry,p,6))g.blooms.push(blob(p.x,p.y,lerp(6,11,rng()),lerp(3.5,6.5,rng()),rng()*TAU,g.blooms.length+7,.22))}
   if(th.cart){const w=g.paths.find(w=>w.cart&&w.pts.length>3)||g.paths[0];if(w){const a=w.pts[1],b=w.pts[2],ca=Math.atan2(b.y-a.y,b.x-a.x);g.cart={x:a.x-Math.sin(ca)*2.6,y:a.y+Math.cos(ca)*2.6,a:ca}}}
   // buckets so only what is on screen is drawn
   g.grid=new Map();const put=(t,k)=>{const key=Math.floor(t.x/120)+','+Math.floor(t.y/120);let c2=g.grid.get(key);if(!c2)g.grid.set(key,c2={trees:[],solid:[]});c2[k].push(t)};

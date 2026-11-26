@@ -8,5 +8,6 @@ A daily three-hole golf game for a group chat. Everything lives in `flick-links/
   Check the result with `node flick-links/tools/check_course.js <id>` and look at the pictures it saves.
 - Two courses (Bright Angel, Twenty Lakes) are invented holes on real terrain: `flick-links/COURSES.md`, "Fantasy courses".
   Their source is `flick-links/data/<id>.design.json`; rebuild with `python3 flick-links/tools/fantasy.py build <design>`.
+  After changing a layout there, run `node flick-links/tools/check_doglegs.js <id>`: no bend may be cut by driving at the green.
 - Hosting and the clubhouse server: `flick-links/HOSTING.md`.
 - Keep on-screen text minimal. The owner wants only instructions that are needed.

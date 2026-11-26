@@ -89,16 +89,29 @@ cliffs, snow, trails and plants are real; only the tees, fairways, greens and bu
 2. **Look at it.** `python3 tools/fantasy.py view <id> out.jpg [x0 y0 x1 y1] --slope` draws the photograph with the map's water and
    trails, a yard grid, and the steep ground tinted (red: too steep to play). Find the flat ground first; route the holes over it.
 3. **Write the design**, `data/<id>.design.json` (one file a nine; the second nine is `<id>2`):
-   `{"id", "terrain", "look": "canyon" or "alpine", "pad": 235, "steep": 33, "holes": {"1": {"name", "par", "hcp",
+   `{"id", "terrain", "look": "canyon" or "alpine", "pad": 235, "steep": 33, "gentle": 21, "holes": {"1": {"name", "par", "hcp",
    "line": [[x, y], ...], "green": [rx, ry, rot], "fw": [[from, to, half-width], ...], "bunkers": [[along, side, rx, ry, rot, "rel"]],
    ...}}, "props": [...], "snowline": feet}`. A hole is its line from tee to pin. Everything else has a default.
 4. **Build and check the plan.** `python3 tools/fantasy.py build data/<id>.design.json` writes `data/<id>.json`, prints the card
    (with each hole's fall or climb in feet) and the `holes:[...]` line to paste into `COURSES`, and notes any tee or green that
-   landed in water or on a cliff. `python3 tools/fantasy.py plan <id> out.jpg [x0 y0 x1 y1 scale]` draws what was built on the
-   painted ground with a grid: move points, rebuild, look again.
+   touches something it should not (below), and any hole whose fairway is mostly missing. Build until the notes are gone or
+   explained (a forced carry over a river reads as a missing fairway). `python3 tools/fantasy.py plan <id> out.jpg [x0 y0 x1 y1 scale]`
+   draws what was built on the painted ground with a grid, the ground too steep to mow in amber: move points, rebuild, look again.
+   `python3 tools/fantasy.py room data/<id>.design.json <x> <y> [radius]` lists the nearest clear ground for a tee or a green
+   and the widest clear pockets nearby, which is quicker than guessing.
 5. **Add it to the game**: a `COURSES` entry (each hole has a fifth figure, the fall in feet), the id in `SIZE` in
    `server/core.js`, and in `WILD` in `src/50-ui.js` so it is listed under "Fantasy".
 6. **Check it like any course**: `./build.sh && node tools/check_course.js <id> f` and `b`, and look at the pictures.
+7. **Check the doglegs**: `node tools/check_doglegs.js <id>` drives every par 4 and 5 along the hole and then at the pin and at
+   angles between, and flags a bend a drive can simply cut. Fix a flagged hole in the design: straighten it, or put the bend
+   round water or a drop so the line across is a real carry. A carry only a perfect drive makes is shown as a gamble and allowed.
+
+**Nothing mown may look pasted on.** The builder keeps fairways, greens and tees off ground steeper than `gentle` degrees
+(21 in the canyon, 25 in the mountains), six yards back from any cliff edge, and off trails, buildings, creeks, dry washes,
+snow and water. A fairway is cut where a trail or a creek crosses it. A bunker that would overlap any of those is nudged toward
+the line, or left out and reported. Plants keep off trails, roofs and creeks; the game's flower beds keep off slopes, cliffs,
+snow, trails and washes. A building the ground model puts on a cliff face is left out. So lay holes on ground that is really
+flat enough: where the plan shows amber under a hole, the fairway will have a gap there.
 
 What the builder makes from the terrain, and how the game uses it:
 

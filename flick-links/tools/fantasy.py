@@ -5,6 +5,10 @@
       a gridded picture of the real ground (yards east and south of the terrain's centre) to lay holes out on
   python3 tools/fantasy.py build <design.json>
       writes data/<id>.json for the game from a design: hole lines on that ground, with their greens, tees and bunkers
+  python3 tools/fantasy.py room <design.json> <x> <y> [radius]
+      the nearest ground clear enough for a tee or a green, and the widest clear pockets near that point
+  python3 tools/fantasy.py plan <id> <out.jpg> [x0 y0 x1 y1 scale]
+      what was built, drawn on the painted ground with a grid; ground too steep to mow is tinted amber
 
 The ground comes from tools/terrain.py. Needs numpy, scipy, contourpy, shapely, Pillow.
 """
@@ -105,7 +109,7 @@ if __name__ == '__main__':
             elif a[i] == '--design': opts.setdefault('designs', []).append(a[i + 1]); i += 2
             else: rest.append(a[i]); i += 1
         view(rest[0], rest[1], tuple(map(float, rest[2:6])) if len(rest) >= 6 else None, **opts)
-    elif not a or a[0] not in ('build', 'plan'): print(__doc__)
+    elif not a or a[0] not in ('build', 'plan', 'room'): print(__doc__)
 
 # ───────── building the course
 def catmull(P, n=10):
@@ -127,7 +131,7 @@ def blob(x, y, rx, ry, rot, rng, wob=.16, n=28):
     px, py = np.cos(a) * rx * r, np.sin(a) * ry * r; c, s = math.cos(math.radians(rot)), math.sin(math.radians(rot)); return np.stack([x + px * c - py * s, y + px * s + py * c], 1)
 def flat(p, nd=1): return [round(float(v), nd) for q in p for v in q[:2]]
 
-def build(path):
+def build(path, probe=None):
     import shapely.geometry as sg, shapely.ops as so, contourpy
     from shapely import affinity
     from scipy import ndimage as ndi
@@ -182,7 +186,24 @@ def build(path):
     Es = ndi.gaussian_filter(E, 5); gy, gx = np.gradient(Es, st)
     # running creeks are kept clear of turf too: a fairway is cut where one crosses it, and no green or tee sits in one
     runs = [sg.LineString(f['p']).buffer(D.get('creeks', {}).get(f['name'], 5 if f['name'] else 3.2) / 2 + 2.5) for f in F['stream'] if not (f['river'] or ((f['dry'] or (D.get('dry_unnamed') and not f['name'])) and f['name'] not in D.get('wet', [])))]
-    wet = so.unary_union([water.buffer(4)] + runs); crag = so.unary_union(shapes_of(steep, 2, 60)) if steep.any() else sg.Polygon(); cold = so.unary_union(shapes_of(snow, 2, 60)) if snow.any() else sg.Polygon(); bad = so.unary_union([wet, crag.buffer(3), cold.buffer(2)]); edge_g = so.unary_union([water.buffer(1.5), crag.buffer(3), cold.buffer(2)] + runs)
+    wet = so.unary_union([water.buffer(4)] + runs); crag = so.unary_union(shapes_of(steep, 2, 60)) if steep.any() else sg.Polygon(); cold = so.unary_union(shapes_of(snow, 2, 60)) if snow.any() else sg.Polygon(); # Nothing mown may lie on ground that would make it look pasted on: slopes too steep to hold a fairway, trails, buildings and
+    # dry washes are all kept clear, with room to spare from a cliff's edge. A trail or a wash that crosses a fairway cuts it.
+    box_ = sg.box(bx0, by0, bx1, by1); SLs = ndi.gaussian_filter(SL, 1.0); tilted = so.unary_union(shapes_of(SLs >= D.get('gentle', 21), 1.5, 40, .8)) if (SLs >= D.get('gentle', 21)).any() else sg.Polygon()
+    trails = so.unary_union([sg.LineString(f['p']).buffer(2.4) for f in F['path'] if sg.LineString(f['p']).intersects(region)] or [sg.Polygon()]).intersection(box_)
+    built = [f for f in F['building'] if len(f['p']) > 2 and sg.Polygon(f['p']).buffer(0).intersects(region) and not sg.Polygon(f['p']).buffer(0).intersects(crag)]  # a cabin the ground model puts on a cliff is left out, not drawn hanging there
+    houses = so.unary_union([sg.Polygon(f['p']).buffer(0).buffer(5) for f in built] or [sg.Polygon()])
+    washes = so.unary_union([sg.LineString(f['p']).buffer(D.get('creeks', {}).get(f['name'], 5 if f['name'] else 3.2) / 2 + 2.5) for f in F['stream'] if not f['river'] and sg.LineString(f['p']).intersects(region)] or [sg.Polygon()]).intersection(box_)
+    seen = so.unary_union([wet, crag.buffer(6), cold.buffer(3), trails, houses, washes])
+    bad = so.unary_union([wet, crag.buffer(6), cold.buffer(3), tilted, trails, houses, washes]); edge_g = so.unary_union([water.buffer(1.5), crag.buffer(6), cold.buffer(3), tilted, trails, houses, washes] + runs)
+    if probe:  # where is there room? the widest clear pockets near a point, for placing a green (about 16 yd) or a tee (about 8)
+        # the shapes are widened first: a trail is thinner than the grid
+        px, py, R = probe; room = ndi.distance_transform_edt(~raster(edge_g.buffer(2.5))) * st - 2.5; peak = (room == ndi.maximum_filter(room, 7)) & (np.hypot(XX - px, YY - py) <= R) & (room >= 6)
+        dd = np.hypot(XX - px, YY - py); i, j = np.unravel_index(np.argmin(dd), dd.shape); print('  at the point itself: clear for %d yd' % max(room[i, j], 0))
+        for need, what in ((8, 'a tee'), (17, 'a green')):
+            ok = np.where(room >= need, dd, 1e9); i, j = np.unravel_index(np.argmin(ok), ok.shape)
+            if ok[i, j] < 1e9: print('  nearest room for %s: [%d, %d], %d yd away' % (what, xs[j], ys[i], ok[i, j]))
+        for i, j in sorted(zip(*np.nonzero(peak)), key=lambda q: -room[q])[:14]: print('  clear for %2d yd around [%d, %d]  (%d yd from the point, %d ft)' % (room[i, j], xs[j], ys[i], math.hypot(xs[j] - px, ys[i] - py), E[i, j] * 3))
+        return
     for n, h in sorted(holes.items()):
         L = ctr[n]; S = along(L); total = S[-1]; par = h['par']; rng = rng_for(cid, n); end = L[-1]; t_end = at_dist(L, S, total - 1)[1]
         # the green: across the line of play unless told otherwise
@@ -195,8 +216,9 @@ def build(path):
         t0 = at_dist(L, S, 0)[1]; a0 = math.degrees(math.atan2(t0[1], t0[0]))
         for k in range(h.get('tees', 3)):
             c = L[0] + t0 * (k * 13) + np.array([-t0[1], t0[0]]) * ((k % 2) * 2 - 1) * (4 if k else 0) * (1 if k else 0); box = affinity.rotate(sg.box(c[0] - 5.5, c[1] - 4, c[0] + 5.5, c[1] + 4), a0, origin=(c[0], c[1]))
+            if k == 0: box0 = box
             if k == 0 or not box.intersects(bad): G['tee'].append(box)
-        if sg.Point(*L[0]).within(bad): notes.append('hole %d: the tee at %s is in water or on rock too steep to stand on' % (n, [round(v) for v in L[0]]))
+        if box0.buffer(1.5).intersects(bad): notes.append('hole %d: the tee at %s touches %s' % (n, [round(v) for v in L[0]], ', '.join(k for k, g in (('water or a creek', wet), ('a cliff', crag.buffer(6)), ('snow', cold.buffer(3)), ('a slope', tilted), ('a trail', trails), ('a building', houses), ('a wash', washes)) if box0.buffer(1.5).intersects(g))))
         # fairway: a ribbon along the line where the ground allows, in one piece or several
         segs = h.get('fw'); segs = segs if segs is not None else ([] if par == 3 and total < 235 else [[max(95, min(150, total * .3)), total - 24, h.get('w', 30)]])
         fair = []
@@ -205,16 +227,28 @@ def build(path):
             for s in np.arange(s0, s1 + .1, 5): p, _ = at_dist(L, S, s); u = (s - s0) / max(s1 - s0, 1); r = w * (.82 + .26 * math.sin(u * 5.5 + ph[0]) + .1 * math.sin(u * 13 + ph[1])) * min(1, .55 + 3 * u, .6 + 3 * (1 - u)); discs.append(sg.Point(*p).buffer(r, 8))
             if discs: fair.append(so.unary_union(discs))
         if fair:
-            fw = so.unary_union(fair).difference(bad).difference(green.buffer(1)).buffer(-5).buffer(5).simplify(.8)
+            # Cut by everything it may not touch, then healed: a pocket of steeper ground under 16 yards across is mown over (a
+            # fairway with small bites out of it for no visible reason looks as wrong as one painted up a slope), but nothing
+            # that can be seen (water, rock, snow, a trail, a wash, a roof) is ever covered again.
+            ribbon = so.unary_union(fair); fw = ribbon.difference(bad).difference(green.buffer(1)).buffer(-5).buffer(5)
+            fw = fw.buffer(8).buffer(-8).intersection(ribbon).difference(seen).difference(green.buffer(1)).buffer(-4).buffer(4).simplify(.8)
             for q in (fw.geoms if hasattr(fw, 'geoms') else [fw]):
-                if q.geom_type == 'Polygon' and q.area > 500: G['fair'].append(sg.Polygon(q.exterior))
+                if q.geom_type == 'Polygon' and q.area > 500:
+                    G['fair'].append(sg.Polygon(q.exterior))
+                    if any(sg.Polygon(r).area > 60 for r in q.interiors): notes.append('hole %d: something the fairway may not touch lies wholly inside it and will be mown over; move the line or narrow the fairway there' % n)
+        if par > 3:
+            cover = sum(1 for sx in np.arange(150, total - 30, 6) if any(q.contains(sg.Point(*at_dist(L, S, sx)[0])) for q in G['fair'])) / max(1, len(np.arange(150, total - 30, 6)))
+            if cover < .5: notes.append('hole %d: only %d%% of the line from 150 yd on is fairway (slopes, washes, trails or cliffs take the rest)' % (n, cover * 100))
         # bunkers: placed by hand as [x, y, rx, ry, rot], or [along, side, rx, ry, rot] with "rel"
         for b in h.get('bunkers', []):
             if len(b) > 5 and b[5] == 'rel': p, t = at_dist(L, S, b[0] if b[0] >= 0 else total + b[0]); c = p + np.array([-t[1], t[0]]) * b[1]; rot = math.degrees(math.atan2(t[1], t[0])) + b[4]
             else: c = np.array(b[:2], float); rot = b[4]
-            bk = sg.Polygon(blob(c[0], c[1], b[2], b[3], rot, rng_for(cid, n, tuple(b[:2])), .2, 22)).difference(bad).difference(green.buffer(.5))
-            for q in (bk.geoms if hasattr(bk, 'geoms') else [bk]):
-                if q.geom_type == 'Polygon' and q.area > 25: G['bunker'].append(sg.Polygon(q.exterior))
+            placed = False
+            for step in range(5):  # a bunker is never sliced by a cliff, a shore or a slope: it is nudged toward the line of play, or left out
+                cc = c + (at_dist(L, S, float(np.clip((c - L[0]) @ t0, 0, total)))[0] - c) * (step * .16); bk = sg.Polygon(blob(cc[0], cc[1], b[2], b[3], rot, rng_for(cid, n, tuple(b[:2])), .2, 22))
+                if not bk.intersects(bad.buffer(1.5)): G['bunker'].append(bk.difference(green.buffer(.5)).buffer(0)); placed = True; break
+            if not placed: notes.append('hole %d: a bunker near %s had no clean ground and was left out' % (n, [round(v) for v in c]))
+            if placed and G['bunker'][-1].geom_type != 'Polygon': G['bunker'][-1] = max(G['bunker'][-1].geoms, key=lambda q: q.area)
         # the card, the fall from tee to green, and which way the green really tilts
         gi, gj = int((end[1] - ys[0]) / st), int((end[0] - xs[0]) / st); gxv, gyv = gx[gi, gj], gy[gi, gj]; m = math.hypot(gxv, gyv); sm = min(.34, .16 + math.degrees(math.atan(m)) * .012)  # a green is built flatter than the ground it sits on, but falls the same way
         tilt[n] = [round(-gxv / (m or 1) * sm, 3), round(-gyv / (m or 1) * sm, 3)]; drop = round((T.at(*L[0]) - T.at(*end)) * 3)
@@ -222,7 +256,7 @@ def build(path):
     fairs = so.unary_union(G['fair']); greens = so.unary_union(G['green']); tees = so.unary_union(G['tee']); sands = so.unary_union(G['bunker']); turf = so.unary_union([fairs, greens.buffer(5), tees.buffer(3), sands.buffer(1)])
     # nothing steep or snowy is left inside the playing surfaces
     TM = raster(turf.buffer(2)); steep &= ~TM; snow &= ~TM & ~W
-    out = {'id': cid, 'origin': [round(T.lat0, 6), round(T.lon0, 6)], 'lines': lines, 'len': {n: c['yd'] for n, c in card.items()}, 'card': card, 'boundary': None, 'roads': [], 'rails': [], 'walls': [], 'piers': [], 'trees': [],
+    out = {'id': cid, 'src': {'terrain': D['terrain'], 'gentle': D.get('gentle', 21)}, 'origin': [round(T.lat0, 6), round(T.lon0, 6)], 'lines': lines, 'len': {n: c['yd'] for n, c in card.items()}, 'card': card, 'boundary': None, 'roads': [], 'rails': [], 'walls': [], 'piers': [], 'trees': [],
            'rough': [], 'wood': [], 'scrub': [], 'rock': [], 'pitch': [], 'pool': [], 'parking': [], 'beach': [], 'marsh': [], 'bed': [], 'tilt': tilt}
     for k in G: out[k] = [flat(list(q.exterior.coords)[:-1]) for q in G[k]]
     out['water'] = [pack(q) for q in (water.simplify(.7).geoms if hasattr(water, 'geoms') else [water.simplify(.7)]) if q.geom_type == 'Polygon' and q.area > 12]  # every lake in the picture, so none is left as a blue stain in the paint
@@ -248,10 +282,10 @@ def build(path):
                     if len(run) > 2: out['falls'].append({'p': flat(run), 'w': w})
                     run = None
     out['paths'] = [{'p': flat(sg.LineString(f['p']).simplify(.7).coords), 'cart': False, 'bridge': f['bridge']} for f in F['path'] if sg.LineString(f['p']).intersects(region.buffer(30))]
-    out['building'] = [flat(f['p']) for f in F['building'] if len(f['p']) > 2 and sg.Polygon(f['p']).intersects(region)]
+    out['building'] = [flat(f['p']) for f in built]
     # what grows there, read off the photograph and scattered where it really is
     rngv = rng_for(cid, 'veg'); r_, g_, b_ = RGB[..., 0], RGB[..., 1], RGB[..., 2]; lum = (r_ + g_ + b_) / 3; exg = (2 * g_ - r_ - b_) / (lum + 30); kinds = D.get('plants', ['pine']); sc = []
-    free = ~raster(turf.buffer(3)) & ~W & ~snow & ~steep; dstream = ndi.distance_transform_edt(~raster(so.unary_union([sg.LineString(np.array(s['p']).reshape(-1, 2)).buffer(4) for s in out['streams'] if not s['dry']] + [water]) if out['streams'] or not water.is_empty else sg.Polygon())) * st
+    free = ~raster(turf.buffer(3)) & ~W & ~snow & ~steep & ~raster(trails) & ~raster(houses.buffer(-3)) & ~raster(so.unary_union(runs + [washes])); dstream = ndi.distance_transform_edt(~raster(so.unary_union([sg.LineString(np.array(s['p']).reshape(-1, 2)).buffer(4) for s in out['streams'] if not s['dry']] + [water]) if out['streams'] or not water.is_empty else sg.Polygon())) * st
     def strew(mask, kind, rmin, rmax, cell, chance):
         k = kinds.index(kind); c = max(1, int(cell / st))
         for i in range(0, mask.shape[0] - c, c):
@@ -304,6 +338,8 @@ def build(path):
         col = col * (1 - .42 * deep[..., None]) + np.array([38, 44, 70]) * (.42 * deep[..., None])
     else:
         sm = np.stack([ndi.median_filter(RGB[..., c], 5) for c in range(3)], -1); sm = ndi.gaussian_filter(sm, (1.5, 1.5, 0)); L0 = sm.mean(2, keepdims=True) + 1; tgt = D.get('tone', 158) + .32 * (L0 - 150); col = sm / L0 * tgt
+        near_w = ndi.binary_dilation(W, iterations=9); blue = (sm[..., 2] > sm[..., 0] + 6) & (sm[..., 2] >= sm[..., 1] - 2); stain = W | (near_w & blue) | ndi.binary_dilation(W, iterations=2); okc = (~(near_w & blue) & ~W).astype(np.float32)
+        wsum = ndi.gaussian_filter(okc, 10) + 1e-4; land = np.stack([ndi.gaussian_filter(col[..., c] * okc, 10) / wsum for c in range(3)], -1); col = np.where(stain[..., None], land, col)
         grey = col.mean(2, keepdims=True); col = grey + (col - grey) * D.get('sat', 1.25); lit = (.56 + .6 * SH) * (1 - .12 * np.clip((SL - 30) / 25, 0, 1)) * (1 + .03 * fine)
     img = (col * lit[..., None]).clip(0, 255).astype(np.uint8); rs = D.get('relief_step', 3); im = Image.fromarray(img).resize((int(len(xs) * st / rs), int(len(ys) * st / rs)), Image.LANCZOS)
     buf = io.BytesIO(); im.save(buf, 'WEBP', quality=D.get('quality', 78), method=6); out['relief'] = {'box': [round(float(xs[0]), 1), round(float(ys[0]), 1), round(len(xs) * st, 1), round(len(ys) * st, 1)], 'src': 'data:image/webp;base64,' + base64.b64encode(buf.getvalue()).decode()}
@@ -332,12 +368,18 @@ def build(path):
     print('  total', sum(c['yd'] for c in card.values()), 'yd, par', sum(c['par'] for c in card.values())); [print('  NOTE', x) for x in notes]
 
 if __name__ == '__main__' and len(sys.argv) > 2 and sys.argv[1] == 'build': build(sys.argv[2])
+if __name__ == '__main__' and len(sys.argv) > 4 and sys.argv[1] == 'room': build(sys.argv[2], (float(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]) if len(sys.argv) > 5 else 60))
 
 # ───────── a plan of what was built, to check the holes against the ground
 def plan(cid, out, win=None, scale=1.0):
     d = json.load(open(os.path.join(DATA, cid + '.json'))); bx, by, bw, bh = d['relief']['box']; x0, y0, x1, y1 = win or (bx, by, bx + bw, by + bh); k = scale
     rel = Image.open(os.path.join(CACHE, cid + '.relief.png')).convert('RGB'); kr = rel.size[0] / bw
-    im = rel.crop((int((x0 - bx) * kr), int((y0 - by) * kr), int((x1 - bx) * kr), int((y1 - by) * kr))).resize((int((x1 - x0) * k), int((y1 - y0) * k)), Image.LANCZOS); dr = ImageDraw.Draw(im, 'RGBA')
+    im = rel.crop((int((x0 - bx) * kr), int((y0 - by) * kr), int((x1 - bx) * kr), int((y1 - by) * kr))).resize((int((x1 - x0) * k), int((y1 - y0) * k)), Image.LANCZOS)
+    if d.get('src'):  # ground too steep to mow, in amber: nothing green may touch it
+        from scipy import ndimage as ndi
+        T = Terrain(d['src']['terrain']); i0, j0 = map(int, T.ij(x0, y0)); i1, j1 = map(int, T.ij(x1, y1)); sl = ndi.gaussian_filter(T.slope()[0], 1.0)[max(i0, 0):i1, max(j0, 0):j1] >= d['src']['gentle']
+        m = Image.fromarray((sl * 255).astype(np.uint8)).resize(im.size, Image.NEAREST); im.paste(Image.new('RGB', im.size, (240, 150, 30)), (0, 0), m.point(lambda v: 95 if v else 0))
+    dr = ImageDraw.Draw(im, 'RGBA')
     X = lambda f: [((f[i] - x0) * k, (f[i + 1] - y0) * k) for i in range(0, len(f), 2)]; P = lambda o: o['p'] if isinstance(o, dict) else o
     for v in d.get('void', []):
         dr.polygon(X(P(v)), fill=(60, 10, 10, 90), outline=(255, 60, 60, 230))

@@ -171,7 +171,7 @@ def build(path, probe=None):
     outer = [sg.Polygon(f['p']).buffer(0) for f in F['water'] if not f.get('inner') and ok(f)]; inner = [sg.Polygon(f['p']).buffer(0) for f in F['water'] if f.get('inner') and ok(f)]
     water = so.unary_union(outer).difference(so.unary_union(inner)) if outer else sg.Polygon(); water = water.intersection(sg.box(bx0 - 5, by0 - 5, bx1 + 5, by1 + 5)); W = raster(water)
     # ground too steep to play: cliffs, crags and the walls of the gorge
-    lim = D.get('steep', 33); steep = ndi.binary_closing(ndi.binary_opening(SL > lim, iterations=1), iterations=2) & ~W; lab, n = ndi.label(steep); size = ndi.sum(steep, lab, range(1, n + 1)); steep = np.isin(lab, [k + 1 for k, v in enumerate(size) if v >= D.get('crag', 70)])
+    lim = D.get('steep', 33); steep = ndi.binary_closing(ndi.binary_opening(SL > lim, iterations=1), iterations=2) & ~W; lab, n = ndi.label(steep); size = ndi.sum(steep, lab, range(1, n + 1)); steep = np.isin(lab, [k + 1 for k, v in enumerate(size) if v >= D.get('crag', 150)])
     # snow and ice: the mapped glacier, and whatever the photograph shows as bright and colourless high up
     snow = raster(so.unary_union([sg.Polygon(f['p']).buffer(0) for f in F['glacier'] if len(f['p']) > 2])) if F['glacier'] else np.zeros(E.shape, bool)
     if look == 'alpine':
@@ -195,22 +195,32 @@ def build(path, probe=None):
     washes = so.unary_union([sg.LineString(f['p']).buffer(D.get('creeks', {}).get(f['name'], 5 if f['name'] else 3.2) / 2 + 2.5) for f in F['stream'] if not f['river'] and sg.LineString(f['p']).intersects(region)] or [sg.Polygon()]).intersection(box_)
     seen = so.unary_union([wet, crag.buffer(6), cold.buffer(3), trails, houses, washes])
     bad = so.unary_union([wet, crag.buffer(6), cold.buffer(3), tilted, trails, houses, washes]); edge_g = so.unary_union([water.buffer(1.5), crag.buffer(6), cold.buffer(3), tilted, trails, houses, washes] + runs)
+    # what a green keeps its distance from: six yards of ground between it and water, ten from a cliff's edge, less from the rest
+    gr_ = D.get('green_room', 4.5); edge_far = so.unary_union([water.buffer(1.5 + gr_), crag.buffer(6 + gr_), cold.buffer(3 + gr_ * .7), tilted.buffer(1.5), trails.buffer(3), houses.buffer(3), washes.buffer(2)] + [r.buffer(3) for r in runs])
     if probe:  # where is there room? the widest clear pockets near a point, for placing a green (about 16 yd) or a tee (about 8)
         # the shapes are widened first: a trail is thinner than the grid
         px, py, R = probe; room = ndi.distance_transform_edt(~raster(edge_g.buffer(2.5))) * st - 2.5; peak = (room == ndi.maximum_filter(room, 7)) & (np.hypot(XX - px, YY - py) <= R) & (room >= 6)
-        dd = np.hypot(XX - px, YY - py); i, j = np.unravel_index(np.argmin(dd), dd.shape); print('  at the point itself: clear for %d yd' % max(room[i, j], 0))
-        for need, what in ((8, 'a tee'), (17, 'a green')):
-            ok = np.where(room >= need, dd, 1e9); i, j = np.unravel_index(np.argmin(ok), ok.shape)
+        dd = np.hypot(XX - px, YY - py); i, j = np.unravel_index(np.argmin(dd), dd.shape); roomg = ndi.distance_transform_edt(~raster(edge_far.buffer(2.5))) * st - 2.5
+        print('  at the point itself: room for a tee %s, for a green of %d yd' % ('yes' if room[i, j] >= 8 else 'no', max(roomg[i, j], 0)))
+        for need, what, rm in ((8, 'a tee', room), (11.5, 'a small green (10 yd)', roomg), (17, 'a full green (15 yd)', roomg)):
+            ok = np.where(rm >= need, dd, 1e9); i, j = np.unravel_index(np.argmin(ok), ok.shape)
             if ok[i, j] < 1e9: print('  nearest room for %s: [%d, %d], %d yd away' % (what, xs[j], ys[i], ok[i, j]))
-        for i, j in sorted(zip(*np.nonzero(peak)), key=lambda q: -room[q])[:14]: print('  clear for %2d yd around [%d, %d]  (%d yd from the point, %d ft)' % (room[i, j], xs[j], ys[i], math.hypot(xs[j] - px, ys[i] - py), E[i, j] * 3))
+        peak = (roomg == ndi.maximum_filter(roomg, 7)) & (dd <= R) & (roomg >= 8); seen_ = []
+        for i, j in sorted(zip(*np.nonzero(peak)), key=lambda q: -roomg[q]):
+            if all(math.hypot(xs[j] - a_, ys[i] - b_) > 12 for a_, b_ in seen_) and len(seen_) < 8: seen_.append((xs[j], ys[i])); print('  a green of up to %2d yd fits at [%d, %d]  (%d yd from the point, %d ft)' % (roomg[i, j], xs[j], ys[i], dd[i, j], E[i, j] * 3))
         return
     for n, h in sorted(holes.items()):
         L = ctr[n]; S = along(L); total = S[-1]; par = h['par']; rng = rng_for(cid, n); end = L[-1]; t_end = at_dist(L, S, total - 1)[1]
         # the green: across the line of play unless told otherwise
         gr = h.get('green') or [15 + (2 if par == 5 else 0), 12.5, None]; rot = gr[2] if gr[2] is not None else math.degrees(math.atan2(t_end[1], t_end[0])) + 90 + rng.uniform(-25, 25)
-        green = sg.Polygon(blob(end[0], end[1], gr[0], gr[1], rot, rng, .13)).difference(edge_g).buffer(-1.5).buffer(1.5)  # a green may run to within a yard or two of the water
-        if green.geom_type != 'Polygon': green = max(green.geoms, key=lambda q: q.area)
-        if not green.contains(sg.Point(*end)) or green.area < 250: notes.append('hole %d: the green at %s is cramped by water or rock (%d sq yd left)' % (n, [round(v) for v in end], green.area))
+        # A green is never trimmed to fit, and never crowds an edge: the whole shape must sit with room to spare (edge_far) from
+        # water, rock, snow, slopes, trails and creeks. Where it does not, it is made smaller, down to about half its area.
+        whole = sg.Polygon(blob(end[0], end[1], gr[0], gr[1], rot, rng, .13)); green = whole; k_ = 1.0
+        while green.intersects(edge_far) and k_ > .72: k_ -= .04; green = affinity.scale(whole, k_, k_, origin=(end[0], end[1]))
+        if green.intersects(edge_far):
+            notes.append('hole %d: the green at %s is crowded: room for a green of %d yd there, and the smallest this one goes is %d. Move it (fantasy.py room finds where) or give it a smaller "green"' % (n, [round(v) for v in end], sg.Point(*end).distance(edge_far), max(gr[0], gr[1]) * .72 * 1.12))
+            green = green.difference(edge_g).buffer(-1.5).buffer(1.5)
+            if green.geom_type != 'Polygon': green = max(green.geoms, key=lambda q: q.area)
         G['green'].append(green)
         # tees: two or three boxes stepping forward along the line
         t0 = at_dist(L, S, 0)[1]; a0 = math.degrees(math.atan2(t0[1], t0[0]))
@@ -281,7 +291,11 @@ def build(path, probe=None):
                 if (not fall or s + 6 >= S2[-1]) and run:
                     if len(run) > 2: out['falls'].append({'p': flat(run), 'w': w})
                     run = None
-    out['paths'] = [{'p': flat(sg.LineString(f['p']).simplify(.7).coords), 'cart': False, 'bridge': f['bridge']} for f in F['path'] if sg.LineString(f['p']).intersects(region.buffer(30))]
+    # trails as mapped, less the stubs: a spur a few yards long that stops in the open (the cabin it led to is not drawn, or the
+    # mapper stopped) reads as a path that has been cut off
+    ways = [(f, sg.LineString(f['p'])) for f in F['path'] if sg.LineString(f['p']).intersects(region.buffer(30))]; cabins = so.unary_union([sg.Polygon(f['p']).buffer(0).buffer(6) for f in built] or [sg.Polygon()])
+    def loose(i, e): q = sg.Point(*e); return not cabins.contains(q) and all(m.distance(q) > 6 for j, (_, m) in enumerate(ways) if j != i)
+    out['paths'] = [{'p': flat(l.simplify(.7).coords), 'cart': False, 'bridge': f['bridge']} for i, (f, l) in enumerate(ways) if not (l.length < 45 and (loose(i, l.coords[0]) or loose(i, l.coords[-1])))]
     out['building'] = [flat(f['p']) for f in built]
     # what grows there, read off the photograph and scattered where it really is
     rngv = rng_for(cid, 'veg'); r_, g_, b_ = RGB[..., 0], RGB[..., 1], RGB[..., 2]; lum = (r_ + g_ + b_) / 3; exg = (2 * g_ - r_ - b_) / (lum + 30); kinds = D.get('plants', ['pine']); sc = []
@@ -345,6 +359,7 @@ def build(path, probe=None):
     buf = io.BytesIO(); im.save(buf, 'WEBP', quality=D.get('quality', 78), method=6); out['relief'] = {'box': [round(float(xs[0]), 1), round(float(ys[0]), 1), round(len(xs) * st, 1), round(len(ys) * st, 1)], 'src': 'data:image/webp;base64,' + base64.b64encode(buf.getvalue()).decode()}
     im.save(os.path.join(CACHE, cid + '.relief.png'))
     # ledges: level lines across the steep faces only, which is where the rock shows its layers
+    face = crag.buffer(-1.5)
     lev = np.arange(math.floor(E.min() * 3 / 50) * 50, E.max() * 3, D.get('ledge', 30)); cg = contourpy.contour_generator(x=xs, y=ys, z=ndi.gaussian_filter(E, .8) * 3); ledges = []; rock = ndi.binary_dilation(SL > D.get('ledge_slope', 26), iterations=1) if look == 'canyon' else ndi.binary_dilation(steep, iterations=1)
     for lvl in lev:
         for ln in cg.lines(float(lvl)):
@@ -354,8 +369,10 @@ def build(path, probe=None):
                 b = a
                 while b < len(ln) and on[b]: b += 1
                 if b - a > 4:
-                    g = sg.LineString(ln[a:b]).simplify(D.get('ledge_tol', 2.2))
-                    if g.length > 25 and g.intersects(region): ledges.append(flat(g.coords))
+                    # only on the cliff itself: a stroke that runs out over open ground reads as a path that has been cut off
+                    g = sg.LineString(ln[a:b]).simplify(D.get('ledge_tol', 1.6)).intersection(face)
+                    for q in (g.geoms if hasattr(g, 'geoms') else [g]):
+                        if q.geom_type == 'LineString' and q.length > 25 and q.intersects(region): ledges.append(flat(q.coords))
                 a = b
     out['ledges'] = ledges
     # heights, coarse, for the flight of the ball: one byte a cell

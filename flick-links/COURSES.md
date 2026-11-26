@@ -109,8 +109,12 @@ cliffs, snow, trails and plants are real; only the tees, fairways, greens and bu
 **Nothing mown may look pasted on.** The builder keeps fairways, greens and tees off ground steeper than `gentle` degrees
 (21 in the canyon, 25 in the mountains), six yards back from any cliff edge, and off trails, buildings, creeks, dry washes,
 snow and water. A fairway is cut where a trail or a creek crosses it. A bunker that would overlap any of those is nudged toward
-the line, or left out and reported. Plants keep off trails, roofs and creeks; the game's flower beds keep off slopes, cliffs,
-snow, trails and washes. A building the ground model puts on a cliff face is left out. So lay holes on ground that is really
+the line, or left out and reported. A green is never trimmed to fit and never crowds an edge: the whole shape keeps six yards
+of ground between it and water and ten from a cliff's edge, shrinking a little if it must, and the builder says when a green has
+no room so it can be moved (`fantasy.py room` lists where one fits). Plants keep off trails, roofs and creeks; the game's flower beds keep off slopes, cliffs,
+snow, trails and washes. A building the ground model puts on a cliff face is left out. Cliff ledge lines are drawn on cliffs
+only, steep patches under 1,350 square yards are plain ground rather than hazards, and a trail stub under 45 yards that stops
+in the open is dropped: each of those read as a path that had been cut off. So lay holes on ground that is really
 flat enough: where the plan shows amber under a hole, the fairway will have a gap there.
 
 What the builder makes from the terrain, and how the game uses it:

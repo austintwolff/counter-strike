@@ -984,6 +984,9 @@ function burst(x,y,col,n,sp,up){for(let i=0;i<n;i++){const a=Math.random()*TAU,v
 // ───────── rules of this little world
 const G=22,KW=0.18,CUP_R=0.28,CAP_V=4.2,MAX_OVER=5;
 const MU={green:2.2,fringe:4,fairway:5,tee:5,rough:13,bunker:26,woods:15,ob:12,native:17,creekbed:15,water:13,rock:13};
+// A putt rolls on the green at MU.green. A ball that has been chipped or pitched there still has some check on it and slows faster
+// (GREEN_IN), so one that lands short on fairway (5) or fringe (4) and runs on does not suddenly go half as far again.
+const GREEN_IN=3.4,muFor=(lie,b)=>lie==='green'&&!b.putt?GREEN_IN:MU[lie];
 const ROLLX={green:1.1,fringe:1,fairway:1,tee:1,rough:.35,bunker:.04,woods:.3,ob:.5,native:.18,creekbed:.5,water:0,rock:.6};
 const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Rough',bunker:'Bunker',native:'Native',creekbed:'Creek bed'};
 // carry is a pure strike from a good lie, in yards; roll is added on top (a pure driver finishes near 290)
@@ -999,7 +1002,7 @@ const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
 // ───────── day, saves
-const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795650856000; // build.sh stamps the build time here
+const KEY='flicklinks:v2:',SHARE_URL='',BUILD_TS=1795665762000; // build.sh stamps the build time here
 const pad=n=>String(n).padStart(2,'0');
 const todayKey=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 function dayNumber(k){const[y,m,d]=k.split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(2026,10,22))/864e5)+1}
@@ -1121,7 +1124,7 @@ cv.addEventListener('pointerdown',e=>{
   try{cv.setPointerCapture(e.pointerId)}catch(_){}
   const p=gPos(e);hintOff();
   if(S.club.putt&&S.pmode==='aim'){S.g={id:e.pointerId,drag:true,x:p.x,y:p.y};return}
-  S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,
+  S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},anc:null,still:0,lp:null,fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,
     off:Math.abs(performance.now()-e.timeStamp)<3000?0:performance.now()-e.timeStamp}; // timing uses each touch's own timestamp, not when it was processed
   S.mode='aim'});
 cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)return;
@@ -1131,18 +1134,31 @@ cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)retu
   const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of(evs.length?evs:[e])){if(!S.g)break;const p=gPos(ev);sample(ev.timeStamp||e.timeStamp,p.x,p.y)}});
 function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14)g.t0=t+g.off}
-function toSwing(g){const k=g.peak,m=meterAt(g,g.ft||performance.now());g.phase='swing';g.slow=0;g.top={x:k.x,y:k.y};g.pull=k.d;g.power=clamp(k.d/pullMax(),0,1);
+function toSwing(g){const k=g.peak,m=meterAt(g,g.ft||performance.now());g.phase='swing';g.slow=0;g.lp=null;g.top={x:k.x,y:k.y};g.pull=k.d;g.power=clamp(k.d/pullMax(),0,1);
   g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f;
   if(S.tut&&S.tut.step==='pull'){g.e=0;g.frozen=1}} // the first lesson is the motion alone: any flick is a good one
 // A resting finger sends no events, so the gap before a sample is capped: whatever moved, moved within about a frame.
-function sample(t,x,y){const g=S.g,len=hyp(x-g.ox,y-g.oy),vr=(g.last.d-len)/clamp(t-g.last.t,4,20);
-  g.x=x;g.y=y;g.last={t,d:len};
-  if(g.phase==='aim'){
-    if(vr>FLICK_V&&g.peak.d>pullMax()*.16){if(!g.fast)g.ft=t+g.off;g.fast++;if(g.fast>=2||g.peak.d-len>g.peak.d*.25)toSwing(g)}
-    else{g.fast=0;g.peak={x,y,d:len};aimFrom(g,x,y,len,t)}}
-  if(g.phase==='swing'){g.trail.push({x,y});
-    if((x-g.top.x)*g.aim.x+(y-g.top.y)*g.aim.y>=g.pull)commit(x,y);
-    else if(vr<.05){if(++g.slow>=3){g.phase='aim';g.fast=0;g.frozen=null;g.peak={x,y,d:len};aimFrom(g,x,y,len,t)}}else g.slow=0}}
+// A flick is read two ways. Fast: the finger is coming back toward where it started quicker than FLICK_V (a little less is asked of
+// a short pull). Soft: from where it was resting (the anchor) it has come back most of the way within a sixth of a second, however
+// gently, which is how people naturally flick a short shot. Distance back is measured along the pull, so a flick that carries
+// on past the start still counts. The anchor follows the finger while it pulls out or rests, and not while it is on its way back:
+// easing back slowly to take power off is never a flick.
+const minPull=()=>Math.max(15,pullMax()*.1);
+function softFlick(g,t,x,y,frac,least){const a=g.anc;if(!a||a.d<=minPull()||t-a.t>170)return false;
+  const back=a.d-((x-g.ox)*(a.x-g.ox)+(y-g.oy)*(a.y-g.oy))/a.d;if(back<Math.max(least,a.d*frac))return false;
+  g.peak={x:a.x,y:a.y,d:a.d};if(!g.fast)g.ft=Math.min(t,a.t+16)+g.off;return true}
+function sample(t,x,y){const g=S.g,len=hyp(x-g.ox,y-g.oy),dt=clamp(t-g.last.t,4,20);g.x=x;g.y=y;
+  if(g.phase==='aim'){const pk=g.peak,past=pk.d>0&&(x-g.ox)*(pk.x-g.ox)+(y-g.oy)*(pk.y-g.oy)<0,sl=past?-len:len,vr=(g.last.d-sl)/dt,need=FLICK_V*clamp(.55+.9*pk.d/pullMax(),.55,1);
+    g.last={t,d:sl};
+    if(g.anc&&g.anc.live&&len<g.anc.d-1.5){g.anc.t=t-dt;g.anc.live=false} // a resting finger sends nothing: it left the anchor about now
+    if(softFlick(g,t,x,y,.6,13))toSwing(g);
+    else if(vr>need&&pk.d>minPull()){if(!g.fast)g.ft=t+g.off;g.fast++;if(g.fast>=2||pk.d-sl>pk.d*.25)toSwing(g)}
+    else{g.fast=0;g.peak={x,y,d:len};g.last.d=len;g.still=Math.abs(vr)<.05?(g.still||0)+1:0;
+      if(!g.anc||len>=g.anc.d-1.5||g.still>=2||past)g.anc={t,x,y,d:len,live:true};aimFrom(g,x,y,len,t)}}
+  else g.last={t,d:len};
+  if(g.phase==='swing'){const pr=(x-g.top.x)*g.aim.x+(y-g.top.y)*g.aim.y,vp=g.lp==null?1:(pr-g.lp)/dt;g.lp=pr;g.trail.push({x,y});
+    if(pr>=g.pull)commit(x,y);
+    else if(vp<.05){if(++g.slow>=3){g.phase='aim';g.fast=0;g.frozen=null;g.lp=null;g.anc=null;g.peak={x,y,d:len};g.last.d=len;aimFrom(g,x,y,len,t)}}else g.slow=0}}
 function commit(x,y){const g=S.g,fx=x-g.top.x,fy=y-g.top.y,b=S.ball;
   const dev=Math.atan2(g.aim.x*fy-g.aim.y*fx,g.aim.x*fx+g.aim.y*fy);let aw=rotv(g.aim.x,g.aim.y,-cam.r),p=g.power;
   if(S.club.putt){const d=markDist()||1;aw={x:(S.mark.x-b.x)/d,y:(S.mark.y-b.y)/d};p=1}
@@ -1151,7 +1167,7 @@ function commit(x,y){const g=S.g,fx=x-g.top.x,fy=y-g.top.y,b=S.ball;
 function endGesture(){const g=S.g;if(!g)return;try{cv.releasePointerCapture(g.id)}catch(_){}S.g=null;S.idle0=performance.now();if(S.mode==='aim')S.mode='ready'}
 function onUp(e){const g=S.g;if(!g||e.pointerId!==g.id)return;
   if(g.drag){endGesture();aimCam();if(onRange())rangeDragged();hud();return}
-  if(g.phase==='aim'&&g.fast>0)toSwing(g);
+  if(g.phase==='aim'&&(g.fast>0||softFlick(g,e.timeStamp+0,g.x,g.y,.4,10)))toSwing(g); // lifting off part-way through a flick still swings
   if(g.phase==='swing'){const prog=(g.x-g.top.x)*g.aim.x+(g.y-g.top.y)*g.aim.y;if(prog>=g.pull*.35)return commit(g.x,g.y)}
   // let go without flicking: the commonest slip. The ghost thumb shows the flick again, and on the range the coach says so.
   const strong=g.power>.3;endGesture();if(strong){S.nudge=performance.now();if(onRange())rangeLift()}if(S.club.putt)hud();else if(strong&&!onRange())hintOn('Flick up to swing')}
@@ -1195,12 +1211,12 @@ function stepBall(dt){const b=S.ball,h=cur();
       if(hyp(b.x-h.pin.x,b.y-h.pin.y)<CUP_R)return holed();
       if(lie==='creekbed'&&b.vz<-5&&!b.rocked){b.rocked=true;const a=(hashStr(Math.round(b.x*8)+':'+Math.round(b.y*8))%1000/1000-.5)*1.7,d=rotv(b.vx,b.vy,a);
         b.vx=d.x*.42;b.vy=d.y*.42;b.vz=Math.min(15,-b.vz*.5);b.z=.02;b.spin=0;b.rollK=.3;sfx.clack();burst(b.x,b.y,K.stone,8,7,5);return}
-      const carry=hyp(b.x-S.prev.x,b.y-S.prev.y),v=Math.sqrt(2*MU[lie]*carry*b.club.roll*ROLLX[lie]*b.rollK),s2=hyp(b.vx,b.vy)||1;
+      const carry=hyp(b.x-S.prev.x,b.y-S.prev.y),v=Math.sqrt(2*muFor(lie,b)*carry*b.club.roll*ROLLX[lie]*b.rollK),s2=hyp(b.vx,b.vy)||1;
       b.vx=b.vx/s2*v;b.vy=b.vy/s2*v;b.vz=Math.min(9,-b.vz*.22)*(lie==='bunker'?0:lie==='fairway'||lie==='green'||lie==='fringe'||lie==='tee'?1:.5);b.air=false;
       if(lie==='bunker'){sfx.sand();burst(b.x,b.y,K.sand,18,8,6)}else{sfx.land();if(lie==='green'&&S.marks.length<40)S.marks.push({t:'pitch',x:b.x,y:b.y})}}
     return}
   if(b.z>0||b.vz>0){b.vz-=G*dt;b.z+=b.vz*dt;if(b.z<=0){b.z=0;b.vz=-b.vz*.4;if(b.vz<1.2)b.vz=0}}
-  const lie=lieAt(h,b),mu=MU[lie];
+  const lie=lieAt(h,b),mu=muFor(lie,b);
   if(lie==='water'&&b.z<=.01)return hazard('water');
   if(lie!=='woods'&&lie!=='ob')b.dry={x:b.x,y:b.y};
   if(lie==='green'||lie==='fringe'){const a=slopeAt(h,b);b.vx+=a.x*dt;b.vy+=a.y*dt}

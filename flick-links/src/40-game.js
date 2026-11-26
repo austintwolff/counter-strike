@@ -13,17 +13,20 @@ const LIE={green:'Green',fringe:'Fringe',fairway:'Fairway',tee:'Tee',rough:'Roug
 //   flop          high and soft, stops close to where it lands: over a bunker, or to a pin tucked just beyond one. The hardest to time.
 // A full pull is not the shot's whole reach but a little past the pin (S.pk, see setPk), so a ten-yard chip uses most of the pull
 // and can be judged finely enough to hole.
-const CHIPS=[{id:'CH',style:0,name:'Bump & run',carry:20,loft:14,roll:1.9,tw:100},
+// Harder shots are also quicker. tempo is how fast the ring runs for a shot (1 is the standard 1.14 seconds to gold), and tw
+// how wide the gold is. A bump and run is unhurried with plenty of gold; a flop is quick with little. The woods run a touch
+// quick, and quicker again the harder they are swung (rush: the extra at full power, coming in from 70%).
+const CHIPS=[{id:'CH',style:0,name:'Bump & run',carry:20,loft:14,roll:1.9,tw:110,tempo:.95},
   {id:'CH',style:1,name:'Chip',carry:38,loft:33,roll:.55,tw:90,sand:true},
-  {id:'CH',style:2,name:'Flop',carry:48,loft:62,roll:.08,tw:68,sand:true}];
+  {id:'CH',style:2,name:'Flop',carry:48,loft:62,roll:.08,tw:58,tempo:1.12,sand:true}];
 const CLUBS=[
   CHIPS[1],
   {id:'SW',name:'Sand Wedge',carry:85,loft:52,roll:.03,tw:82,sand:true},
   {id:'PW',name:'Wedge',carry:125,loft:47,roll:.04,tw:75,sand:true},
   {id:'8I',name:'8 Iron',carry:155,loft:41,roll:.05,tw:66},
   {id:'5I',name:'5 Iron',carry:192,loft:35,roll:.07,tw:58},
-  {id:'3W',name:'3 Wood',carry:232,loft:30,roll:.09,tw:50,bomb:1.05},
-  {id:'DR',name:'Driver',carry:262,loft:27,roll:.11,tw:45,bomb:1.05}]; // bomb: a pure strike with the long clubs flies this much farther
+  {id:'3W',name:'3 Wood',carry:232,loft:30,roll:.09,tw:50,bomb:1.05,tempo:1.03,rush:.06},
+  {id:'DR',name:'Driver',carry:262,loft:27,roll:.11,tw:45,bomb:1.05,tempo:1.05,rush:.08}]; // bomb: a pure strike with the long clubs flies this much farther
 const PUTTER={id:'PT',name:'Putter',putt:true,tw:80};
 const lieMult=(lie,c)=>lie==='rough'?.8:lie==='native'?.6:lie==='creekbed'?.7:lie==='bunker'?(c.sand?.8:.55):1;
 
@@ -145,7 +148,13 @@ const pullMax=()=>clamp(H*.18,84,132);
 const reachFor=pw=>S.club.bomb?clamp(((pw==null?(S.g?S.g.power:0):pw)-.7)/.3,0,1):0;
 const timingWindow=pw=>Math.max(22,S.club.tw*(S.lie==='rough'?.8:S.lie==='bunker'||S.lie==='native'||S.lie==='creekbed'?.7:1)*WIN*(1-.35*reachFor(pw)));
 // where the ring stands at time t: f how full it is, and e the timing error in ms (early is negative)
-function meterAt(g,t){if(!g.t0)return{f:0,e:-TU};const tau=Math.max(0,t-g.t0)%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
+// The ring does not always run at the same speed (see tempo, above), and for the woods its speed changes with the pull. So the
+// ring keeps a phase: ph, in standard milliseconds, as of time pt, moved on at the current rate each time the finger reports.
+// A timing error is measured in phase, so at a quicker tempo the same slip of the thumb counts for more.
+const rateAt=pw=>(S.club.tempo||1)*(1+(S.club.rush||0)*reachFor(pw));
+const phaseAt=(g,t)=>Math.max(0,g.ph+(t-g.pt)*rateAt(g.power));
+function meterOf(ph){const tau=ph%(TU+TD);return tau<TU?{f:Math.pow(tau/TU,EASE),e:tau-TU}:{f:1-(tau-TU)/TD,e:tau-TU}}
+function meterAt(g,t){return g.t0?meterOf(phaseAt(g,t)):{f:0,e:-TU}}
 // A flick inside the window is on time. Outside it, the strike is judged on how many windows off it was: six is as bad
 // as it gets, and an early one that caught the ring still in the red is a shank.
 function judge(te,tf,pw){const x=Math.abs(te)/timingWindow(pw);return{onTime:x<=1,q:clamp((x-1)/5,0,1),shank:te<0&&x>1&&tf<SHANK}}
@@ -157,7 +166,7 @@ cv.addEventListener('pointerdown',e=>{
   try{cv.setPointerCapture(e.pointerId)}catch(_){}
   const p=gPos(e);hintOff();
   if(S.club.putt&&S.pmode==='aim'){S.g={id:e.pointerId,drag:true,x:p.x,y:p.y};return}
-  S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},anc:null,still:0,lp:null,fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,
+  S.g={id:e.pointerId,ox:p.x,oy:p.y,x:p.x,y:p.y,phase:'aim',power:0,aim:null,last:{t:e.timeStamp,d:0},peak:{x:p.x,y:p.y,d:0},anc:null,still:0,lp:null,ph:0,pt:0,fph:null,fast:0,slow:0,top:null,pull:0,trail:[],t0:0,ft:0,e:0,frozen:null,tick:0,
     off:0,cl:performance.now()-e.timeStamp};
   // Timing uses each touch's own timestamp, not when it was processed. Those timestamps are meant to share a clock with
   // performance.now(), which draws the ring, but on some devices (iPads among them) the two drift apart, and the ring then ran
@@ -170,8 +179,8 @@ cv.addEventListener('pointermove',e=>{const g=S.g;if(!g||e.pointerId!==g.id)retu
     if(k){S.mark.x=b.x+(mx-b.x)*k;S.mark.y=b.y+(my-b.y)*k}hudClub();return}
   g.cl=Math.min(g.cl,performance.now()-e.timeStamp);const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of(evs.length?evs:[e])){if(!S.g)break;const p=gPos(ev);sample(ev.timeStamp||e.timeStamp,p.x,p.y)}});
-function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14){g.off=g.cl>=0&&g.cl<30?0:g.cl;g.t0=t+g.off}}
-function toSwing(g){const k=g.peak,m=meterAt(g,g.ft||performance.now());g.phase='swing';g.slow=0;g.lp=null;g.top={x:k.x,y:k.y};g.pull=k.d;g.power=clamp(k.d/pullMax(),0,1);
+function aimFrom(g,x,y,len,t){g.power=clamp(len/pullMax(),0,1);g.aim=len>5?{x:(g.ox-x)/len,y:(g.oy-y)/len}:null;if(!g.t0&&len>14){g.off=g.cl>=0&&g.cl<30?0:g.cl;g.t0=g.pt=t+g.off;g.ph=0}}
+function toSwing(g){const k=g.peak,m=g.fph!=null?meterOf(g.fph):meterAt(g,performance.now());g.phase='swing';g.slow=0;g.lp=null;g.top={x:k.x,y:k.y};g.pull=k.d;g.power=clamp(k.d/pullMax(),0,1);
   g.aim={x:(g.ox-k.x)/k.d,y:(g.oy-k.y)/k.d};g.trail=[{x:k.x,y:k.y}];g.e=m.e;g.frozen=m.f;
   if(S.tut&&S.tut.step==='pull'){g.e=0;g.frozen=1}} // the first lesson is the motion alone: any flick is a good one
 // A resting finger sends no events, so the gap before a sample is capped: whatever moved, moved within about a frame.
@@ -183,19 +192,20 @@ function toSwing(g){const k=g.peak,m=meterAt(g,g.ft||performance.now());g.phase=
 const minPull=()=>Math.max(15,pullMax()*.1);
 function softFlick(g,t,x,y,frac,least){const a=g.anc;if(!a||a.d<=minPull()||t-a.t>170)return false;
   const back=a.d-((x-g.ox)*(a.x-g.ox)+(y-g.oy)*(a.y-g.oy))/a.d;if(back<Math.max(least,a.d*frac))return false;
-  g.peak={x:a.x,y:a.y,d:a.d};if(!g.fast)g.ft=Math.min(t,a.t+16)+g.off;return true}
+  g.peak={x:a.x,y:a.y,d:a.d};if(!g.fast)g.fph=a.ph+clamp(t-a.t,0,16)*rateAt(clamp(a.d/pullMax(),0,1));return true} // the flick began as the finger left the anchor
 function sample(t,x,y){const g=S.g,len=hyp(x-g.ox,y-g.oy),dt=clamp(t-g.last.t,4,20);g.x=x;g.y=y;
+  if(g.t0){const T=t+g.off;if(T>g.pt){g.ph+=(T-g.pt)*rateAt(g.power);g.pt=T}} // the ring moves on, at the rate for the pull as it was
   if(g.phase==='aim'){const pk=g.peak,past=pk.d>0&&(x-g.ox)*(pk.x-g.ox)+(y-g.oy)*(pk.y-g.oy)<0,sl=past?-len:len,vr=(g.last.d-sl)/dt,need=FLICK_V*clamp(.55+.9*pk.d/pullMax(),.55,1);
     g.last={t,d:sl};
-    if(g.anc&&g.anc.live&&len<g.anc.d-1.5){g.anc.t=t-dt;g.anc.live=false} // a resting finger sends nothing: it left the anchor about now
+    if(g.anc&&g.anc.live&&len<g.anc.d-1.5){g.anc.t=t-dt;g.anc.ph=g.ph-dt*rateAt(g.power);g.anc.live=false} // a resting finger sends nothing: it left the anchor about now
     if(softFlick(g,t,x,y,.6,13))toSwing(g);
-    else if(vr>need&&pk.d>minPull()){if(!g.fast)g.ft=t+g.off;g.fast++;if(g.fast>=2||pk.d-sl>pk.d*.25)toSwing(g)}
+    else if(vr>need&&pk.d>minPull()){if(!g.fast)g.fph=g.ph;g.fast++;if(g.fast>=2||pk.d-sl>pk.d*.25)toSwing(g)}
     else{g.fast=0;g.peak={x,y,d:len};g.last.d=len;g.still=Math.abs(vr)<.05?(g.still||0)+1:0;
-      if(!g.anc||len>=g.anc.d-1.5||g.still>=2||past)g.anc={t,x,y,d:len,live:true};aimFrom(g,x,y,len,t)}}
+      if(!g.anc||len>=g.anc.d-1.5||g.still>=2||past)g.anc={t,x,y,d:len,ph:g.ph||0,live:true};aimFrom(g,x,y,len,t)}}
   else g.last={t,d:len};
   if(g.phase==='swing'){const pr=(x-g.top.x)*g.aim.x+(y-g.top.y)*g.aim.y,vp=g.lp==null?1:(pr-g.lp)/dt;g.lp=pr;g.trail.push({x,y});
     if(pr>=g.pull)commit(x,y);
-    else if(vp<.05){if(++g.slow>=3){g.phase='aim';g.fast=0;g.frozen=null;g.lp=null;g.anc=null;g.peak={x,y,d:len};g.last.d=len;aimFrom(g,x,y,len,t)}}else g.slow=0}}
+    else if(vp<.05){if(++g.slow>=3){g.phase='aim';g.fast=0;g.frozen=null;g.fph=null;g.lp=null;g.anc=null;g.peak={x,y,d:len};g.last.d=len;aimFrom(g,x,y,len,t)}}else g.slow=0}}
 function commit(x,y){const g=S.g,fx=x-g.top.x,fy=y-g.top.y,b=S.ball;
   const dev=Math.atan2(g.aim.x*fy-g.aim.y*fx,g.aim.x*fx+g.aim.y*fy);let aw=rotv(g.aim.x,g.aim.y,-cam.r),p=g.power*S.pk;
   if(S.club.putt){const d=markDist()||1;aw={x:(S.mark.x-b.x)/d,y:(S.mark.y-b.y)/d};p=1}
@@ -298,7 +308,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
     if((hudTick+=dt)>.1){hudTick=0;hudDist()}}else acc=0;
   // step the picture quality down on a phone that cannot hold thirty frames a second
   if(dt>.034)slowFrames++;else slowFrames=Math.max(0,slowFrames-2);if(slowFrames>70&&Q>0&&!LOCKQ){Q--;slowFrames=0;resize()}
-  const g=S.g;if(g&&!g.drag&&g.t0&&g.phase==='aim'){const tk=Math.floor((performance.now()-g.t0+TD)/(TU+TD));if(tk>g.tick){g.tick=tk;sfx.tick()}}
+  const g=S.g;if(g&&!g.drag&&g.t0&&g.phase==='aim'){const tk=Math.floor((phaseAt(g,performance.now())+TD)/(TU+TD));if(tk>g.tick){g.tick=tk;sfx.tick()}}
   updateCam(dt);
   ctx.setTransform(DPR,0,0,DPR,0,0);
   drawScene(now);drawPreview(now);drawFlag(now);drawBall(dt);drawGesture(now);drawDemo(now);

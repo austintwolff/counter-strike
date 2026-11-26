@@ -20,12 +20,19 @@ const numDay=n=>new Date(n*864e5).toISOString().slice(0,10);
 const CODE='ABCDEFGHJKMNPQRSTUVWXYZ23456789',COOKIE='fl';
 
 // ───────── a player's own numbers, all derived from their rounds (newest first)
-// Handicap. All play counts, daily threes and practice rounds alike. It is taken in the order played and cut into nine-hole
-// stretches; each stretch's strokes over par is doubled to an eighteen-hole figure, and the handicap is the average of the best
-// 40% of the last twenty stretches. It needs eighteen holes. A number below zero is a "plus" handicap: better than par.
-// (It used to be the single best daily three multiplied by six, so one birdie moved it six strokes and practice never counted.)
-function handicap(plays){const H=plays.flatMap(p=>p.holes),d=[];for(let i=0;i+9<=H.length;i+=9){let x=0;for(let j=i;j<i+9;j++)x+=H[j].s-H[j].par;d.push(x*2)}
-  const last=d.slice(-20),n=last.length;if(n<2)return null;const use=Math.max(1,Math.round(n*.4));last.sort((a,b)=>a-b);return Math.round(total(last.slice(0,use))/use*10)/10}
+// Handicap: how many strokes over the course rating a player takes for eighteen holes, on average, across the last 180 holes
+// they played (daily threes and practice alike, in the order played). It needs eighteen holes. Below zero is a "plus" handicap.
+//
+// The rating of a hole is what the house pro scores on it: a computer player that never mistimes a swing (tools/rate_courses.js,
+// which writes the table below). Par would not do. A good player beats par on most holes here, and some nines play ten strokes
+// easier than others, so a figure against par said more about where someone practised than how they played.
+// (Earlier versions: the best daily three times six; then the best 40% of nine-hole stretches, doubled, against par, which showed
+// a player's hot streaks and flattered everyone by about four strokes.)
+// RATING:BEGIN (written by tools/rate_courses.js; do not edit by hand)
+export const RATING={"gr":[3.63,4.31,2.5,4.25,3.31,3.25,3.88,2.81,3.25],"lp":[3.5,4,4.5,2.81,4.31,2.38,3.69,4,3.5,3.81,3.5,2.94,4.38,5,3.13,2.5,3.13,3.81],"hk":[2.94,3.19,4.31,3.13,2.94,3.81,3.19,2.94,3.06],"jc":[4.06,2.81,3.69,3.56,2.88,3.94,3.63,3.56,3.38,4.63,3.69,2.94,3.69,2.75,3.69,4,3.31,3.88],"mu":[2.94,2.75,3.88,3.25,3.81,3.13,3.63,2.31,3.19,3.69,3.94,3.81,2.69,3.5,3.25,2.63,3.75,2.69],"om":[3.31,3.63,2.75,3.13,4.44,2.31,4.06,3.44,4,3.69,3.19,2.94,3.19,2.75,3.44,3.31,3.44,3.5],"ts":[3.56,4.38,3.19,3.75,3.63,4.19,4.63,3.5,3.81,3.25,4.13,4,3.19,3.81,3.63,4.5,3.44,4.31],"an":[4,5.25,3.31,3,4.38,3,3.75,3.56,3.88,4,4.25,4.5,4.38,3.19,5.5,2.5,3.63,3.25],"pb":[3.44,3.44,3.5,3,2.88,3.94,2.5,3.19,3.94,4.38,3.56,2.81,3.63,5.75,3.63,3.94,2.56,3.5],"sa":[3.44,3.94,3.88,3.81,3.56,4,3.56,2.38,3.13,3.25,2.38,2.88,3.44,3.88,4.56,3.94,3.31,3.31],"ba":[3.94,4.06,2.81,3.88,3.69,5,3.69,3.63,3.63,3.5,3.94,3.31,4.44,3.06,2.69,4.25,4.06,4.63],"tl":[3.69,2.5,4.44,4.56,2.75,4,4.06,3.69,3.38,4.06,4.81,2.94,3,4.13,2.94,3.5,2.63,4.88]};
+// RATING:END
+const HCP_HOLES=180,rated=h=>{const m=/^([a-z]{2})(\d+)$/.exec(h.k||''),r=m&&RATING[m[1]]&&RATING[m[1]][m[2]-1];return r!=null?r:h.par-.55}; // a hole not yet rated: about what the pro averages everywhere
+function handicap(plays){const H=plays.flatMap(p=>p.holes).slice(-HCP_HOLES);if(H.length<18)return null;return Math.round(total(H.map(h=>h.s-rated(h)))/H.length*180)/10}
 function streakOf(rs,day){const set=new Set(rs.map(r=>r.day));let d=dayNum(day),n=0;if(!set.has(day))d--;while(set.has(numDay(d))){n++;d--}return n}
 function maxStreak(rs){const ds=[...new Set(rs.map(r=>dayNum(r.day)))].sort((a,b)=>a-b);let best=0,run=0,prev=null;for(const d of ds){run=prev!==null&&d===prev+1?run+1:1;best=Math.max(best,run);prev=d}return best}
 // A course here is nine or eighteen holes; the ball and tour awards need to know which. Keep in step with COURSES in src/20-course.js.
@@ -36,8 +43,8 @@ export const SIZE={gr:9,lp:18,hk:9,jc:18,mu:18,om:18,ts:18,an:18,pb:18,sa:18,ba:
 //   number of rounds); g gold, a full round ten under or better (five on a nine-hole course).
 function personal(rs,day,logs=[]){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{id,n:0,day:d}).n++},bird={},balls={},full={};
   const logged=new Set(logs.filter(l=>l.kind==='daily').map(l=>l.day)); // a daily card that came in without its log still counts
-  const plays=logs.map(l=>({day:l.day,kind:l.kind,holes:l.holes})).concat(rs.filter(r=>!logged.has(r.day)).map(r=>({day:r.day,kind:'daily',holes:r.holes.map((k,i)=>({k,par:r.pars[i],s:r.scores[i]}))})))
-    .filter(p=>p.holes&&p.holes.length).sort((a,b)=>a.day<b.day?-1:a.day>b.day?1:0);
+  const plays=logs.map(l=>({day:l.day,kind:l.kind,holes:l.holes,t:l.t||l.ts||0})).concat(rs.filter(r=>!logged.has(r.day)).map(r=>({day:r.day,kind:'daily',t:0,holes:r.holes.map((k,i)=>({k,par:r.pars[i],s:r.scores[i]}))})))
+    .filter(p=>p.holes&&p.holes.length).sort((a,b)=>a.day<b.day?-1:a.day>b.day?1:a.t-b.t); // in the order played: by day, then by the clock
   for(const p of plays){const H=p.holes,c=H[0].k.slice(0,2),n=H.length,tot=total(H.map(h=>h.s)),par=total(H.map(h=>h.par));let run=0,best=0;
     for(const h of H){if(h.s===1)add('ace',p.day);if(h.s-h.par<=-3)add('alb',p.day);
       if(h.s<h.par){best=Math.max(best,++run);const cc=h.k.slice(0,2);(bird[cc]=bird[cc]||new Set()).add(h.k)}else run=0;

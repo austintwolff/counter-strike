@@ -11,7 +11,7 @@ printf "\n<script>\n(()=>{'use strict';\n"
 printf 'const MAPS={'; for f in data/*.json; do case "$f" in *.extra.json|*.design.json) continue;; esac; printf '%s:' "$(basename "$f" .json)"; cat "$f"; printf ','; done; printf '};\n'
 cat src/10-core.js src/20-course.js src/30-render.js src/35-birds.js src/40-game.js
 # the clubhouse server, carried in the page for solo play (the hosted site runs the same file behind /api)
-printf "const LocalServer=(()=>{\n"; sed 's/^export //' server/core.js; printf "return{handle,MemStore,SIZE}})();\n"
+printf "const LocalServer=(()=>{\n"; sed 's/^export //' server/core.js; printf "return{handle,MemStore,SIZE,RATING}})();\n"
 cat src/45-social.js src/50-ui.js
 printf "})();\n</script>\n"
 } | sed "s/__BUILD_TS__/$(date +%s)000/" > game.html

@@ -1,5 +1,5 @@
 // Runs the server module directly: several players, a clubhouse, a week of rounds.
-import { handle, MemStore } from './core.js';
+import { handle, MemStore, RATING } from './core.js';
 import assert from 'node:assert/strict';
 const store = new MemStore();
 const today = new Date().toISOString().slice(0, 10), yest = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
@@ -62,13 +62,21 @@ await pro('POST', '/player', { name: 'Pro', user: 'pro' });
 const H18 = (c, f) => Array.from({ length: 18 }, (_, i) => { const par = [4, 3, 4, 5, 3, 4, 5, 4, 4][i % 9]; return { k: c + (i + 1), par, s: f(par, i), p: 1, pen: 0, sw: 2, pure: 2, fw: par > 3 ? 1 : null, gir: 1, dr: par > 3 ? 270 : null, fp: 10, hf: 10, chip: 0 }; });
 const full = (id, c, f, n = 18) => ({ id, kind: 'practice', day: today, course: c, part: n > 9 ? 'a' : 'f', holes: H18(c, f).slice(0, n), t: 1, b: 1 });
 assert.equal((await pro('POST', '/log', { rounds: [full('roundaa1', 'jc', (par, i) => i < 9 ? par - 1 : par), full('roundaa2', 'hk', par => par, 9), full('roundaa3', 'mu', (par, i) => i === 3 ? par + 1 : par)] })).saved, 3);
-// handicap arithmetic: nine-hole stretches in the order played, doubled; the best 40% of them averaged
+// handicap arithmetic: strokes over the course rating for eighteen holes, averaged over the last 180 holes in the order played
 const st4 = new MemStore(), cap = (() => { let c = ''; return async (m, pth, b) => { const r = await handle(new Request('https://golf.test/api' + pth, { method: m, headers: { cookie: c, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }), st4, { local: true }); const j = await r.json(); if (j.session) c = 'fl=' + j.session; return j; }; })();
 await cap('POST', '/player', { name: 'Cap', user: 'cap' }); const capHcp = async () => (await cap('GET', '/state?day=' + today)).me.stats;
-await cap('POST', '/log', { rounds: [full('capaaaa1', 'hk', par => par + 1, 9)] }); assert.equal((await capHcp()).hcp, null, 'nine holes is not enough');
-await cap('POST', '/log', { rounds: [full('capaaaa2', 'hk', par => par, 9)] }); assert.equal((await capHcp()).hcp, 0, 'stretches of +18 and 0: the better one'); assert.equal((await capHcp()).holes, 18);
-await cap('POST', '/log', { rounds: [full('capaaaa3', 'hk', par => par - 1, 9)] }); assert.equal((await capHcp()).hcp, -18, 'three stretches: still the best one, a plus handicap');
-await cap('POST', '/log', { rounds: [full('capaaaa4', 'hk', par => par + 2, 9), full('capaaaa5', 'hk', par => par + 2, 9)] }); assert.equal((await capHcp()).hcp, -9, 'five stretches: the best two averaged');
+const rate = h => { const r = RATING[h.k.slice(0, 2)]; return r ? r[+h.k.slice(2) - 1] : h.par - .55; }, per18 = hs => Math.round(hs.reduce((a, h) => a + h.s - rate(h), 0) / hs.length * 180) / 10, at = (r, t) => ({ ...r, t });
+for (const c of ['gr', 'lp', 'hk', 'jc', 'mu', 'om', 'ts', 'an', 'pb', 'sa', 'ba', 'tl']) assert.ok(Array.isArray(RATING[c]) && RATING[c].length >= 9 && RATING[c].every(v => v > 1.5 && v < 7), 'every course is rated, hole by hole: ' + c);
+const a9 = full('capaaaa1', 'hk', par => par + 1, 9), b9 = full('capaaaa2', 'hk', par => par, 9);
+await cap('POST', '/log', { rounds: [a9] }); assert.equal((await capHcp()).hcp, null, 'nine holes is not enough');
+await cap('POST', '/log', { rounds: [at(b9, 2)] }); assert.equal((await capHcp()).hcp, per18([...a9.holes, ...b9.holes]), 'eighteen holes: every one of them counts, against its rating'); assert.equal((await capHcp()).holes, 18);
+assert.ok((await capHcp()).hcp > 9, 'level par at Hancock is a long way behind the house pro, who is five or six under for the nine');
+// a course with no rating yet is taken at about what the pro averages everywhere
+{ const z = full('capaaaa3', 'zz', par => par, 18); await cap('POST', '/log', { rounds: [at(z, 3)] }); assert.equal((await capHcp()).hcp, per18([...a9.holes, ...b9.holes, ...z.holes])); }
+// only the last 180 holes count, in the order they were played: by the day, then by the clock, not by when they arrived
+{ const ten = Array.from({ length: 10 }, (_, i) => at(full('capbbbb' + i, 'jc', par => par - 1, 18), 10 + i)); await cap('POST', '/log', { rounds: ten });
+  assert.equal((await capHcp()).hcp, per18(ten.flatMap(r => r.holes)), 'the 54 holes before the last 180 have dropped out'); assert.equal((await capHcp()).holes, 216);
+  await cap('POST', '/log', { rounds: [at(full('capcccc1', 'jc', par => par + 5, 18), 1)] }); assert.equal((await capHcp()).hcp, per18(ten.flatMap(r => r.holes)), 'a round that arrives late but was played first is still the oldest'); }
 { const st = (await solo('GET', '/state?day=' + today)).me.stats; assert.equal(st.holes, 15, 'two daily cards, and three logged threes (one of them the third daily card)'); assert.equal(st.hcp, null);
   await solo('POST', '/log', { rounds: [rnd('abcdef09', 'practice')] }); assert.equal(typeof (await solo('GET', '/state?day=' + today)).me.stats.hcp, 'number', 'daily threes and practice chain together to eighteen holes'); }
 let ps = (await pro('GET', '/state?day=' + today)).me.stats;

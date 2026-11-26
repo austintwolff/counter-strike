@@ -73,6 +73,9 @@ fetches is public domain.
 ## Where a new course goes
 
 Add it at the end of `COURSES` in `src/20-course.js`, and add its id and hole count to `SIZE` in `server/core.js`.
+Then rate it: `./build.sh && node tools/rate_courses.js <id>` plays every hole with the house pro (a computer player that never
+mistimes a swing) and writes its average score on each into `RATING` in `server/core.js`. Handicaps are measured against
+that, not par. Run it again after moving a tee or a green, and with no id after any change to how the ball flies or rolls.
 Never insert one in the middle: saved rounds keep hole indexes, and the day's course is taken in turn from the list.
 See `COURSE_LESSONS.md` for the look settings added for the sea (`sea`), sand colour (`sand`), flower beds (`blooms`),
 treeless ground (`clumps:0`) and salt water (`wet:false`).

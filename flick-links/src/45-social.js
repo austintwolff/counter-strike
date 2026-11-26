@@ -92,7 +92,7 @@ async function syncLog(){if(!C.me)return false;const L=fetchKey('log')||[],todo=
 function meCard(){const m=C.me;if(!m)return formCard('name');const st=m.stats,won=Object.fromEntries(st.trophies.map(t=>[t.id,t]));
   sheet(`<p class="eyebrow">Your stats${m.user?' · @'+esc(m.user):''}</p><h2>${esc(m.name)}</h2>
 <div class="stats four"><div><b>${hcpStr(st.hcp)}</b><span>Handicap</span></div><div><b>${st.rounds}</b><span>Rounds</span></div><div><b>${st.best?rel(st.best.tot-st.best.par):'–'}</b><span>Best</span></div><div><b>${st.streak}</b><span>Day streak</span></div></div>
-<p class="fine">${st.hcp==null?'Handicap after '+plural(Math.max(1,18-(st.holes||0)),'more hole')+', daily or practice.':'Handicap: your best nine-hole stretches, as strokes over par for eighteen.'}</p>
+<p class="fine">${st.hcp==null?'Handicap after '+plural(Math.max(1,18-(st.holes||0)),'more hole')+', daily or practice.':'Handicap: strokes over the course rating for eighteen holes, averaged over your last 180. The rating is what a computer pro scores.'}</p>
 ${gameTable()}<p class="eyebrow">Balls</p><div class="balls">${COURSES.map(c=>{const b=(st.balls||{})[c.id]||{},n=courseIds(c.id,'a').length;
   return`<div><b>${c.club}</b><i class="ball bz${b.b?' on':''}"></i><i class="ball sv${b.s?' on':''}"></i><i class="ball gd${b.g?' on':''}"></i><small>${b.n||0}/${n}</small></div>`}).join('')}</div>
 <p class="fine">Bronze: a full round under par. Silver: a birdie on every hole. Gold: ten under.</p>

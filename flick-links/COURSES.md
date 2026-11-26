@@ -77,10 +77,22 @@ Never insert one in the middle: saved rounds keep hole indexes, and the day's co
 See `COURSE_LESSONS.md` for the look settings added for the sea (`sea`), sand colour (`sand`), flower beds (`blooms`),
 treeless ground (`clumps:0`) and salt water (`wet:false`).
 
+## Rules the game applies to every course's map
+
+The map is real, but three things in it are tidied when a hole is built (`buildGeo` in `src/20-course.js`):
+
+- **A green keeps five yards clear of water** (`GREEN_GAP`). Where the map draws one closer, that side of the green is drawn
+  back toward its middle. A green almost ringed by water (an island green) keeps only its collar clear, so it is not
+  shrunk to nothing.
+- **No path runs onto a green.** One the map carries that far stops short of the collar.
+- **A links played on foot has no cart paths** (`walk:true` in the theme; St Andrews). The map's greenkeepers' tracks are
+  left out. Bridges stay, and so does a public way that crosses a fairway from side to side (Granny Clark's Wynd), which
+  is drawn on top of the fairway.
+
 ## Birds
 
-A course can have a bird of its own: `bird:'<kind>'` in its `th`. Every half minute or so one crosses the wider views (a
-line of three, for pelicans). They are drawn in `src/35-birds.js`, each from above as two pictures, wings and body, so the
+A course can have a bird of its own: `bird:'<kind>'` in its `th`. About one hole in four has one, and it crosses the wider
+view once (a line of three, for pelicans). They are drawn in `src/35-birds.js`, each from above as two pictures, wings and body, so the
 wings can beat. So far: `condor` (Grand Canyon), `hawk` (red-tailed: Texas, Georgia), `egret` (great egret: Florida, and
 the Texas courses with water), `pelican` (brown: Monterey), `gannet` (Fife) and `nutcracker` (Clark's: the high Sierra).
 A course with none gets a small distant flock. A new bird must be native to the place and must look right both large and

@@ -57,6 +57,8 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   ctx.strokeStyle=K.cut;ctx.lineWidth=5.5;for(const f of G.fair)if(seen(f))ctx.stroke(f.path);
   for(const f of G.fair)if(seen(f)){ctx.fillStyle=th.fair;ctx.fill(f.path);texFill(f.path,'stripe',.075*th.stripe,1.75,h.axis+Math.PI/4);texFill(f.path,'stripe',.06*th.stripe,1.75,h.axis-Math.PI/4);
     texFill(f.path,'mottle',.45,.35,1.3);texFill(f.path,'grain',.45*tG,.0625)}
+  // a public way across a fairway lies on top of it
+  for(const w of G.paths)if(w.over&&seen2(w)){ctx.strokeStyle='rgba(20,30,10,.3)';ctx.lineWidth=3.4;ctx.stroke(w.path);ctx.strokeStyle='#cdbf9c';ctx.lineWidth=2.6;ctx.stroke(w.path)}
   for(const s of G.tee)if(seen(s)){ctx.strokeStyle=K.cut;ctx.lineWidth=2;ctx.stroke(s.path);ctx.fillStyle=K.tee;ctx.fill(s.path);texFill(s.path,'stripe',.06,.5,h.tee.a)}
   ctx.save();ctx.translate(h.tee.x,h.tee.y);ctx.rotate(h.tee.a);for(const v of[-4.2,4.2]){ctx.fillStyle='rgba(10,30,10,.4)';disc(.25,v+.3,.6);ctx.fillStyle=th.marker;disc(0,v,.55)}ctx.restore();
   // sports fields and pools beside the course

@@ -64,7 +64,7 @@ const COURSES=[
  // The Old Course, St Andrews, Scotland: the original links. No trees, only whin (gorse) and fescue; seven huge double greens;
  // more than a hundred pot bunkers; the Swilcan Burn across the 1st and 18th; the town and the Road Hole hotel hard against the last holes.
  // The holes carry their real names.
- th:{bird:'gannet',out:'native',floor:'#8d8a52',rough:'#6f8a45',fair:'#7da551',stripe:.3,outer:'#8d8a52',woods:'#56632f',mix:[['gorse',1]],marker:'#f4f4ec',bloom:'bloomGold',bridge:'stone',cart:false,clumps:0,houses:true,wet:false,pot:true,sea:true},
+ th:{bird:'gannet',out:'native',floor:'#8d8a52',rough:'#6f8a45',fair:'#7da551',stripe:.3,outer:'#8d8a52',woods:'#56632f',mix:[['gorse',1]],marker:'#f4f4ec',bloom:'bloomGold',bridge:'stone',cart:false,walk:true,clumps:0,houses:true,wet:false,pot:true,sea:true},
  holes:[['Burn',4,376,10],['Dyke',4,411,6],['Cartgate Out',4,400,16],['Ginger Beer',4,464,8],["Hole O'Cross Out",5,514,2],['Heathery Out',4,413,12],['High Out',4,359,4],['Short',3,189,14],['End',4,347,18]],
  more:[['Bobby Jones',4,380,15],['High In',3,174,7],['Heathery In',4,316,3],["Hole O'Cross In",4,418,11],['Long',5,530,1],['Cartgate In',4,414,9],['Corner of the Dyke',4,412,13],['Road',4,455,5],['Tom Morris',4,357,17]]},
 // Two courses that do not exist, on ground that does (tools/terrain.py and tools/fantasy.py; COURSES.md, "Fantasy courses").
@@ -110,6 +110,7 @@ const SPECIES=[[/quercus|oak/i,'liveoak'],[/carya|pecan/i,'pecan'],[/ulmus|elm/i
 const FADE0=94,FADE1=165,PAD=FADE1+30;
 // a course's second nine can have a look of its own (th2 over th)
 const themeOf=e=>e.th||(e.th=e.map!==e.c.id&&e.c.th2?{...e.c.th,...e.c.th2}:e.c.th);
+const GREEN_GAP=5; // yards of ground a green keeps between itself and water
 function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=themeOf(e),g={},rng=mulberry32(hashStr('geo:'+c.id+k)),R=g.route=mkRoute(catmull(pts(m.lines[e.n]),3));
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of R.pts){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}
   g.box=[x0-PAD,y0-PAD,x1-x0+2*PAD,y1-y0+2*PAD];
@@ -143,6 +144,25 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=themeOf(e),g={},rng=mulb
       return w})}
   const wet=(p,d)=>g.water.some(w=>inSh(w,p,d)),line=f=>{const P=pts(f.p),path=new Path2D();let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;P.forEach((q,i)=>{i?path.lineTo(q.x,q.y):path.moveTo(q.x,q.y);x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)});return{...f,pts:P,path,bb:[x0-9,y0-9,x1+9,y1+9]}};
   g.roads=m.roads.filter(r=>local(r)&&(th.houses||r.w>=9)).map(line);g.rails=shapes(m.rails||[],f=>line({...f,w:4}));g.paths=shapes(m.paths,line);
+  // A links played on foot has no cart paths. The map's greenkeepers' tracks are left out, and of the footpaths only the bridges
+  // and the public ways that cross a fairway from one side to the other (Granny Clark's Wynd at St Andrews) are kept.
+  if(th.walk)g.paths=g.paths.filter(w=>{if(w.bridge)return true;if(w.cart)return false;const r=mkRoute(w.pts),on=q=>g.fair.some(f=>inSh(f,q,0));if(r.len>320||on(rAt(r,0))||on(rAt(r,r.len)))return false;
+    let n=0,k=0;for(let d=0;d<=r.len;d+=3){k++;if(on(rAt(r,d)))n++}return(w.over=n/k>.4)}); // over: drawn on top of the fairway it crosses
+  // A green keeps a few yards of ground between itself and any water. Where the map draws one closer (a burn hard against the
+  // front, a pond lapping the side, an island green to its very edge) that side of the green is drawn back toward its middle.
+  g.green=g.green.map(s=>{if(!s.poly||!g.water.some(w=>w.bb[0]<s.bb[2]+GREEN_GAP&&w.bb[2]>s.bb[0]-GREEN_GAP&&w.bb[1]<s.bb[3]+GREEN_GAP&&w.bb[3]>s.bb[1]-GREEN_GAP))return s;
+    const P=[];s.poly.forEach((a,i)=>{const b=s.poly[(i+1)%s.poly.length],n=Math.max(1,Math.ceil(hyp(b.x-a.x,b.y-a.y)/2));for(let j=0;j<n;j++)P.push({x:lerp(a.x,b.x,j/n),y:lerp(a.y,b.y,j/n)})});
+    const close=P.filter(q=>wet(q,GREEN_GAP)).length;if(wet(s,GREEN_GAP)||!close)return s; // nothing too close, or its very middle is: leave it be
+    const gap=close>P.length*.6?3.4:GREEN_GAP; // an island green is small enough already: it keeps just its collar clear
+    const T=P.map(q=>{if(!wet(q,gap))return 0;let lo=0,hi=.8;for(let i=0;i<9;i++){const t=(lo+hi)/2;wet({x:lerp(q.x,s.x,t),y:lerp(q.y,s.y,t)},gap)?lo=t:hi=t}return hi});
+    // eased along the outline, so the drawn-back side meets the rest in a curve and not a notch
+    const n=P.length,E=T.map((t,i)=>{let m=t;for(let d=1;d<=4;d++)m=Math.max(m,T[(i+d)%n]*(1-d/5),T[(i-d+n)%n]*(1-d/5));return m});
+    return polyShape(P.map((q,i)=>({x:lerp(q.x,s.x,E[i]),y:lerp(q.y,s.y,E[i])})),false)});
+  // No path runs onto a green: one the map carries that far stops a few yards short of the collar.
+  {const near=(w,s)=>w.bb[0]<s.bb[2]+4&&w.bb[2]>s.bb[0]-4&&w.bb[1]<s.bb[3]+4&&w.bb[3]>s.bb[1]-4,off=q=>!g.green.some(s=>inSh(s,q,4.5));
+    g.paths=g.paths.flatMap(w=>{if(w.bridge||!g.green.some(s=>near(w,s)))return[w];const r=mkRoute(w.pts),parts=[];let run=null,cut=false;
+      for(let d=0;d<=r.len;d+=1.5){const q=rAt(r,d);if(off(q))(run=run||[]).push(q.x,q.y);else{cut=true;if(run&&run.length>=10)parts.push(run);run=null}}
+      if(!cut)return[w];if(run&&run.length>=10)parts.push(run);return parts.map(P=>line({...w,p:P}))})}
   // details the map gives for some courses: stone walls and timber bulkheads, piers (beaches and flower beds are shapes, above)
   g.walls=shapes(m.walls||[],line);g.piers=shapes(m.piers||[],line);g.falls=shapes(m.falls||[],line);g.props=(m.props||[]).filter(q=>nearHoles(q));
   // a bridge wherever a path or road runs over water

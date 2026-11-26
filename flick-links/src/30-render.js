@@ -235,11 +235,56 @@ function drawCart(x,y,a){const sv=rotv(SUN.x,SUN.y,-a);ctx.save();ctx.translate(
   ctx.fillStyle='rgba(5,15,10,.35)';rrect(-1.5+sv.x*.6,-.85+sv.y*.6,3,1.7,.4);ctx.fillStyle='#22241f';for(const[wx,wy]of[[-1,-.85],[-1,.85],[1,-.85],[1,.85]])rrect(wx-.28,wy-.14,.56,.28,.1);
   ctx.fillStyle='#efe6cd';rrect(-1.5,-.78,3,1.56,.4);ctx.fillStyle='#5d4a2c';rrect(-1.45,-.5,.5,1,.15);ctx.fillStyle='#c9283a';disc(-1.2,-.25,.14);ctx.fillStyle='#e6cf8a';disc(-1.2,.25,.14);
   ctx.fillStyle='#14493a';rrect(-.75,-.72,1.75,1.44,.3);ctx.fillStyle='rgba(255,255,255,.14)';rrect(-.75,-.72,1.75,.5,.3);ctx.restore()}
-// a small, distant flock across a corner of the widest views only, and specks carried on the wind
-function drawSky(now,h){const z=cam.s,R=hyp(W,H)/z*.62,T=17000,k=Math.floor(now/T),u=(now%T)/T;
-  if(u<.5&&z<2.6){const r=mulberry32(k*977+h.n*31),ang=r()*TAU,off=(r()<.5?-1:1)*R*(.52+r()*.16),t=u*4-1,ca=Math.cos(ang),sa=Math.sin(ang),bx=cam.x-sa*off+ca*t*R*1.2,by=cam.y+ca*off+sa*t*R*1.2,sz=(h.th.condor?8.3:3.2)/z;
-    const big=h.th.condor;ctx.lineCap='round';ctx.lineJoin='round';for(let i=0;i<(big?1:3);i++){const x=bx-ca*i*sz*2.4-sa*(i===1?1:i===2?-1:0)*sz*1.6,y=by-sa*i*sz*2.4+ca*(i===1?1:i===2?-1:0)*sz*1.6,fl=big?Math.sin(now/900)*.08-.35:Math.sin(now/95+i*1.7)*.55;
-      for(const[ox,oy,col,lw]of[[SUN.x*sz*5,SUN.y*sz*5,'rgba(6,18,8,.22)',.34],[0,0,big?'#191715':'#f6f1e2',big?.36:.26]]){ctx.strokeStyle=col;ctx.lineWidth=sz*lw;ctx.beginPath();
+// A California condor seen from above, soaring: long plank wings ending in splayed finger feathers, a short fan tail, the
+// bare pink head, and the pale bar along each upper wing. Drawn once, flying toward +x, wing-tip to wing-tip two units
+// across. soft: its shadow, the same outline blurred.
+let CONDOR=null;
+function condorArt(soft){const N=300,c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d'),K=N/2*.93,parts=[];
+  const TX=[.135,.07,.005,-.06,-.12,-.172,-.21],TY=[.99,1.01,1,.975,.935,.88,.805],edge=y=>-.222+.0052*Math.pow(Math.abs(y-.34)/.1,2); // the primaries' tips; the trailing edge
+  for(const s of[1,-1]){
+    // the wing: leading edge out past the wrist, back along the hand, and home along a trailing edge scalloped by the secondaries
+    parts.push(()=>{g.moveTo(.11,.03*s);g.bezierCurveTo(.15,.2*s,.185,.4*s,.17,.54*s);g.quadraticCurveTo(.16,.66*s,.12,.74*s);g.lineTo(-.15,.65*s);
+      for(let i=10;i>=0;i--){const y0=.1+(i+1)*.05,y1=.1+i*.05;g.quadraticCurveTo(edge((y0+y1)/2)-.012,(y0+y1)/2*s,edge(y1),y1*s)}g.quadraticCurveTo(-.2,.07*s,-.16,.03*s)});
+    // seven primaries, each a tapering feather with a rounded tip, rooted well inside the wing
+    for(let i=0;i<7;i++)parts.push(()=>{const u=i/6,bx=lerp(.115,-.145,u),by=lerp(.725,.645,u),tx=TX[i],ty=TY[i],dx=tx-bx,dy=ty-by,d=hyp(dx,dy),nx=-dy/d,ny=dx/d,w0=.03,w1=.012,rx=bx-dx/d*.05,ry=by-dy/d*.05;
+      g.moveTo(rx+nx*w0,(ry+ny*w0)*s);g.lineTo(tx+nx*w1,(ty+ny*w1)*s);g.quadraticCurveTo(tx+dx/d*.022,(ty+dy/d*.022)*s,tx-nx*w1,(ty-ny*w1)*s);g.lineTo(rx-nx*w0,(ry-ny*w0)*s)})}
+  parts.push(()=>{g.moveTo(-.15,.055);g.quadraticCurveTo(-.26,.075,-.335,.105);g.quadraticCurveTo(-.365,0,-.335,-.105);g.quadraticCurveTo(-.26,-.075,-.15,-.055)}); // the tail: short, broad, nearly square
+  parts.push(()=>g.ellipse(-.03,0,.195,.08,0,0,TAU),()=>g.ellipse(.165,0,.05,.045,0,0,TAU),()=>g.ellipse(.232,0,.045,.033,0,0,TAU)); // body, the ruff of the neck, the head
+  const all=()=>{for(const f of parts){g.beginPath();f();g.closePath();g.fill()}}; // filled one by one: together they are the whole bird, whichever way each was drawn round
+  if(soft){g.shadowColor='rgb(6,18,8)';g.shadowBlur=N*.035;g.shadowOffsetX=N*3;g.translate(N/2-N*3,N/2);g.scale(K,K);all();return c}
+  g.translate(N/2,N/2);g.scale(K,K);g.fillStyle='#1b1815';all();g.globalCompositeOperation='source-atop'; // from here on, paint lands only on the bird
+  // the coverts along the front of each wing catch the light: a dull brown-grey, fading back into the black flight feathers
+  const lg=g.createLinearGradient(.19,0,-.09,0);lg.addColorStop(0,'rgba(122,108,92,.55)');lg.addColorStop(.55,'rgba(84,74,64,.3)');lg.addColorStop(1,'rgba(60,52,46,0)');g.fillStyle=lg;g.fillRect(-.1,-1.05,.3,2.1);
+  // light from the sun's side over the whole bird
+  const sg=g.createLinearGradient(.2,-1,-.2,1);sg.addColorStop(0,'rgba(255,240,215,.1)');sg.addColorStop(.5,'rgba(255,240,215,0)');sg.addColorStop(1,'rgba(0,0,0,.2)');g.fillStyle=sg;g.fillRect(-1.1,-1.1,2.2,2.2);
+  g.lineCap='round';
+  for(const s of[1,-1]){
+    // the secondaries, feather by feather, and the shafts of the primaries
+    g.strokeStyle='rgba(0,0,0,.42)';g.lineWidth=.006;for(let i=1;i<11;i++){const y=.1+i*.05;g.beginPath();g.moveTo(-.06,(y-.006)*s);g.lineTo(edge(y),y*s);g.stroke()}
+    g.lineWidth=.005;for(let i=0;i<7;i++){const u=i/6,bx=lerp(.115,-.145,u),by=lerp(.725,.645,u),ax=lerp(bx,TX[i],.92),ay=lerp(by,TY[i],.92);
+      g.strokeStyle='rgba(0,0,0,.4)';g.beginPath();g.moveTo(bx+.012,(by+.008)*s);g.lineTo(ax+.011,(ay+.004)*s);g.stroke(); // the dark gap beside each
+      g.strokeStyle='rgba(150,138,120,.22)';g.beginPath();g.moveTo(bx,by*s);g.lineTo(ax,ay*s);g.stroke()}
+    // the pale bar across the upper wing
+    g.strokeStyle='rgba(232,226,208,.5)';g.lineWidth=.011;g.setLineDash([.038,.012]);g.beginPath();g.moveTo(-.05,.13*s);g.quadraticCurveTo(-.075,.38*s,-.045,.6*s);g.stroke();g.setLineDash([])}
+  g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=.006;for(const a of[-.07,-.035,0,.035,.07]){g.beginPath();g.moveTo(-.19,a*.55);g.lineTo(-.345,a*1.35);g.stroke()}
+  // the back, a little raised; the ruff; the bare head and the pale hooked bill
+  const bg=g.createRadialGradient(0,-.02,.01,-.03,0,.2);bg.addColorStop(0,'rgba(96,86,76,.5)');bg.addColorStop(1,'rgba(40,34,30,0)');g.fillStyle=bg;g.beginPath();g.ellipse(-.03,0,.195,.08,0,0,TAU);g.fill();
+  g.fillStyle='#0f0d0c';g.beginPath();g.ellipse(.168,0,.046,.043,0,0,TAU);g.fill();
+  g.fillStyle='#d98860';g.beginPath();g.ellipse(.232,0,.045,.033,0,0,TAU);g.fill();g.fillStyle='rgba(255,220,190,.45)';g.beginPath();g.ellipse(.236,-.009,.022,.012,0,0,TAU);g.fill();
+  g.globalCompositeOperation='source-over';g.fillStyle='#e9dfc6';g.beginPath();g.moveTo(.266,-.015);g.quadraticCurveTo(.312,0,.266,.015);g.closePath();g.fill();return c}
+// The sky: over the canyon one condor rides the air, slowly, on a long curving line across the wider views. Elsewhere a
+// small, distant flock crosses a corner.
+function drawSky(now,h){const z=cam.s,R=hyp(W,H)/z*.62;
+  if(h.th.condor){const T=33000,k=Math.floor(now/T),u=(now%T)/T/.64;if(u>=1||z>=2.6)return;if(!CONDOR)CONDOR={bird:condorArt(false),shade:condorArt(true)};
+    const r=mulberry32(k*977+h.n*31),ang=r()*TAU,off=(r()<.5?-1:1)*R*(.2+r()*.2),ph=r()*TAU,A=R*.1,t=u*2-1,ca=Math.cos(ang),sa=Math.sin(ang),lat=off+A*Math.sin(t*2.3+ph),dl=A*2.3*Math.cos(t*2.3+ph),fw=R*1.3;
+    const x=cam.x+ca*t*fw-sa*lat,y=cam.y+sa*t*fw+ca*lat,hd=Math.atan2(sa*fw+ca*dl,ca*fw-sa*dl),bank=-Math.sin(t*2.3+ph),sz=24/z,lift=1+.014*Math.sin(now/820);
+    // it banks into each turn (the inside wing shortens), and its shadow slides over the ground far below
+    const put=(img,px,py,k,a)=>{ctx.save();ctx.translate(px,py);ctx.rotate(hd);ctx.globalAlpha=a;ctx.scale(sz*k,sz*k*lift*(1-.07*Math.abs(bank)));ctx.transform(1,0,.05*bank,1,0,0);ctx.drawImage(img,-1/.93,-1/.93,2/.93,2/.93);ctx.restore()};
+    put(CONDOR.shade,x+SUN.x*sz*3.4,y+SUN.y*sz*3.4,.84,.26);put(CONDOR.bird,x,y,1,1);return}
+  const T=17000,k=Math.floor(now/T),u=(now%T)/T;
+  if(u<.5&&z<2.6){const r=mulberry32(k*977+h.n*31),ang=r()*TAU,off=(r()<.5?-1:1)*R*(.52+r()*.16),t=u*4-1,ca=Math.cos(ang),sa=Math.sin(ang),bx=cam.x-sa*off+ca*t*R*1.2,by=cam.y+ca*off+sa*t*R*1.2,sz=3.2/z;
+    ctx.lineCap='round';ctx.lineJoin='round';for(let i=0;i<3;i++){const x=bx-ca*i*sz*2.4-sa*(i===1?1:i===2?-1:0)*sz*1.6,y=by-sa*i*sz*2.4+ca*(i===1?1:i===2?-1:0)*sz*1.6,fl=Math.sin(now/95+i*1.7)*.55;
+      for(const[ox,oy,col,lw]of[[SUN.x*sz*5,SUN.y*sz*5,'rgba(6,18,8,.22)',.34],[0,0,'#f6f1e2',.26]]){ctx.strokeStyle=col;ctx.lineWidth=sz*lw;ctx.beginPath();
         const wing=sgn=>{const wa=ang+sgn*(1.95+fl);return[x+ox+Math.cos(wa)*sz*1.25,y+oy+Math.sin(wa)*sz*1.25]},L=wing(1),Rr=wing(-1);ctx.moveTo(L[0],L[1]);ctx.lineTo(x+ox,y+oy);ctx.lineTo(Rr[0],Rr[1]);ctx.stroke()}}}
 }
 // The wind, as pale streaks drifting across the screen the way it blows as the camera sees it. Their pace follows the wind

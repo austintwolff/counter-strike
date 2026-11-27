@@ -1,0 +1,8 @@
+{"id": "np09", "terrain": "np09", "look": "photo", "pad": 235, "steep": 33, "gentle": 22, "snowmin": 999,
+ "note": "Zion Canyon, above Big Bend. Down the floor of the canyon along the Virgin River to a green at the foot of Angels Landing, with a 1,500-foot wall of Navajo sandstone on the right and the river on the left the whole way.",
+ "without": ["trails"], "keep": 0.65, "sat": 1.15, "wash": [150, 132, 98, 0.3],
+ "strata": [[4270, [150, 86, 66]], [4900, [178, 98, 72]], [5600, [200, 126, 94]], [6200, [226, 196, 170]], [6950, [238, 224, 206]]], "strata_from": 22, "strata_over": 12, "band": 9,
+ "plants": ["cottonwood", "juniper"], "veg": {"dark": 100, "green": 0.03},
+ "strew": [{"kind": "cottonwood", "on": "green", "r": [4, 7], "cell": 12, "need": 0.4, "p": 0.55, "near": 70}, {"kind": "juniper", "on": "green", "r": [2.5, 4], "cell": 12, "need": 0.4, "p": 0.4, "far": 70}],
+ "th": {"floor": "#a8946e", "outer": "#a8946e", "sand": "#e6c9a0", "bird": "condor", "cliff": "rgba(70,24,12,.14)", "wat": {"water": "#4f8f7a", "deep": "#35705f", "shallow": "#a6d2b4", "rim": "#3f7f6c"}},
+ "holes": {"9": {"name": "Angels Landing", "par": 4, "hcp": 3, "line": [[200, -880], [140, -680], [95, -471]], "green": [14, 12, null], "w": 26, "bunkers": [[-18, -17, 6.5, 4.5, 0, "rel"]]}}}

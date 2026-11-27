@@ -86,20 +86,32 @@ const COURSES=[
   collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
  th2:{wat:{water:'#3fa7b5',deep:'#2a8aa0',shallow:'#b4ece4',rim:'#3597a6'}},
  holes:[["Greenstone",4,407,9,-107],["Wasco",3,170,15,0],["Hidden Lake",5,555,5,-152],["Steelhead",4,486,3,155],["Excelsior",3,180,13,-12],["Shamrock",4,247,7,17],["Mill Creek",5,522,1,280],["Lake Helen",3,227,5,-17],["Twin Lakes",4,344,17,-206]],
- more:[["Lee Vining Creek",5,529,12,-21],["The Cascade",5,594,4,-297],["Conness Lake",3,159,14,41],["North Peak",4,281,10,-204],["Glacial Flour",4,371,2,-303],["Snowmelt Tarn",3,140,16,-160],["Mount Conness",4,359,6,467],["Alpenglow",3,170,18,0],["Tioga Crest",4,453,8,-8]]}];
+ more:[["Lee Vining Creek",5,529,12,-21],["The Cascade",5,594,4,-297],["Conness Lake",3,159,14,41],["North Peak",4,281,10,-204],["Glacial Flour",4,371,2,-303],["Snowmelt Tarn",3,140,16,-160],["Mount Conness",4,359,6,467],["Alpenglow",3,170,18,0],["Tioga Crest",4,453,8,-8]]},
+// One course in eighteen places: a hole in each of eighteen national parks, east to west, from first light on the coast of Maine to
+// a crater in Hawaii. Every hole stands on its own piece of real ground (data/npNN.json, built by tools/parks.py from
+// data/npNN.design.json), and carries its own look in its map (`th` there, laid over this one). The sixth figure is the park.
+{id:'np',code:'NP',club:'National Parks',tee:'Ranger',sites:true,
+ th:{out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:0,bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
+  collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
+ /*NP:BEGIN*/
+ holes:[["Sand Beach",4,448,9,53,"Acadia"],["Fort Jefferson",4,433,5,1,"Dry Tortugas"],["The Arch",3,211,13,-2,"Gateway Arch"],["The Door",4,444,11,79,"Badlands"],["Santa Elena",5,590,7,3,"Big Bend"],["Gypsum",4,381,15,4,"White Sands"],["Grand View",5,586,1,36,"Canyonlands"],["Thor's Hammer",3,339,17,400,"Bryce Canyon"],["Angels Landing",4,423,3,-1,"Zion"]],
+ more:[["Oxbow Bend",5,627,8,5,"Grand Teton"],["Grand Prismatic",4,476,12,-3,"Yellowstone"],["Iceberg Lake",3,205,16,-4,"Glacier"],["Wizard Island",4,458,14,54,"Crater Lake"],["Painted Dunes",4,448,10,17,"Lassen Volcanic"],["Devil's Golf Course",3,174,18,-2,"Death Valley"],["Crescent Meadow",5,574,6,125,"Sequoia"],["Firefall",3,773,2,3172,"Yosemite"],["Kilauea Iki",5,603,4,439,"Hawaii Volcanoes"]]
+ /*NP:END*/}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
 // data/<id>.json; its other nine, if it has one, is `more`, drawn from data/<id>2.json. The second nines are added after all the
 // first ones so that the index of a hole never changes once it has been published (saved rounds keep indexes).
 //   k  0 to 17, the hole's fixed place in its course (used for seeds and for the key sent to the clubhouse server)
 //   n  the number on the tee sign
 const ALL=[];
-for(const set of[COURSES.slice(0,6),COURSES.slice(6,10),COURSES.slice(10)]){ // in the batches they were published in, so no index ever moves
-for(const c of set)c.holes.forEach((d,k)=>ALL.push({c,k,n:k+(c.first||1),map:c.id,def:{name:d[0],par:d[1],yd:d[2],hcp:d[3],drop:d[4]||0}}));
-for(const c of set)(c.more||[]).forEach((d,k)=>ALL.push({c,k:k+9,n:k+((c.first||1)===1?10:1),map:c.id+'2',def:{name:d[0],par:d[1],yd:d[2],hcp:d[3],drop:d[4]||0}}));}
+// A course in many places (`sites`) has a map of its own for every hole, data/<id>NN.json, and each hole entry ends with its place.
+const mapOf=(c,n,second)=>c.sites?c.id+String(n).padStart(2,'0'):c.id+(second?'2':''),defOf=d=>({name:d[0],par:d[1],yd:d[2],hcp:d[3],drop:d[4]||0,park:d[5]||''});
+for(const set of[COURSES.slice(0,6),COURSES.slice(6,10),COURSES.slice(10,12),COURSES.slice(12)]){ // in the batches they were published in, so no index ever moves
+for(const c of set)c.holes.forEach((d,k)=>{const n=k+(c.first||1);ALL.push({c,k,n,map:mapOf(c,n,false),def:defOf(d)})});
+for(const c of set)(c.more||[]).forEach((d,k)=>{const n=k+((c.first||1)===1?10:1);ALL.push({c,k:k+9,n,map:mapOf(c,n,true),def:defOf(d)})});}
 // the indexes of a course's holes in playing order: part 'f' the front nine, 'b' the back nine, 'a' all eighteen
 const courseIds=(id,part)=>ALL.map((e,i)=>e.c.id===id&&(part==='a'||(part==='b')===(e.n>9))?i:-1).filter(i=>i>=0).sort((a,b)=>ALL[a].n-ALL[b].n);
 // what a scorecard needs to know about a hole, without building it
-const INFO=i=>{const e=ALL[i];return{course:e.c,n:e.n,k:e.k+1,name:e.def.name,par:e.def.par,yards:e.def.yd,hcp:e.def.hcp}};
+const INFO=i=>{const e=ALL[i];return{course:e.c,n:e.n,k:e.k+1,name:e.def.name,par:e.def.par,yards:e.def.yd,hcp:e.def.hcp,park:e.def.park}};
 const holeNo=(id,key)=>{const e=ALL.find(e=>e.c.id===id&&e.k+1===key);return e?e.n:key};
 const pts=f=>{const a=[];for(let i=0;i<f.length;i+=2)a.push({x:f[i],y:f[i+1]});return a};
 const SPECIES=[[/quercus|oak/i,'liveoak'],[/carya|pecan/i,'pecan'],[/ulmus|elm/i,'elm'],[/juniper|cedar|needle/i,'juniper'],[/taxodium|cypress/i,'cypress'],[/prosopis|mesquite/i,'mesquite'],[/pinus|pine/i,'pine']];
@@ -108,8 +120,8 @@ const SPECIES=[[/quercus|oak/i,'liveoak'],[/carya|pecan/i,'pecan'],[/ulmus|elm/i
 // Only the hole being played is built: its own ground and whatever of the course lies within sight of it.
 // Past FADE0 yards from the line of play the picture fades out, and by FADE1 it is gone (and the ball is off the map).
 const FADE0=94,FADE1=165,PAD=FADE1+30;
-// a course's second nine can have a look of its own (th2 over th)
-const themeOf=e=>e.th||(e.th=e.map!==e.c.id&&e.c.th2?{...e.c.th,...e.c.th2}:e.c.th);
+// a course's second nine can have a look of its own (th2 over th), and so can a single place (the `th` its map carries)
+const themeOf=e=>e.th||(e.th=MAPS[e.map].th?{...e.c.th,...MAPS[e.map].th}:e.map!==e.c.id&&e.c.th2?{...e.c.th,...e.c.th2}:e.c.th);
 const GREEN_GAP=5; // yards of ground a green keeps between itself and water
 function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=themeOf(e),g={},rng=mulberry32(hashStr('geo:'+c.id+k)),R=g.route=mkRoute(catmull(pts(m.lines[e.n]),3));
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of R.pts){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}
@@ -171,7 +183,7 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=themeOf(e),g={},rng=mulb
   // trees. Mapped single trees stand where they really are and stop a low ball. Woods are filled with the course's native mix.
   const pick=()=>{let u=rng();for(const[k,w]of th.mix)if((u-=w)<0)return k;return th.mix[0][0]},tree=(x,y,kind,r,solid)=>({x,y,kind,r:r*TREES[kind].size,v:Math.floor(rng()*4),solid,h:r*1.15+3});
   // a tree the map names is a landmark (the big oak behind Augusta's clubhouse): it is drawn as a very large live oak
-  g.solid=m.trees.filter(([x,y])=>nearHoles({x,y})).map(([x,y,sp])=>{const big=/!big/.test(sp),k=big?'liveoak':(SPECIES.find(([re])=>re.test(sp))||[0,pick()])[1],r=lerp(6,9.5,rng());return tree(x,y,!big&&th.wet!==false&&wet({x,y},9)&&k!=='pecan'?'cypress':k,big?12.5:r,true)});
+  g.solid=m.trees.filter(([x,y])=>nearHoles({x,y})).map(([x,y,sp])=>{const big=/!big/.test(sp),giant=/sequoia/.test(sp),k=giant?'pine':big?'liveoak':(SPECIES.find(([re])=>re.test(sp))||[0,pick()])[1],r=lerp(6,9.5,rng());return tree(x,y,!big&&!giant&&th.wet!==false&&wet({x,y},9)&&k!=='pecan'?'cypress':k,giant?lerp(10.5,14.5,rng()):big?12.5:r,true)});
   // The way off the tee stays open. A tee shot is still climbing for its first fifty yards, so a tree standing there cannot be cleared:
   // none is kept on the tee or along that stretch of the line of play, and nothing leafy is scattered over it either.
   // "The line" is both the way the hole runs and the straight line the camera first aims down, which differ on a dogleg.
@@ -229,7 +241,7 @@ function buildHole(i,dayKey){const e=ALL[i],c=e.c,g=buildGeo(e),n=e.n,r=g.route,
   const green=g.green.find(s=>inSh(s,end,-1))||g.green.reduce((b,s)=>hyp(s.x-end.x,s.y-end.y)<hyp(b.x-end.x,b.y-end.y)?s:b);
   // a double green (St Andrews) is one huge shape serving two holes: this hole's part of it is round the end of its line
   const dbl=green.R>34&&inSh(green,end,-3),gc=dbl?{x:end.x,y:end.y}:{x:green.x,y:green.y};
-  const h={course:c,th:themeOf(e),drop:e.def.drop||0,geo:g,n,k:e.k+1,name:e.def.name,par:e.def.par,yards:e.def.yd,hcp:e.def.hcp,route:r,total:L,tee:{x:t0.x,y:t0.y,a:Math.atan2(t0.dy,t0.dx)},axis:Math.atan2(end.dy,end.dx),green,fringe:grown(green,2.4)};
+  const h={course:c,th:themeOf(e),drop:e.def.drop||0,park:e.def.park,geo:g,n,k:e.k+1,name:e.def.name,par:e.def.par,yards:e.def.yd,hcp:e.def.hcp,route:r,total:L,tee:{x:t0.x,y:t0.y,a:Math.atan2(t0.dy,t0.dx)},axis:Math.atan2(end.dy,end.dx),green,fringe:grown(green,2.4)};
   h.oaks=g.solid.filter(t=>distLine(r.pts,t)<160);
   // the day's pin: one of several spots well inside the green
   const dr=mulberry32(hashStr('fl-cond:'+dayKey+':'+c.id+n)),gr=dbl?Math.min(green.rx,14):green.rx,spots=[[0,0]];for(let k=0;k<6;k++)spots.push([Math.cos(k*1.047+.4)*gr*.5,Math.sin(k*1.047+.4)*gr*.5]);
@@ -262,5 +274,6 @@ function lieAt(h,q){const g=h.geo,off=distLine(h.route.pts,q);
   for(const w of g.dry)if(inSh(w,q))return'creekbed';
   for(const w of g.rock)if(inSh(w,q))return'creekbed';
   for(const w of g.woods)if(inSh(w,q))return'woods';
+  if(h.th.ground==='sand')return'bunker'; // dunes, a salt pan: whatever is not mown is sand
   if(h.th.out==='rough'||off<34||g.rough.some(s=>inSh(s,q))||g.fair.some(s=>inSh(s,q,24))||g.green.some(s=>inSh(s,q,26)))return'rough';
   return h.th.out}

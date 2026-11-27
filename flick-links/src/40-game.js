@@ -116,7 +116,7 @@ const toPin=()=>{const h=cur(),b=S.ball,d=hyp(h.pin.x-b.x,h.pin.y-b.y)||1;return
 function reachOf(c){if(c.putt)return markDist();const u=toPin();return flightCarry(cur(),S.ball,u.x,u.y,c.carry*lieMult(S.lie,c),c.loft)+c.carry*lieMult(S.lie,c)*c.roll}
 function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
   const t=d<=285?h.pin:rAt(h.route,Math.min(h.total,rProj(h.route,b)+250));
-  const view=S.club.putt?clamp(Math.max(d,markDist())*1.3,7,70):clamp(Math.min(d*1.18,reachOf(S.club)*1.15),7,640); // far enough back that the pin, or as far as the club goes, clears the plates even off a 500-yard drop
+  const view=S.club.putt?clamp(Math.max(d,markDist())*1.3,7,70):clamp(Math.min(d*1.18,reachOf(S.club)*1.15),7,960); // far enough back that the pin, or as far as the club goes, clears the plates even off Glacier Point
   camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.6/view;if(d>.02)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
 function updateCam(dt){
   const b=S.ball;let ease=0;

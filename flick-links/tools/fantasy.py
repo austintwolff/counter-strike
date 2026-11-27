@@ -136,11 +136,25 @@ def build(path, probe=None):
     from shapely import affinity
     from scipy import ndimage as ndi
     D = json.load(open(path)); cid = D['id']; T = Terrain(D['terrain']); F = osm(D['terrain'], T); look = D.get('look', 'canyon'); pad = D.get('pad', 230); st = T.step
+    if look == 'photo': look = 'alpine'
+    # What the design leaves out of the map, or adds to it (a course in many places needs this: see COURSES.md).
+    #   "without": ["trails", "creeks", "buildings"]   the map's own, left out altogether (a boardwalk the photograph already shows)
+    #   "skip_water": [names], "only_water": [names]  waters by name
+    #   "sea": feet                                    everything at or below this height is sea
+    #   "pools": [[x, y, rx, ry, rot] or {"p": [[x, y], ...]}]   water the map does not carry
+    #   "buildings": [[[x, y], ...], ...]              roofs the map does not carry, or carries as one block
+    #   "land": [[[x, y], ...], ...]                   the land, traced by hand: all else is sea (a low key the heights cannot find)
+    for k_, f_ in (('trails', 'path'), ('creeks', 'stream'), ('buildings', 'building')):
+        if k_ in D.get('without', []): F[f_] = []
+    if D.get('only_water') is not None: F['water'] = [f for f in F['water'] if f.get('name') in D['only_water']]
+    F['water'] = [f for f in F['water'] if f.get('name') not in D.get('skip_water', [])]
+    F['building'] += [{'p': [tuple(q) for q in b]} for b in D.get('buildings', [])]
     holes = {int(n): h for n, h in D['holes'].items()}; ctr = {n: catmull(h['line']) for n, h in holes.items()}
     region = so.unary_union([sg.LineString(h['line']).buffer(pad) for h in holes.values()]); bx0, by0, bx1, by1 = region.bounds
     i0, j0 = map(int, T.ij(bx0, by0)); i1, j1 = map(int, T.ij(bx1, by1)); i0, j0, i1, j1 = max(i0, 1), max(j0, 1), min(i1, T.H - 1), min(j1, T.W - 1)
     xs = T.x0 + np.arange(j0, j1) * st; ys = T.y0 + np.arange(i0, i1) * st; E = T.elev[i0:i1, j0:j1].astype(np.float64); RGB = T.rgb[i0:i1, j0:j1].astype(np.float32)
-    SL, DX, DY = T.slope(); SL = SL[i0:i1, j0:j1]; SH = T.shade(alt=42)[i0:i1, j0:j1]; XX, YY = np.meshgrid(xs, ys)
+    # relief_z: low dunes or a salt pan want their few feet of relief drawn larger
+    SL, DX, DY = T.slope(); SL = SL[i0:i1, j0:j1]; SH = T.shade(alt=42, z=D.get('relief_z', 1.0))[i0:i1, j0:j1]; XX, YY = np.meshgrid(xs, ys)
     def raster(geom):  # which cells lie inside a shape
         if geom.is_empty: return np.zeros(E.shape, bool)
         im = Image.new('L', (E.shape[1], E.shape[0]), 0); d = ImageDraw.Draw(im)
@@ -169,7 +183,17 @@ def build(path, probe=None):
         if f.get('open') and not (far(f['p'][0]) and far(f['p'][-1])): print('  NOTE an unclosed water outline ends inside the course:', f.get('name'), [round(v) for v in f['p'][0]], [round(v) for v in f['p'][-1]])
     ok = lambda f: len(f['p']) > 2 and (not f.get('open') or (far(f['p'][0]) and far(f['p'][-1])))
     outer = [sg.Polygon(f['p']).buffer(0) for f in F['water'] if not f.get('inner') and ok(f)]; inner = [sg.Polygon(f['p']).buffer(0) for f in F['water'] if f.get('inner') and ok(f)]
-    water = so.unary_union(outer).difference(so.unary_union(inner)) if outer else sg.Polygon(); water = water.intersection(sg.box(bx0 - 5, by0 - 5, bx1 + 5, by1 + 5)); W = raster(water)
+    water = so.unary_union(outer).difference(so.unary_union(inner)) if outer else sg.Polygon()
+    if D.get('sea') is not None:
+        # the sea is not on the map as water; the heights say where it is. Small pools the tide leaves are not sea.
+        low = ndi.binary_closing(ndi.binary_opening(E * 3 <= D['sea'], iterations=1), iterations=1); lab_, n_ = ndi.label(low); size_ = ndi.sum(low, lab_, range(1, n_ + 1)); low = np.isin(lab_, [k + 1 for k, v in enumerate(size_) if v >= 900])
+        water = so.unary_union([water] + shapes_of(low, 1.2, 300)); E = np.where(low, max(D['sea'], 0) / 3, np.maximum(E, D['sea'] / 3))
+    # "land": [[[x, y], ...], ...]: where the heights cannot tell a low island from the sea round it, the land is traced by hand and
+    # everything else is sea
+    if D.get('land'): water = so.unary_union([water, sg.box(bx0 - 5, by0 - 5, bx1 + 5, by1 + 5).difference(so.unary_union([sg.Polygon(q).buffer(0) for q in D['land']]))])
+    pools_ = [sg.Polygon(b['p']).buffer(0) if isinstance(b, dict) else sg.Polygon(blob(b[0], b[1], b[2], b[3], b[4], rng_for(cid, 'pool', b[0]), .08, 30)) for b in D.get('pools', [])]
+    if pools_: water = so.unary_union([water] + pools_)
+    water = water.intersection(sg.box(bx0 - 5, by0 - 5, bx1 + 5, by1 + 5)); W = raster(water)
     # ground too steep to play: cliffs, crags and the walls of the gorge
     lim = D.get('steep', 33); steep = ndi.binary_closing(ndi.binary_opening(SL > lim, iterations=1), iterations=2) & ~W; lab, n = ndi.label(steep); size = ndi.sum(steep, lab, range(1, n + 1)); steep = np.isin(lab, [k + 1 for k, v in enumerate(size) if v >= D.get('crag', 150)])
     # snow and ice: the mapped glacier, and whatever the photograph shows as bright and colourless high up
@@ -197,6 +221,9 @@ def build(path, probe=None):
     built = [f for f in F['building'] if len(f['p']) > 2 and sg.Polygon(f['p']).buffer(0).intersects(region) and not sg.Polygon(f['p']).buffer(0).intersects(crag)]  # a cabin the ground model puts on a cliff is left out, not drawn hanging there
     houses = so.unary_union([sg.Polygon(f['p']).buffer(0).buffer(5) for f in built] or [sg.Polygon()])
     washes = so.unary_union([sg.LineString(f['p']).buffer(D.get('creeks', {}).get(f['name'], 5 if f['name'] else 3.2) / 2 + 2.5) for f in F['stream'] if not f['river'] and sg.LineString(f['p']).intersects(region)] or [sg.Polygon()]).intersection(box_)
+    # "beaches": true keeps the map's sand as beach: it plays as sand, and nothing is mown on it
+    strand = so.unary_union([sg.Polygon(f['p']).buffer(0) for f in F['sand'] if len(f['p']) > 2] or [sg.Polygon()]).intersection(box_).difference(water) if D.get('beaches') else sg.Polygon()
+    if not strand.is_empty: houses = so.unary_union([houses, strand])
     seen = so.unary_union([wet, crag.buffer(6), cold.buffer(3), trails, houses, washes])
     bad = so.unary_union([wet, crag.buffer(6), cold.buffer(3), tilted, trails, houses, washes]); edge_g = so.unary_union([water.buffer(1.5), crag.buffer(6), cold.buffer(3), tilted, trails, houses, washes] + runs)
     # what a green keeps its distance from: six yards of ground between it and water, ten from a cliff's edge, less from the rest
@@ -305,6 +332,7 @@ def build(path, probe=None):
     for k in G: out[k] = [flat(list(q.exterior.coords)[:-1]) for q in G[k]]
     out['water'] = [pack(q) for q in (water.simplify(.7).geoms if hasattr(water, 'geoms') else [water.simplify(.7)]) if q.geom_type == 'Polygon' and q.area > 12]  # every lake in the picture, so none is left as a blue stain in the paint
     out['void'] = [pack(q) for q in shapes_of(steep, 1.6, 90) if q.intersects(region)]
+    if not strand.is_empty: out['beach'] = [pack(q) for q in (strand.simplify(.8).geoms if hasattr(strand, 'geoms') else [strand.simplify(.8)]) if q.geom_type == 'Polygon' and q.area > 60 and q.intersects(region)]
     out['snow'] = [pack(q) for q in shapes_of(snow, 1.4, 70) if q.intersects(region)]
     # creeks: dry washes where the map says so; white water wherever the creek really falls steeply
     out['streams'] = []; out['falls'] = []; near = region.buffer(60)
@@ -334,15 +362,30 @@ def build(path, probe=None):
     # what grows there, read off the photograph and scattered where it really is
     rngv = rng_for(cid, 'veg'); r_, g_, b_ = RGB[..., 0], RGB[..., 1], RGB[..., 2]; lum = (r_ + g_ + b_) / 3; exg = (2 * g_ - r_ - b_) / (lum + 30); kinds = D.get('plants', ['pine']); sc = []
     free = ~raster(turf.buffer(3)) & ~W & ~snow & ~steep & ~raster(crag.buffer(3)) & ~raster(trails) & ~raster(houses.buffer(-3)) & ~raster(so.unary_union(runs + [washes])); dstream = ndi.distance_transform_edt(~raster(so.unary_union([sg.LineString(np.array(s['p']).reshape(-1, 2)).buffer(4) for s in out['streams'] if not s['dry']] + [water]) if out['streams'] or not water.is_empty else sg.Polygon())) * st
-    def strew(mask, kind, rmin, rmax, cell, chance):
-        k = kinds.index(kind); c = max(1, int(cell / st))
+    solid_ = []
+    def strew(mask, kind, rmin, rmax, cell, chance, solid=False):
+        k = kinds.index(kind) if not solid else 0; c = max(1, int(cell / st))
         for i in range(0, mask.shape[0] - c, c):
             for j in range(0, mask.shape[1] - c, c):
                 if mask[i:i + c, j:j + c].mean() > chance[0] and rngv.random() < chance[1]:
                     x = xs[j] + rngv.random() * cell; y = ys[i] + rngv.random() * cell
-                    if region.contains(sg.Point(x, y)): sc.append([int(round(x)), int(round(y)), round(float(rngv.uniform(rmin, rmax)) * 2) / 2, k])
+                    if region.contains(sg.Point(x, y)): (solid_ if solid else sc).append([int(round(x)), int(round(y)), kind] if solid else [int(round(x)), int(round(y)), round(float(rngv.uniform(rmin, rmax)) * 2) / 2, k])
     D2 = D.get('veg', {})
-    if look == 'canyon':
+    if D.get('strew') is not None:
+        # The design says what grows where, for a place neither of the two looks was written for. Each rule:
+        #   {"kind": a plant in "plants", "on": "dark" | "meadow" | "green" | "free" | "patchy", "r": [smallest, largest], "cell": yd,
+        #    "need": share of the cell that must match, "p": chance, "near"/"far": yd from water, "above"/"below": feet, "flat": steepest slope,
+        #    "solid": true for trees a ball cannot pass through (they go to the game as single trees, by species)}
+        g1 = (exg > D2.get('green', .05)) & (lum > 30) & free; nz = ndi.gaussian_filter(rngv.random(E.shape), 9); nz = (nz - nz.mean()) / nz.std()
+        masks = {'dark': g1 & (lum < D2.get('dark', 92)), 'meadow': (exg > D2.get('meadow', .1)) & (lum >= D2.get('dark', 92)) & free, 'green': g1, 'free': free, 'patchy': free & (nz > -.4), 'dim': free & (lum < D2.get('dark', 92)), 'pale': free & (lum >= D2.get('dark', 92))}
+        for r in D['strew']:
+            m = masks[r.get('on', 'green')] & (SL < r.get('flat', 90))
+            if 'near' in r: m = m & (dstream < r['near'])
+            if 'far' in r: m = m & (dstream >= r['far'])
+            if 'above' in r: m = m & (E * 3 >= r['above'])
+            if 'below' in r: m = m & (E * 3 < r['below'])
+            strew(m, r['kind'], r.get('r', [3, 5])[0], r.get('r', [3, 5])[1], r.get('cell', 10), (r.get('need', .4), r.get('p', .6)), bool(r.get('solid')))
+    elif look == 'canyon':
         green_ = (exg > D2.get('green', .09)) & (lum > 35) & free
         if 'cottonwood' in kinds: strew(green_ & (dstream < 45), 'cottonwood', 4.5, 8, 12, (.3, .8))
         if 'mesquite' in kinds: strew(green_ & (dstream >= 45) & (SL < 25), 'mesquite', 3, 5, 12, (.35, .5))
@@ -358,6 +401,10 @@ def build(path, probe=None):
     from shapely.prepared import prep
     off_ = prep(so.unary_union([trails.buffer(.8), houses.buffer(-3), water.buffer(1), crag.buffer(2), washes, turf.buffer(2)] + runs)); sc = [q for q in sc if not off_.contains(sg.Point(q[0], q[1]))]
     out['scatter'] = sc; out['kinds'] = kinds
+    # single trees that stop a ball (the big ones), kept a little further off the turf so none stands in a fairway
+    if solid_: far_ = prep(turf.buffer(7)); out['trees'] = [q for q in solid_ if not off_.contains(sg.Point(q[0], q[1])) and not far_.contains(sg.Point(q[0], q[1]))]
+    if D.get('ground') == 'sand': out['sandy'] = True  # everything that is not mown is sand: the dunes, the salt
+    if D.get('th'): out['th'] = D['th']  # this place's own look, over the course's (a course in many places)
     # small things that belong to the place, set down where they really are: a mule train on a named trail, rafts drawn up where a
     # trail meets the river, a tent, white water. In the design: {"kind": "mules", "trail": name, "near": [x, y], "n": 6},
     # {"kind": "rafts", "trail": name, "n": 3}, {"kind": "tent" or "rapid", "at": [x, y], "a": degrees, "r": size}
@@ -378,6 +425,7 @@ def build(path, probe=None):
                 a = edge.interpolate(s0 + (k - 1) * 7.5); b = edge.interpolate(s0 + (k - 1) * 7.5 + 1); nx, ny = -(b.y - a.y), b.x - a.x; side = 1 if water.contains(sg.Point(a.x + nx * 2, a.y + ny * 2)) else -1
                 props.append({'k': 'raft', 'x': round(a.x + nx * side * 1.2, 1), 'y': round(a.y + ny * side * 1.2, 1), 'a': round(math.atan2(ny * side, nx * side), 2), 'v': k})
         elif 'at' in pr and sg.Point(*pr['at']).distance(turf) < (0 if pr['kind'] == 'rapid' else 8): notes.append('the %s at %s is on or beside something mown and was left out' % (pr['kind'], pr['at']))
+        elif pr['kind'] == 'floe' and not water.buffer(-pr.get('r', 5) - 2).contains(sg.Point(*pr['at'])): pass  # ice floats: a floe set down on the shore is left out
         elif 'at' in pr: props.append({'k': pr['kind'], 'x': pr['at'][0], 'y': pr['at'][1], 'a': round(math.radians(pr.get('a', 0)), 2), 'r': pr.get('r', 30), 'v': len(props)})
     out['props'] = props
     # the ground itself, painted from the elevation (and, in the mountains, from the photograph's own colours)
@@ -395,10 +443,25 @@ def build(path, probe=None):
         deep = np.clip((ndi.maximum_filter(Es, size=int(360 / st)) - Es) * 3 / D.get('depth', 1100), 0, 1); deep = ndi.gaussian_filter(deep, 3)
         col = col * (1 - .42 * deep[..., None]) + np.array([38, 44, 70]) * (.42 * deep[..., None])
     else:
-        sm = np.stack([ndi.median_filter(RGB[..., c], 5) for c in range(3)], -1); sm = ndi.gaussian_filter(sm, (1.5, 1.5, 0)); L0 = sm.mean(2, keepdims=True) + 1; tgt = D.get('tone', 158) + .32 * (L0 - 150); col = sm / L0 * tgt
+        sm = np.stack([ndi.median_filter(RGB[..., c], 5) for c in range(3)], -1); sm = ndi.gaussian_filter(sm, (1.5, 1.5, 0)); L0 = sm.mean(2, keepdims=True) + 1; tgt = D.get('tone', 158) + D.get('keep', .32) * (L0 - 150); col = sm / L0 * tgt  # keep: how much of the photograph's own light and dark is left (lifting deep shade all the way to mid-tone turns it blue)
         near_w = ndi.binary_dilation(W, iterations=9); blue = (sm[..., 2] > sm[..., 0] + 6) & (sm[..., 2] >= sm[..., 1] - 2); stain = W | (near_w & blue) | ndi.binary_dilation(W, iterations=2); okc = (~(near_w & blue) & ~W).astype(np.float32)
         wsum = ndi.gaussian_filter(okc, 10) + 1e-4; land = np.stack([ndi.gaussian_filter(col[..., c] * okc, 10) / wsum for c in range(3)], -1); col = np.where(stain[..., None], land, col)
-        grey = col.mean(2, keepdims=True); col = grey + (col - grey) * D.get('sat', 1.25); lit = (.56 + .6 * SH) * (1 - .12 * np.clip((SL - 30) / 25, 0, 1)) * (1 + .03 * fine)
+        grey = col.mean(2, keepdims=True); col = grey + (col - grey) * D.get('sat', 1.25)
+        # "wash": [r, g, b, amount] pulls the photograph's colours toward one of the place's own, keeping its light and dark:
+        # for a photograph taken out of season, or with a cast
+        if D.get('wash'): wr_ = np.array(D['wash'][:3], float); g_ = col.mean(2, keepdims=True); col = col * (1 - D['wash'][3]) + g_ / wr_.mean() * wr_ * D['wash'][3]
+        # "strata": [[feet, [r, g, b]], ...] paints the steep faces by height, in bands, over the photograph's colours on the level
+        # ground: layered rock that an aerial photograph at this scale blurs to one tone (badlands, hoodoos, canyon walls)
+        if D.get('strata'):
+            f2 = ft + slow * 14; tab = D['strata']; rock_ = np.stack([np.interp(f2, [t[0] for t in tab], [t[1][c] for t in tab]) for c in range(3)], -1)
+            wf = np.clip((SL - D.get('strata_from', 14)) / D.get('strata_over', 13), 0, 1)[..., None] * D.get('strata_mix', .85); band = (.5 + .5 * np.sin(ft / D.get('band', 6.5) + slow * .8))[..., None]
+            col = col * (1 - wf) + rock_ * (1 - .2 * band) * wf
+        lit = (.56 + .6 * SH) * (1 - .12 * np.clip((SL - 30) / 25, 0, 1)) * (1 + .03 * fine)
+    if D.get('dunes'):
+        # "dunes": [wavelength yd, wind bearing degrees, strength]: dune crests the heights are too coarse to hold, drawn as light and
+        # shade across the wind: a long lit slope up to each crest and a short dark slip face beyond it
+        lam_, ang_, amp_ = D['dunes']; ca_, sa_ = math.cos(math.radians(ang_)), math.sin(math.radians(ang_)); ph_ = (XX * ca_ + YY * sa_) / lam_ * 6.283 + 2.6 * slow + .5 * fine
+        lit = lit * (1 + amp_ * (np.cos(ph_) + .55 * np.cos(2 * ph_ + .9) + .25 * np.cos(3 * ph_ + 1.7)))
     img = (col * lit[..., None]).clip(0, 255).astype(np.uint8); rs = D.get('relief_step', 3); im = Image.fromarray(img).resize((int(len(xs) * st / rs), int(len(ys) * st / rs)), Image.LANCZOS)
     buf = io.BytesIO(); im.save(buf, 'WEBP', quality=D.get('quality', 78), method=6); out['relief'] = {'box': [round(float(xs[0]), 1), round(float(ys[0]), 1), round(len(xs) * st, 1), round(len(ys) * st, 1)], 'src': 'data:image/webp;base64,' + base64.b64encode(buf.getvalue()).decode()}
     im.save(os.path.join(CACHE, cid + '.relief.png'))

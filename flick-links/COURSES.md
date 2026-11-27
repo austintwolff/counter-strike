@@ -103,7 +103,7 @@ at its size in the game: in a `#dev` page, `__fl.birdArt(kind, 760)` returns its
 
 ## Fantasy courses: holes that do not exist, on ground that does
 
-Bright Angel (the Grand Canyon) and Twenty Lakes (the Sierra Nevada) were laid out by hand on real terrain. The ground, water,
+Bright Angel (the Grand Canyon), Twenty Lakes (the Sierra Nevada) and National Parks (eighteen parks: see the next section) were laid out by hand on real terrain. The ground, water,
 cliffs, snow, trails and plants are real; only the tees, fairways, greens and bunkers are invented.
 
 1. **Fetch the ground.** `python3 tools/terrain.py fetch <id> <south> <west> <north> <east>` downloads elevation (AWS terrain
@@ -157,4 +157,39 @@ What the builder makes from the terrain, and how the game uses it:
 | Creek gradient | `falls` | white water where the creek really drops |
 | The photograph | `scatter`: trees and brush where they really grow; snow patches; in the mountains, the ground's own colours | plants are scenery (they do not stop a ball); snow plays like deep sand |
 | The design's `props` | mule trains on named trails, rafts where a trail meets the river, tents, white water | small things that belong to the place |
+
+## A course in many places: National Parks
+
+National Parks (`np`) is one course whose eighteen holes are in eighteen different parks, east to west from Acadia to
+Kilauea. Each hole stands on its own piece of real ground, so each is built on its own:
+
+- `data/np.design.json` lists the places and the box of ground fetched for each. `python3 tools/parks.py fetch` downloads
+  any not yet in `data/cache/` (as `npNN`).
+- `data/npNN.design.json` is that hole's design: an ordinary fantasy design with one hole in it, numbered as on the card.
+  All the fantasy tools work on it (`fantasy.py view npNN`, `room data/npNN.design.json x y`, `plan npNN`).
+- `python3 tools/parks.py build` builds all eighteen into `data/npNN.json` and writes the card (name, par, yards, stroke
+  index, fall, park) into the course's entry in `src/20-course.js`, between `/*NP:BEGIN*/` and `/*NP:END*/`.
+  `parks.py build 7` builds one.
+- In the game the course has `sites:true`: hole N reads the map `npNN`, and a hole's own look is the `th` its design
+  carries, laid over the course's. The start of each hole says where it is.
+- Check it like any course (`check_course.js np f` and `b`, `check_doglegs.js np`, `rate_courses.js np`).
+
+What a design can say that the two older fantasy courses never needed (all in `tools/fantasy.py`, all off unless asked for):
+
+| Key | For |
+|---|---|
+| `"look": "photo"` | the photograph's own colours (the same as `alpine`), with `tone`, `keep`, `sat` and `wash` to correct them |
+| `"wash": [r, g, b, amount]` | pulls the colours toward one of the place's own: for a photograph out of season or with a cast |
+| `"keep": 0..1` | how much of the photograph's light and dark stays. Lifting deep shade to mid-tone turns it blue |
+| `"strata": [[feet, [r, g, b]], ...]` | paints steep faces by height, in bands, over the photograph on the level ground (badlands, hoodoos, canyon walls) |
+| `"relief_z"` | draws low relief larger (dunes, a salt pan) |
+| `"sea": feet` | everything at or below this height is sea; `th.sea` then paints surf and a strand |
+| `"land": [polygons]` | the land traced by hand, all else sea: for a low key the heights cannot find |
+| `"pools": [...]`, `"only_water"`, `"skip_water"` | water the map lacks; waters kept or dropped by name |
+| `"beaches": true` | the map's sand is beach: it plays as sand and nothing is mown on it |
+| `"without": ["trails", "creeks", "buildings"]` | leaves the map's own out (a boardwalk the photograph already shows) |
+| `"buildings": [polygons]` | roofs the map lacks or carries as one block (the walls of Fort Jefferson) |
+| `"ground": "sand"` with `th.ground:'sand'` | whatever is not mown is sand (White Sands, Devil's Golf Course) |
+| `"strew": [rules]` | what grows where, by rule; `"solid": true` makes single trees a ball cannot pass (the giant sequoias) |
+| props `arch`, `floe` | the Gateway Arch from above with its shadow; ice adrift on Iceberg Lake |
 

@@ -6,7 +6,8 @@ A daily three-hole golf game for a group chat. Everything lives in `flick-links/
   and `index.html` (standalone).
 - **Adding or reworking a course: read `flick-links/COURSE_LESSONS.md` first**, then follow `flick-links/COURSES.md`.
   Check the result with `node flick-links/tools/check_course.js <id>` and look at the pictures it saves.
-- Two courses (Bright Angel, Twenty Lakes) are invented holes on real terrain: `flick-links/COURSES.md`, "Fantasy courses".
+- Three courses (Bright Angel, Twenty Lakes, National Parks) are invented holes on real terrain: `flick-links/COURSES.md`, "Fantasy courses".
+  National Parks is eighteen holes in eighteen places, one design a hole: same file, "A course in many places" (`python3 flick-links/tools/parks.py build`).
   Their source is `flick-links/data/<id>.design.json`; rebuild with `python3 flick-links/tools/fantasy.py build <design>`.
   After changing a layout there, run `node flick-links/tools/check_doglegs.js <id>`: no bend may be cut by driving at the green.
 - Handicaps are measured against a course rating, not par. After adding a course, moving a tee or green, or changing how the

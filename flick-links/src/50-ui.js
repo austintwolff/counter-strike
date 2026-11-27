@@ -33,7 +33,7 @@ const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{w
 // a day's saved round keeps the holes it was drawn with, so a later change to the draw cannot scramble it
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
 // the practice menu lists the famous courses first, then the Texas ones; the order of COURSES itself never changes
-const FAMOUS=['ts','an','pb','sa'],WILD=['ba','tl'],tomorrowCourse=()=>{const n=COURSES.length;return COURSES[(dayNumber(S.key)%n+n)%n]};
+const FAMOUS=['ts','an','pb','sa'],WILD=['ba','tl','np'],tomorrowCourse=()=>{const n=COURSES.length;return COURSES[(dayNumber(S.key)%n+n)%n]};
 function titleCard(){matchQuit();const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(cur().tee.x,cur().tee.y);setupShot();overviewCam(.2,.3,true);hud();hintOff();
   sheet(`<div class="mast">${CREST}<h1>Breakfast<br>Ball</h1>${meChip()}</div>
@@ -66,7 +66,7 @@ const inPlay=(c,p)=>{const sv=fetchKey('rd:'+c+':'+p),ids=courseIds(c,p);return 
 function holeCard(score){if(score==null)score=S.round.scores[S.hi];const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:INFO(S.round.ids[S.hi+1]),x=inMatch()?MT.x:null,vs=x?esc(S.round.vs):'',how=x?standing(S.round.scores,x.sc[otherSide(x)],vs,S.round.ids.length):'';
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
 ${scoreCard(S.round.ids,S.round.scores)}${how?`<p class="fine stand">${how}</p>`:''}
-<button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>
+<button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+(nx.park?', '+nx.park:'')+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>
 ${x&&x.st==='on'&&x.end===otherSide(x)?`<button class="btn ghost" data-act="moff">Call the match off<small>${vs} has asked to</small></button>`:''}`,holeCard)}
 // What goes in the group chat: the name and number, a mark for each hole, and the score against par in words.
 function shareText(){const r=S.round,hs=r.ids.map(INFO),d=sum(r.scores)-sum(hs.map(h=>h.par)),em=(a,b,j)=>r.scores.slice(a,b).map((s,i)=>emo(s,hs[a+i].par)).join(j),par=d===0?'Even':d<0?-d+' under':d+' over';
@@ -126,7 +126,7 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
 let introT=0;
 function startHole(i,sv){clearTimeout(S.hzT);closeSheet();S.hi=i;S.marks=[];S.shot=null;S.from=null;{const bl=C.me&&C.me.stats.balls&&C.me.stats.balls[INFO(S.round.ids[i]).course.id];S.tier=bl?(bl.g?'g':bl.s?'s':bl.b?'b':''):''}S.hs=sv&&sv.strokes&&sv.hs?sv.hs:newHs();const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
-  overviewCam(.5,.76,false);S.mode='intro';hud();
+  overviewCam(.5,.76,false);S.mode='intro';hud();if(h.park)toast(h.name,h.park,2400); // a course in many places says where this one is
   hintOff();if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
 function begin(type,course,part){matchQuit();const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';if(nine&&(!COURSES.find(c=>c.id===course).more||!/^[fba]$/.test(part||'')))part='f';

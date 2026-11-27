@@ -178,6 +178,7 @@ function judge(te,tf,pw){const x=Math.abs(te)/timingWindow(pw);return{onTime:x<=
 function gPos(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 cv.addEventListener('pointerdown',e=>{
   ac();
+  if(liveSkip())return; // watching the other player's shot in a match: a tap skips it
   if(S.mode==='intro'){clearTimeout(introT);S.mode='ready';aimCam();return}
   if(S.mode!=='ready'||S.g||S.hold)return; // hold: in a shot-for-shot match it is the other player's turn
   try{cv.setPointerCapture(e.pointerId)}catch(_){}

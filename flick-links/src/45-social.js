@@ -4,7 +4,7 @@
 // Trophies are earned in any round, daily or practice (Three for Three is the daily's own; the two streaks count days played).
 const TROPHY={ace:['1','Ace','A hole in one'],alb:['−3','Albatross','Three under on one hole'],five:['V','Five in a Row','Five birdies running'],hat:['III','Three for Three','Birdie all of the daily three'],
   clean:['✓','Clean Card','Eighteen holes, no bogeys'],fair:['↑','Fairway Finder','Every fairway in eighteen'],green:['◉','Dance Floor','Every green in a round'],snake:['S','Snake','A putt holed from 40 feet'],
-  bomb:['◎','Holed Out','Holed from 50 yards out'],week:['7','Regular','Seven days running'],month:['30','Fixture','Thirty days running'],tour:[String(COURSES.length),'Grand Tour','A full round on every course']};
+  bomb:['◎','Holed Out','Holed from 50 yards out'],far:['C','Dialled In','Holed from 100 yards out'],far2:['CC','Moonshot','Holed from 200 yards out'],week:['7','Regular','Seven days running'],month:['30','Fixture','Thirty days running'],tour:[String(COURSES.length),'Grand Tour','A full round on every course']};
 const MSG={name:'Enter a name.',taken:'Someone in this clubhouse already has that name.',full:'This clubhouse is full.',no_club:'That clubhouse no longer exists.',too_many:'You are in the most clubhouses one player can join.',user:'Usernames are 3 to 16 letters, numbers or underscores.',user_taken:'That username is taken.'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const hcpStr=h=>h==null?'–':h<0?'+'+(-h).toFixed(1):h.toFixed(1);
@@ -49,7 +49,9 @@ const tabStandings=c=>`<table class="st"><tr><th>Member</th><th>Hcp</th><th>Roun
 function tabRecords(c){const rec=c.records,cr=rec.courses||{},cell=r=>r?`<b>${rel(r.tot-r.par)}</b><small>${esc(r.nick)}</small>`:'<i>·</i>';
   const rows=COURSES.map(x=>{const r=cr[x.id]||{},flip=(x.first||1)!==1,nine=!x.more;
     return`<tr><td>${x.club}</td><td>${cell(r.f)}</td><td>${nine?'':cell(flip?r.b:r.a)}</td><td>${nine?'':cell(flip?r.a:r.b)}</td></tr>`}).join('');
+  const o=rec.out,oi=o?ALL.findIndex(e=>e.c.id===o.k.slice(0,2)&&e.k+1===+o.k.slice(2)):-1,oh=oi<0?null:INFO(oi);
   return(rec.low?`<div class="stats"><div><b>${rel(rec.low.tot-rec.low.par)}</b><span>Best daily three · ${esc(rec.low.nick)} · ${shortDay(rec.low.day)}</span></div></div>`:'<p class="fine">No daily three played yet.</p>')
+    +(o?`<div class="stats"><div><b>${o.yd} yd</b><span>Longest hole-out · ${esc(o.nick)}${oh?' · '+oh.course.club+' No. '+oh.n:''} · ${shortDay(o.day)}</span></div></div>`:'')
     +`<p class="eyebrow">Course records</p><table class="st cr"><tr><th>Course</th><th>Full</th><th>Front</th><th>Back</th></tr>${rows}</table>
 <p class="fine">Set in practice rounds. An eighteen counts for both nines.</p>`
     +(rec.feed.some(f=>TROPHY[f.id])?`<p class="eyebrow">On the honours board</p><ul class="rec">${rec.feed.filter(f=>TROPHY[f.id]).map(f=>`<li><i class="mono">${TROPHY[f.id][0]}</i><span class="nm">${esc(f.nick)}</span><span>${TROPHY[f.id][1]}</span><small>${shortDay(f.day)}</small></li>`).join('')}</ul>`:'')}
@@ -83,9 +85,9 @@ ${t==='today'?tabToday(c):t==='standings'?tabStandings(c):t==='matches'?tabMatch
 <p class="fine" id="shareNote"></p>${others.length?`<p class="eyebrow">Your other clubhouses</p><div class="row">${others.map(x=>`<button class="btn ghost sm" data-act="pick" data-c="${x.code}">${esc(x.name)}</button>`).join('')}</div>`:''}`,clubCard)}
 // what the record of play says about a kind of round ('daily' or 'practice')
 function gameStats(kind){const R=(fetchKey('log')||[]).filter(r=>r.kind===kind),H=R.flatMap(r=>r.holes||[]),n=H.length,pct=(a,b)=>b?Math.round(a/b*100)+'%':'–',fw=H.filter(h=>h.fw!=null);
-  return{rounds:R.length,holes:n,birdies:H.filter(h=>h.s<h.par).length,fw:pct(fw.filter(h=>h.fw).length,fw.length),gir:pct(H.filter(h=>h.gir).length,n),putts:n?(sum(H.map(h=>h.p))/n).toFixed(1):'–',drive:Math.max(0,...H.map(h=>h.dr||0))||'–',pure:sum(H.map(h=>h.pure||0))}}
+  return{rounds:R.length,holes:n,birdies:H.filter(h=>h.s<h.par).length,fw:pct(fw.filter(h=>h.fw).length,fw.length),gir:pct(H.filter(h=>h.gir).length,n),putts:n?(sum(H.map(h=>h.p))/n).toFixed(1):'–',drive:Math.max(0,...H.map(h=>h.dr||0))||'–',out:Math.max(0,...H.map(h=>h.chip&&h.hf?Math.round(h.hf/3):0))||'–',pure:sum(H.map(h=>h.pure||0))}}
 const gameTable=()=>{const d=gameStats('daily'),p=gameStats('practice');if(!d.rounds&&!p.rounds)return'';const row=(l,k)=>`<tr><td>${l}</td><td><b>${d[k]}</b></td><td><b>${p[k]}</b></td></tr>`;
-  return`<p class="eyebrow">Your game</p><table class="st"><tr><th></th><th>Daily</th><th>Practice</th></tr>${row('Rounds','rounds')}${row('Birdies','birdies')}${row('Fairways','fw')}${row('Greens','gir')}${row('Putts a hole','putts')}${row('Longest drive','drive')}${row('Pure strikes','pure')}</table>`};
+  return`<p class="eyebrow">Your game</p><table class="st"><tr><th></th><th>Daily</th><th>Practice</th></tr>${row('Rounds','rounds')}${row('Birdies','birdies')}${row('Fairways','fw')}${row('Greens','gir')}${row('Putts a hole','putts')}${row('Longest drive','drive')}${row('Longest hole-out','out')}${row('Pure strikes','pure')}</table>`};
 // rounds not yet on the server go up when there is one to send them to
 async function syncLog(){if(!C.me)return false;const L=fetchKey('log')||[],todo=L.filter(r=>!r.up).slice(0,25);if(!todo.length)return false;
   try{const j=await Net.call('POST','/log',{rounds:todo.map(({up,...r})=>r)});if(j&&j.ok){const ids=new Set(todo.map(r=>r.id)),M=fetchKey('log')||[];M.forEach(r=>{if(ids.has(r.id))r.up=1});store('log',M);return true}}catch(e){}return false}

@@ -94,9 +94,13 @@ ps = (await pro('GET', '/state?day=' + today)).me.stats;
 assert.deepEqual(ps.balls.jc, { b: 1, s: 1, g: 0, n: 18 }, 'the other nine birdied in a second round completes silver');
 assert.deepEqual(ps.balls.hk, { b: 1, s: 1, g: 1, n: 9 }, 'nine under on a nine-hole course is gold');
 assert.ok(ps.trophies.some(t => t.id === 'bomb') && ps.trophies.some(t => t.id === 'snake') && !ps.trophies.some(t => t.id === 'tour'));
+assert.ok(ps.trophies.some(t => t.id === 'far') && !ps.trophies.some(t => t.id === 'far2'), 'holed from 160 yards: the hundred, not the two hundred');
 // course records in a clubhouse come from practice rounds: the full course and each nine, an eighteen counting for its nines
 const pc = (await pro('POST', '/club', { name: 'Pros', nick: 'Pro' })).code, cr = (await pro('GET', '/state?day=' + today + '&club=' + pc)).club;
 const rp = r => r && r.tot - r.par;
+assert.deepEqual([cr.records.out.yd, cr.records.out.nick, cr.records.out.k], [160, 'Pro', 'lp5'], 'the longest hole-out: putts do not count');
+await pro('POST', '/log', { rounds: [{ ...full('roundab1', 'ba', par => par, 18), kind: 'daily', holes: H18('ba', par => par).slice(0, 3).map((h, i) => i === 1 ? { ...h, s: 1, hf: 660, chip: 1 } : i === 2 ? { ...h, hf: 480, chip: 1 } : h) }] });
+{ const s2 = (await pro('GET', '/state?day=' + today + '&club=' + pc)); assert.equal(s2.club.records.out.yd, 220, 'beaten by an ace from 220'); assert.equal(s2.club.records.out.k, 'ba2'); assert.equal(s2.me.stats.trophies.find(t => t.id === 'far2').n, 1); assert.equal(s2.me.stats.trophies.find(t => t.id === 'far').n, 3, 'the 220 counts for the hundred as well'); }
 assert.deepEqual([rp(cr.records.courses.jc.f), rp(cr.records.courses.jc.a), rp(cr.records.courses.jc.b)], [-9, -9, -9], 'each nine birdied in a different round');
 assert.deepEqual([rp(cr.records.courses.hk.f), cr.records.courses.hk.a], [-9, undefined], 'a nine-hole course has one record');
 assert.deepEqual([rp(cr.records.courses.mu.f), rp(cr.records.courses.mu.a), rp(cr.records.courses.mu.b)], [1, 1, 0]); assert.equal(rp(cr.records.courses.lp.f), -1); assert.equal(cr.records.courses.jc.f.nick, 'Pro');

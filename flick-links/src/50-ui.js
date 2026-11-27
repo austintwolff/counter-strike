@@ -41,7 +41,7 @@ function titleCard(){matchQuit();const d=fetchKey(S.key),ids=todaysIds(d),seen=f
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
 ${saveStrip()}${matchStrip()}${clubStrip()}
-${[['Famous courses',COURSES.filter(c=>FAMOUS.includes(c.id))],['Fantasy, on real ground',COURSES.filter(c=>WILD.includes(c.id))],['Texas',COURSES.filter(c=>!FAMOUS.includes(c.id)&&!WILD.includes(c.id))]].map(([t,cs])=>`<p class="eyebrow">Practice · ${t}</p>
+${[['Famous courses',COURSES.filter(c=>FAMOUS.includes(c.id))],['Fantasy',COURSES.filter(c=>WILD.includes(c.id))],['Texas',COURSES.filter(c=>!FAMOUS.includes(c.id)&&!WILD.includes(c.id))]].map(([t,cs])=>`<p class="eyebrow">Practice · ${t}</p>
 <div class="pick">${cs.map(c=>{const n=['f','b','a'].map(p=>inPlay(c.id,p)).find(Boolean);return`<button class="btn green sm" data-act="course" data-c="${c.id}">${c.club}${n?'<small>In play · No. '+n+'</small>':''}</button>`}).join('')}</div>`).join('')}`,titleCard)}
 // a course with both nines asks which to play
 function courseCard(id){const c=COURSES.find(c=>c.id===id),opt=(p,l)=>{const hs=courseIds(id,p).map(INFO);
@@ -196,4 +196,4 @@ if(standalone)setInterval(async()=>{if(document.hidden||S.mode==='aim'||S.mode==
 
 if(location.hash==='#dev')for(const c of COURSES)if(LocalServer.SIZE[c.id]!==courseIds(c.id,'a').length)console.error('server/core.js SIZE is out of step for course '+c.id);
 if(location.hash==='#dev')for(const c of COURSES)if((LocalServer.RATING[c.id]||[]).filter(v=>v>0).length!==courseIds(c.id,'a').length)console.error('server/core.js has no course rating for every hole of '+c.id+': run node tools/rate_courses.js '+c.id);
-if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,INFO,courseIds,dailyIds,gameTable,demoKind,C,Net,refresh,startRange,setupShot,setBall,CHIPS,meterAt,groundAt,flightCarry,runOut,birdArt,BIRDS,wingSpan,stepBall,STEP,CLUBS,lieMult};
+if(location.hash==='#dev')window.__fl={S,cam,camT,fire,cur,lieAt,begin,startHole,overviewCam,closeSheet,COURSES,ALL,HOLE,INFO,courseIds,dailyIds,gameTable,demoKind,C,Net,refresh,startRange,setupShot,setBall,CHIPS,meterAt,groundAt,flightCarry,runOut,birdArt,BIRDS,wingSpan,stepBall,STEP,CLUBS,lieMult,MT};

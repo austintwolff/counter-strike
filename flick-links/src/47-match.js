@@ -4,12 +4,12 @@
 // Shot for shot, every shot goes up as the ball comes to rest and the server says whose turn is next; while it is the other's
 // turn the swing is held (S.hold), the phone asks every two seconds whether they have played, and their shot is shown as it
 // arrives: a second ball flying from where it lay to where it finished. MT.x is the server's latest copy of the match in play.
-const MT={x:null,card:null,timer:null,ghost:null,opp:null,seen:0,asked:false,carded:-1};
+const MT={x:null,card:null,timer:null,gt:null,ghost:null,opp:null,seen:0,asked:false,carded:-1};
 const matchIds=x=>x.holes.map(h=>ALL.findIndex(e=>e.c.id===h.k.slice(0,2)&&e.k+1===+h.k.slice(2)));
 const vsOf=x=>x[x.side==='a'?'bn':'an'],otherSide=x=>x.side==='a'?'b':'a',inMatch=()=>S.round&&S.round.type==='match',inLive=()=>inMatch()&&!!S.round.live;
 const courseName=id=>{const c=COURSES.find(c=>c.id===id);return c?c.club:id};
 // leaving a match round for anything else: stop asking, let go of the swing, and go back to the day's own pins
-function matchQuit(){clearTimeout(MT.timer);MT.timer=null;MT.x=null;MT.ghost=null;MT.opp=null;MT.seen=0;MT.asked=false;MT.carded=-1;S.hold=false;if(S.hkey){S.hkey=null;S.holes=[]}}
+function matchQuit(){clearTimeout(MT.timer);clearTimeout(MT.gt);MT.timer=null;MT.x=null;MT.ghost=null;MT.opp=null;MT.seen=0;MT.asked=false;MT.carded=-1;S.hold=false;if(S.hkey){S.hkey=null;S.holes=[]}}
 // How a match stands over the holes both have played ("You lead by 2 after 3"), and once all n are in, how it ended.
 function standing(mine,theirs,vs,n){const k=Math.min(mine.length,theirs.length),d=sum(theirs.slice(0,k))-sum(mine.slice(0,k)),end=k>=n;if(!k)return'';
   return(d===0?(end?'Match halved':'All square'):d>0?(end?'You won by ':'You lead by ')+d:vs+(end?' won by ':' leads by ')+(-d))+(end?'':' after '+k)}
@@ -114,11 +114,13 @@ function liveGot(x){const r=S.round;if(!inLive()||x.id!==r.mid||x.seq<MT.seen)re
   if(L&&L.side===o&&L.hi===S.hi&&!(wl&&wl.side===o&&wl.hi===L.hi&&wl.n===L.n)){const far=hyp(L.x-L.fx,L.y-L.fy);MT.ghost={...L,t0:performance.now(),dur:L.putt?clamp(far*120+700,800,2200):clamp(far*9+1100,1300,3400)};MT.opp=null;
     // the camera takes in their whole shot, then comes back
     if(far>1){camT.x=(L.fx+L.x)/2;camT.y=(L.fy+L.y)/2;camT.ay=.5;camT.s=Math.min(60,H*.55/Math.max(far*1.25,14))}
-    toast(r.vs,(L.in?'In the hole':L.c||'Played')+' · '+L.n,1600);return void setTimeout(liveNext,MT.ghost.dur+350)}
+    toast(r.vs,(L.in?'In the hole':L.c||'Played')+' · '+L.n,1600);clearTimeout(MT.gt);MT.gt=setTimeout(liveNext,MT.ghost.dur+350);return}
   liveNext()}
+// a tap while their shot is being shown cuts it short: their ball is put where it finished and play moves on
+function liveSkip(){if(!inLive()||!MT.ghost)return false;clearTimeout(MT.gt);liveNext();return true}
 function liveNext(){const x=MT.x,r=S.round;if(!x||!inLive()||x.id!==r.mid)return;const o=otherSide(x),po=x.pos[o];MT.ghost=null;MT.opp=x.hi===S.hi&&po&&!po.in?{x:po.x,y:po.y}:null;
   if(x.hi>S.hi||x.st==='done'){S.hold=true;hud();livePoll();if(MT.carded!==S.hi){MT.carded=S.hi;setTimeout(()=>{if(inLive()&&S.round===r&&MT.x&&MT.x.st!=='off')holeCard(r.scores[S.hi])},500)}return} // both are in: the hole's card, once
-  S.hold=x.turn!==x.side;hud();livePoll();if(!S.hold){if(S.mode==='ready')aimCam();yourTurn()}endAsk()}
+  S.hold=x.turn!==x.side;hud();livePoll();if(S.mode==='ready')aimCam();if(!S.hold)yourTurn();endAsk()} // the view goes back to my own ball either way
 // Keep asking: every two seconds while waiting on their shot, more slowly otherwise (there is then only a call to stop to hear of).
 function livePoll(){clearTimeout(MT.timer);const r=S.round,x=MT.x,quick=S.hold&&x&&x.hi===S.hi&&x.st==='on'&&$('scrim').hidden;MT.timer=setTimeout(async()=>{if(!inLive()||S.round!==r)return;
     if(!document.hidden){try{const j=await Net.call('GET','/match?id='+r.mid);if(!inLive()||S.round!==r)return;if(j.ok&&j.match.seq!==MT.seen)return liveGot(j.match)}catch(e){}endAsk()}livePoll()},quick?2000:5000)}

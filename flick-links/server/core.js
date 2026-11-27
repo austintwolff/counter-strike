@@ -50,7 +50,8 @@ function personal(rs,day,logs=[]){const tro={},add=(id,d)=>{(tro[id]=tro[id]||{i
   for(const p of plays){const H=p.holes,c=H[0].k.slice(0,2),n=H.length,tot=total(H.map(h=>h.s)),par=total(H.map(h=>h.par));let run=0,best=0;
     for(const h of H){if(h.s===1)add('ace',p.day);if(h.s-h.par<=-3)add('alb',p.day);
       if(h.s<h.par){best=Math.max(best,++run);const cc=h.k.slice(0,2);(bird[cc]=bird[cc]||new Set()).add(h.k)}else run=0;
-      if(!h.chip&&h.hf>=120)add('snake',p.day);if(h.chip&&h.hf>=150&&h.s>1)add('bomb',p.day)}
+      if(!h.chip&&h.hf>=120)add('snake',p.day);if(h.chip&&h.hf>=150&&h.s>1)add('bomb',p.day);
+      if(h.chip&&h.hf>=300)add('far',p.day);if(h.chip&&h.hf>=600)add('far2',p.day)} // holed from 100 and 200 yards: hf is in feet, and an ace counts
     if(best>=5)add('five',p.day);
     if(p.kind==='daily'&&n>=3&&H.every(h=>h.s<h.par))add('hat',p.day);
     if(n>=9&&H.every(h=>h.gir))add('green',p.day);
@@ -97,7 +98,11 @@ async function clubView(store,club,pid,day){const ms=await store.list('m:'+club.
     for(const[key,lo,hi]of n>9?[['f',1,18],['a',1,9],['b',10,18]]:[['f',1,9]]){const r=part(l.holes,c,lo,hi),cur=(courses[c]=courses[c]||{})[key];
       if(r&&(!cur||r.tot-r.par<cur.tot-cur.par))courses[c][key]={...r,nick:m.nick,day:l.day}}}
   for(const c in courses)if(!Object.keys(courses[c]).length)delete courses[c];
-  return{code:club.code,name:club.name,founder:club.owner===pid,member:members.some(m=>m.id===pid),count:members.length,today,standings,records:{low,courses,feed:feed.reverse().slice(0,12)}}}
+  // the longest shot holed that was not a putt, in any round on record; the first to do it holds it until it is beaten outright
+  let out=null;const shots=[];for(const m of members)for(const l of m.logs)for(const h of l.holes||[])if(h.chip&&h.hf>0)shots.push({m,l,h});
+  shots.sort((a,b)=>a.l.day<b.l.day?-1:a.l.day>b.l.day?1:(a.l.t||0)-(b.l.t||0));
+  for(const{m,l,h}of shots){const yd=Math.round(h.hf/3);if(!out||yd>out.yd)out={yd,nick:m.nick,day:l.day,k:h.k}}
+  return{code:club.code,name:club.name,founder:club.owner===pid,member:members.some(m=>m.id===pid),count:members.length,today,standings,records:{low,courses,out,feed:feed.reverse().slice(0,12)}}}
 async function state(store,ses,day,code){const out={me:null,club:null};
   if(ses){const rs=await roundsOf(store,ses.pid),logs=(await store.list('g:'+ses.pid+':')).map(x=>x.v),clubs=[];for(const c of ses.player.clubs||[]){const cl=await store.get('c:'+c);if(cl)clubs.push({code:c,name:cl.name})}
     out.me={id:ses.pid,user:ses.player.user||null,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day,logs),today:rs.find(r=>r.day===day)||null,matches:matchSummary(await matchesOf(store,ses.pid),ses.pid)}}

@@ -259,6 +259,21 @@ def build(path, probe=None):
     # "beaches": true keeps the map's sand as beach: it plays as sand, and nothing is mown on it
     strand = so.unary_union([sg.Polygon(f['p']).buffer(0) for f in F['sand'] if len(f['p']) > 2] or [sg.Polygon()]).intersection(box_).difference(water) if D.get('beaches') else sg.Polygon()
     if not strand.is_empty: houses = so.unary_union([houses, strand])
+    # "crests": {...}: a dune field. A photograph of white sand holds almost nothing but the crest lines of its dunes, a few levels
+    # brighter than the rest, and the speckle of what grows in the flats between them. Both are read off the sharper photograph:
+    # the ground is then painted from them (below), and nothing is mown across a crest.
+    #   "sand": [r, g, b], "flat": [r, g, b]   the dunes and the flats between      "shade": [r, g, b]   the lee of a crest
+    #   "lee": yards of shadow, "dark": how deep    "rise": yards of lit slope up to a crest    "keep": false to mow across crests
+    CR = None
+    if D.get('crests') is not None and D.get('fine') is not None:
+        Pz_ = np.load(os.path.join(CACHE, D['terrain'] + '.photo.npz')); kc = int(Pz_['k']); Lc = Pz_['rgb'][i0 * kc:i1 * kc, j0 * kc:j1 * kc].astype(np.float32).mean(2); fc = st / kc
+        Ls_ = ndi.gaussian_filter(Lc, 1.6); hp_ = Ls_ - ndi.gaussian_filter(Ls_, 40 / fc); z_ = hp_ / (np.sqrt(ndi.gaussian_filter(hp_ * hp_, 60 / fc)) + .3)
+        crest_ = ndi.gaussian_filter(np.clip((z_ - D['crests'].get('from', .9)) / 1.6, 0, 1), .8); f_ = Lc - ndi.gaussian_filter(Lc, 1.2); tex_ = np.sqrt(ndi.gaussian_filter(f_ * f_, 6 / fc))
+        lo_, hi_ = np.percentile(tex_, 55), np.percentile(tex_, 92); int_ = ndi.gaussian_filter(np.clip((tex_ - lo_) / max(hi_ - lo_, 1e-3), 0, 1), 7 / fc)
+        CR = {'crest': crest_, 'tex': tex_, 'f': f_, 'k': kc, 'flats': int_.reshape(E.shape[0], kc, E.shape[1], kc).mean((1, 3)) > .3}
+        if D['crests'].get('keep', True):
+            cm_ = ndi.binary_opening(crest_ > .3, iterations=1); cm_ = cm_.reshape(E.shape[0], kc, E.shape[1], kc).max((1, 3)); ridges = so.unary_union(shapes_of(ndi.binary_dilation(cm_, iterations=1), 1.2, 40, .8)) if cm_.any() else sg.Polygon()
+            houses = so.unary_union([houses, ridges])
     seen = so.unary_union([wet, crag.buffer(6), cold.buffer(3), trails, houses, washes])
     bad = so.unary_union([wet, crag.buffer(6), cold.buffer(3), tilted, trails, houses, washes]); edge_g = so.unary_union([water.buffer(1.5), crag.buffer(6), cold.buffer(3), tilted, trails, houses, washes] + runs)
     # what a green keeps its distance from: six yards of ground between it and water, ten from a cliff's edge, less from the rest
@@ -268,6 +283,7 @@ def build(path, probe=None):
         px, py, R = probe; room = ndi.distance_transform_edt(~raster(edge_g.buffer(2.5))) * st - 2.5; peak = (room == ndi.maximum_filter(room, 7)) & (np.hypot(XX - px, YY - py) <= R) & (room >= 6)
         dd = np.hypot(XX - px, YY - py); i, j = np.unravel_index(np.argmin(dd), dd.shape); roomg = ndi.distance_transform_edt(~raster(edge_far.buffer(2.5))) * st - 2.5
         print('  at the point itself: room for a tee %s, for a green of %d yd' % ('yes' if room[i, j] >= 8 else 'no', max(roomg[i, j], 0)))
+        print('  yards from the point to: ' + ', '.join('%s %d' % (k_, g_.distance(sg.Point(px, py))) for k_, g_ in (('water', water), ('a cliff', crag), ('snow', cold), ('a slope too steep to mow', tilted), ('a trail', trails), ('a roof or beach', houses), ('a wash', washes)) if not g_.is_empty))
         for need, what, rm in ((8, 'a tee', room), (11.5, 'a small green (10 yd)', roomg), (17, 'a full green (15 yd)', roomg)):
             ok = np.where(rm >= need, dd, 1e9); i, j = np.unravel_index(np.argmin(ok), ok.shape)
             if ok[i, j] < 1e9: print('  nearest room for %s: [%d, %d], %d yd away' % (what, xs[j], ys[i], ok[i, j]))
@@ -417,10 +433,12 @@ def build(path, probe=None):
         #    "solid": true for trees a ball cannot pass through (they go to the game as single trees, by species)}
         g1 = (exg > D2.get('green', .05)) & (lum > 30) & free; nz = ndi.gaussian_filter(rngv.random(E.shape), 9); nz = (nz - nz.mean()) / nz.std()
         masks = {'dark': g1 & (lum < D2.get('dark', 92)), 'meadow': (exg > D2.get('meadow', .1)) & (lum >= D2.get('dark', 92)) & free, 'green': g1, 'free': free, 'patchy': free & (nz > -.4), 'dim': free & (lum < D2.get('dark', 92)), 'pale': free & (lum >= D2.get('dark', 92))}
+        if CR is not None: masks['flats'] = free & CR['flats']  # the flats between dunes, where things grow
         for r in D['strew']:
             m = masks[r.get('on', 'green')] & (SL < r.get('flat', 90))
             if 'near' in r: m = m & (dstream < r['near'])
             if 'far' in r: m = m & (dstream >= r['far'])
+            if r.get('woods') is False: m = m & ~raster(so.unary_union([sg.Polygon(q).buffer(0) for q in D.get('woods', [])] or [sg.Polygon()]).buffer(r.get('clear', 14)))  # "woods": false keeps a solid tree out of the lost-ball forest and off its edge, where it would knock a good shot down into it
             if r.get('woods'): m = m & raster(so.unary_union([sg.Polygon(q).buffer(0) for q in D.get('woods', [])] or [sg.Polygon()]))  # only inside the forest said by hand
             if 'above' in r: m = m & (E * 3 >= r['above'])
             if 'below' in r: m = m & (E * 3 < r['below'])
@@ -439,7 +457,9 @@ def build(path, probe=None):
     # The masks above are on a three-yard grid, which a trail or a creek can slip through. Each plant is checked again against
     # the true outlines: none stands on a trail, in a creek or the water, on a roof, on a cliff or on anything mown.
     from shapely.prepared import prep
-    off_ = prep(so.unary_union([trails.buffer(.8), houses.buffer(-3), water.buffer(1), crag.buffer(2), washes, turf.buffer(2)] + runs)); sc = [q for q in sc if not off_.contains(sg.Point(q[0], q[1]))]
+    # (on finely painted ground nothing grows at the very edge of a snowfield either: a pine there stands on the white)
+    icy_ = [so.unary_union(shapes_of(snow, 1.4, 70)).buffer(5)] if D.get('fine') is not None and snow.any() else []
+    off_ = prep(so.unary_union([trails.buffer(.8), houses.buffer(-3), water.buffer(1), crag.buffer(2), washes, turf.buffer(2)] + runs + icy_)); sc = [q for q in sc if not off_.contains(sg.Point(q[0], q[1]))]
     out['scatter'] = sc; out['kinds'] = kinds
     # single trees that stop a ball (the big ones), kept a little further off the turf so none stands in a fairway
     if solid_: far_ = prep(turf.buffer(7)); out['trees'] = [q for q in solid_ if not off_.contains(sg.Point(q[0], q[1])) and not far_.contains(sg.Point(q[0], q[1]))]
@@ -507,13 +527,107 @@ def build(path, probe=None):
         if D.get('depth'):
             deep = np.clip((ndi.maximum_filter(Es, size=int(360 / st)) - Es) * 3 / D['depth'], 0, 1); deep = ndi.gaussian_filter(deep, 3)[..., None]; col = col * (1 - .42 * deep) + np.array([38, 44, 70]) * (.42 * deep)
         lit = (.56 + .6 * SH) * (1 - .12 * np.clip((SL - 30) / 25, 0, 1)) * (1 + .03 * fine)
+    box_r = [round(float(xs[0]), 1), round(float(ys[0]), 1), round(len(xs) * st, 1), round(len(ys) * st, 1)]; rs0 = 3
+    if D.get('fine') is not None and look != 'canyon':
+        # "fine": {...} paints the ground from the sharper photograph (tools/terrain.py photo) on a grid twice as fine, and keeps
+        # what the photograph shows instead of smoothing it to a tone: the crowns of a forest, surf on a beach, the ripples in a
+        # dune field, the rings of a hot spring. Its large light and dark still give way to the game's own light ("keep"); only
+        # the detail, finer than "over" yards, is kept whole.
+        #   "detail": how much of that fine light and dark is kept (1 is all of it; more than 1 draws it stronger)
+        #   "over": yards: what counts as detail            "brush": 0, 2 or 4: laid on in flat dabs like paint, so it is not noisy
+        #   "water": true                                   the photograph's own water is left in the picture (th.wat.clear shows it)
+        #   "rock": 0 to 1                                  how much of the photograph's detail shows through painted "strata"
+        Fn = D['fine']; Pz = np.load(os.path.join(CACHE, D['terrain'] + '.photo.npz')); kf = int(Pz['k']); fs_ = st / kf; RF = Pz['rgb'][i0 * kf:i1 * kf, j0 * kf:j1 * kf].astype(np.float32)
+        up = lambda a_, o_=1: ndi.zoom(np.asarray(a_, np.float32), kf, order=o_, mode='nearest', grid_mode=True)
+        br_ = Fn.get('brush', 2)
+        if br_:
+            # each cell takes the average of whichever of the four squares cornered on it is the most even: edges stay sharp and
+            # everything between them goes flat, like a dab of paint
+            n_ = br_ + 1; Lr = RF.mean(2); mL = ndi.uniform_filter(Lr, n_, mode='nearest'); vL = ndi.uniform_filter(Lr * Lr, n_, mode='nearest') - mL * mL; mC = [ndi.uniform_filter(RF[..., c], n_, mode='nearest') for c in range(3)]; h_ = br_ // 2
+            best = None; PF = np.zeros_like(RF)
+            for dy_ in (-h_, h_):
+                for dx_ in (-h_, h_):
+                    v_ = np.roll(vL, (dy_, dx_), (0, 1)); take = v_ < best if best is not None else np.ones(v_.shape, bool); best = np.where(take, v_, best) if best is not None else v_
+                    for c in range(3): PF[..., c] = np.where(take, np.roll(mC[c], (dy_, dx_), (0, 1)), PF[..., c])
+        else: PF = RF
+        Wf = up(W) > .5
+        # "even": [cells, levels]: ground that is nearly one tone over that many cells is smoothed to it, and anything that differs
+        # by much more than "levels" is left sharp. It takes out the photograph's grain and the squares its compression leaves in
+        # flat water and shade, without softening a shoreline or a cliff edge.
+        if Fn.get('even'):
+            n_ = 2 * int(Fn['even'][0]) + 1; eps_ = float(Fn['even'][1]) ** 2; box = lambda a_: ndi.uniform_filter(a_, n_, mode='nearest'); ev = []
+            for c in range(3): p_ = PF[..., c]; m_ = box(p_); a_ = np.maximum(box(p_ * p_) - m_ * m_, 0); a_ = a_ / (a_ + eps_); ev.append(box(a_) * p_ + box(m_ * (1 - a_)))
+            PF = np.stack(ev, -1)
+        Lp = PF.mean(2) + 1; L0 = ndi.gaussian_filter(Lp, Fn.get('over', 9) / fs_); Chr = PF / Lp[..., None]
+        # "shadows": [below, lift, reach yd]: what the photograph has in deep shadow (a canyon at noon, the foot of a headwall, the
+        # north side of a ridge) is blue and nearly black. Ground darker than "below" over a wide area takes its colour from the
+        # sunlit ground within reach, and "lift" of its brightness; the game's own light then shades it like everything else.
+        if Fn.get('shadows'):
+            b_, lift_, reach_ = (list(Fn['shadows']) + [.8, 45])[:3]; ws = np.clip((b_ - L0) / (b_ * .45), 0, 1) * (~Wf if Fn.get('water') else 1); sun = 1 - np.clip(ws * 3, 0, 1) * 1.0; sun = sun * (~Wf); sg_ = reach_ / fs_
+            den = ndi.gaussian_filter(sun, sg_) + ndi.gaussian_filter(sun, sg_ * 4) * .05 + 1e-4; fld = lambda a_: (ndi.gaussian_filter(a_ * sun, sg_) + ndi.gaussian_filter(a_ * sun, sg_ * 4) * .05) / den
+            Cs = np.stack([fld(Chr[..., c]) for c in range(3)], -1); Ls = fld(L0); Chr = Chr * (1 - ws[..., None]) + Cs * ws[..., None]; dk = Lp / L0; L0 = L0 + ws * lift_ * np.maximum(Ls - L0, 0); Lp = L0 * (1 + (ndi.gaussian_filter(dk, 1.2) - 1) * (1 - ws) ** 2)  # no detail is kept from deep shadow: lifted that far it is only the photograph's compression
+        tgt = D.get('tone', 158) + D.get('keep', .32) * (L0 - 150); det = np.clip(Lp / L0, Fn.get('floor', .35), 2.2) ** Fn.get('detail', 1.0)  # "floor": how dark the photograph's own small shadows may go
+        col = Chr * (tgt * det)[..., None]
+        # "shade": [r, g, b, below]: deep shade in an aerial photograph is lit by the sky and comes out blue or violet. Whatever is
+        # darker than "below" is pulled toward this colour instead (the dark of a forest, the brown of a canyon), the darker the more.
+        if Fn.get('shade'):
+            sh_ = np.array(Fn['shade'][:3], float); w_ = (np.clip((Fn['shade'][3] - Lp) / (Fn['shade'][3] * .6), 0, 1) * (1 if Fn.get('water') is None else ~Wf))[..., None]; col = col * (1 - w_) + col.mean(2, keepdims=True) / sh_.mean() * sh_ * w_
+        # "tints": [[r, g, b, from, to, amount], ...]: ground whose brightness in the photograph lies between "from" and "to" is
+        # pulled this far toward a colour, keeping its light and dark: a forest photographed bare in winter made green again, pale
+        # rock given the pink of its granite. Water the photograph is trusted with is left alone.
+        for tn in Fn.get('tints', []):
+            c_ = np.array(tn[:3], float); e_ = max(6.0, (tn[4] - tn[3]) * .18); w_ = (np.clip((Lp - tn[3]) / e_, 0, 1) * np.clip((tn[4] - Lp) / e_, 0, 1) * tn[5] * (~Wf if Fn.get('water') else 1))[..., None]
+            col = col * (1 - w_) + col.mean(2, keepdims=True) / c_.mean() * c_ * w_
+        # "pools": [r, g, b, amount]: the colour water set down by hand ("pools") is pulled toward, when the photograph's own is wrong
+        if Fn.get('pools') and pools_:
+            c_ = np.array(Fn['pools'][:3], float); im_ = Image.new('L', (RF.shape[1], RF.shape[0]), 0); d_ = ImageDraw.Draw(im_)
+            for g_ in pools_:
+                for q_ in (g_.geoms if hasattr(g_, 'geoms') else [g_]): d_.polygon([((x - xs[0] + st / 2) / fs_, (y - ys[0] + st / 2) / fs_) for x, y in q_.exterior.coords], fill=255)
+            w_ = (ndi.gaussian_filter(np.asarray(im_, np.float32) / 255, 1.5) * Fn['pools'][3])[..., None]; col = col * (1 - w_) + col.mean(2, keepdims=True) / c_.mean() * c_ * w_
+        # "soft": cells: the photograph's last grain smoothed away, so that magnified it reads as paint, not as pixels.
+        # "crisp": how hard the edges are then drawn back
+        if Fn.get('soft'): col = ndi.gaussian_filter(col, (Fn['soft'], Fn['soft'], 0))
+        if Fn.get('crisp'): col = col + Fn['crisp'] * (col - ndi.gaussian_filter(col, (2.2, 2.2, 0)))
+        SLf = up(SL); SHf = up(SH); ftf = up(ft); slowf = up(slow); finef = ndi.gaussian_filter(rr.random(Wf.shape), 1.2); finef = (finef - finef.mean()) / finef.std()
+        if not Fn.get('water'):
+            near_w = ndi.binary_dilation(Wf, iterations=9 * kf); blue = (PF[..., 2] > PF[..., 0] + 6) & (PF[..., 2] >= PF[..., 1] - 2); stain = Wf | (near_w & blue) | ndi.binary_dilation(Wf, iterations=2 * kf); okc = (~(near_w & blue) & ~Wf).astype(np.float32)
+            wsum = ndi.gaussian_filter(okc, 10 * kf) + 1e-4; land = np.stack([ndi.gaussian_filter(col[..., c] * okc, 10 * kf) / wsum for c in range(3)], -1); col = np.where(stain[..., None], land, col)
+        grey = col.mean(2, keepdims=True); col = grey + (col - grey) * D.get('sat', 1.25)
+        if D.get('wash'): wr_ = np.array(D['wash'][:3], float); g_ = col.mean(2, keepdims=True); col = col * (1 - D['wash'][3]) + g_ / wr_.mean() * wr_ * D['wash'][3]
+        if D.get('strata'):
+            f2 = ftf + slowf * 14; tab = D['strata']; rock_ = np.stack([np.interp(f2, [t[0] for t in tab], [t[1][c] for t in tab]) for c in range(3)], -1)
+            wf = np.clip((SLf - D.get('strata_from', 14)) / D.get('strata_over', 13), 0, 1)[..., None] * D.get('strata_mix', .85); band = (.5 + .5 * np.sin(ftf / D.get('band', 6.5) + slowf * .8))[..., None]
+            col = col * (1 - wf) + rock_ * (1 - .2 * band) * (1 + Fn.get('rock', .7) * (det[..., None] - 1)) * wf
+        if D.get('depth'):
+            deep = np.clip((ndi.maximum_filter(Es, size=int(360 / st)) - Es) * 3 / D['depth'], 0, 1); deep = up(ndi.gaussian_filter(deep, 3))[..., None]; col = col * (1 - .42 * deep) + np.array([38, 44, 70]) * (.42 * deep)
+        lit = (.56 + .6 * SHf) * (1 - .12 * np.clip((SLf - 30) / 25, 0, 1)) * (1 + .03 * finef)
+        xs_f = xs[0] - st / 2 + fs_ / 2 + np.arange(len(xs) * kf) * fs_; ys_f = ys[0] - st / 2 + fs_ / 2 + np.arange(len(ys) * kf) * fs_; XX, YY = np.meshgrid(xs_f, ys_f); slow, fine = slowf, finef
+        box_r = [round(float(xs[0] - st / 2), 2), round(float(ys[0] - st / 2), 2), round(len(xs) * st, 1), round(len(ys) * st, 1)]; rs0 = fs_
+    if CR is not None:
+        # The dunes are built up again from their crest lines: a long slope climbing to each crest from upwind, a short slip face
+        # falling away beyond it, then lit like any other ground. "wind": the bearing it blows toward; "high", "slip", "run": the
+        # height of a dune, the width of its slip face and the length of its windward slope, in yards.
+        Cq = D['crests']; cm_ = ndi.binary_closing(CR['crest'] > Cq.get('at', .3), iterations=3); lab_, n_ = ndi.label(cm_, np.ones((3, 3))); sz_ = ndi.sum(cm_, lab_, range(1, n_ + 1)); cm_ = np.isin(lab_, [k + 1 for k, v in enumerate(sz_) if v >= Cq.get('least', 60)])
+        cf_ = np.clip(ndi.gaussian_filter(cm_.astype(np.float32), 1.3) * 1.9, 0, 1); wb = math.radians(Cq.get('wind', 45)); wx_, wy_ = math.sin(wb), -math.cos(wb); Hc = Cq.get('high', 7.0); run_ = Cq.get('run', 30.0); slip_ = Cq.get('slip', 9.0); hgt = cf_.copy()
+        # upwind of a crest the sand climbs to it over "run" yards; downwind it drops away within "slip"
+        # (carried upwind a cell at a time and spread a little sideways at each, so a dune's flanks fade out instead of ending in a line)
+        up_ = cf_.copy()
+        for t_ in np.arange(fs_, run_ * 3.2, fs_): up_ = ndi.shift(ndi.gaussian_filter(up_, Cq.get('spread', .95)), (-wy_, -wx_), order=1, mode='nearest') * math.exp(-fs_ / run_); hgt = np.maximum(hgt, up_)
+        for t_ in np.arange(fs_, slip_, fs_): hgt = np.maximum(hgt, ndi.shift(cf_, (wy_ * t_ / fs_, wx_ * t_ / fs_), order=1, mode='nearest') * (1 - t_ / slip_))
+        hgt = ndi.gaussian_filter(hgt * Hc + slowf * .4, .7); gy_, gx_ = np.gradient(hgt, fs_); al_ = math.radians(Cq.get('sun', 36)); shd = ((gx_ * .62 * math.cos(al_) + gy_ * .78 * math.cos(al_) + math.sin(al_)) / np.sqrt(gx_ * gx_ + gy_ * gy_ + 1)).clip(0, 1) / math.sin(al_)
+        t_ = CR['tex']; lo_, hi_ = np.percentile(t_, 55), np.percentile(t_, 92); inter = ndi.gaussian_filter(np.clip((t_ - lo_) / max(hi_ - lo_, 1e-3), 0, 1), 7 / fs_) * np.clip(1 - hgt / (Hc * .35), 0, 1)
+        sand_ = np.array(Cq.get('sand', [240, 238, 232]), float); flat_ = np.array(Cq.get('flat', [218, 208, 186]), float); shade_ = np.array(Cq.get('shade', [150, 170, 204]), float); fl_ = (inter * Cq.get('flats', .7))[..., None]
+        col = sand_ * (1 - fl_) + flat_ * fl_; col = col * (.72 + .28 * np.clip(shd, 0, 1.35))[..., None]; dk_ = (np.clip((.86 - shd) * Cq.get('dark', 1.5), 0, .85))[..., None]; col = col * (1 - dk_) + shade_ * dk_
+        # what grows in the flats: a scatter of dark specks, thicker where the photograph is roughest
+        sp_ = ndi.gaussian_filter((rr.random(cm_.shape) < .012 * inter).astype(np.float32), .7); col = col * (1 - np.clip(sp_ * 2.4, 0, .5))[..., None] + np.array([96, 104, 74]) * np.clip(sp_ * 2.4, 0, .5)[..., None]
+        lit = (1 + .012 * finef) * np.ones_like(hgt); CR['inter'] = inter
     if D.get('dunes'):
         # "dunes": [wavelength yd, wind bearing degrees, strength]: dune crests the heights are too coarse to hold, drawn as light and
         # shade across the wind: a long lit slope up to each crest and a short dark slip face beyond it
         lam_, ang_, amp_ = D['dunes']; ca_, sa_ = math.cos(math.radians(ang_)), math.sin(math.radians(ang_)); ph_ = (XX * ca_ + YY * sa_) / lam_ * 6.283 + 2.6 * slow + .5 * fine
         lit = lit * (1 + amp_ * (np.cos(ph_) + .55 * np.cos(2 * ph_ + .9) + .25 * np.cos(3 * ph_ + 1.7)))
-    img = (col * lit[..., None]).clip(0, 255).astype(np.uint8); rs = D.get('relief_step', 3); im = Image.fromarray(img).resize((int(len(xs) * st / rs), int(len(ys) * st / rs)), Image.LANCZOS)
-    buf = io.BytesIO(); im.save(buf, 'WEBP', quality=D.get('quality', 78), method=6); out['relief'] = {'box': [round(float(xs[0]), 1), round(float(ys[0]), 1), round(len(xs) * st, 1), round(len(ys) * st, 1)], 'src': 'data:image/webp;base64,' + base64.b64encode(buf.getvalue()).decode()}
+    img = (col * lit[..., None]).clip(0, 255).astype(np.uint8); rs = D.get('relief_step', rs0); im = Image.fromarray(img).resize((int(len(xs) * st / rs), int(len(ys) * st / rs)), Image.LANCZOS)
+    buf = io.BytesIO(); im.save(buf, 'WEBP', quality=D.get('quality', 78), method=6); out['relief'] = {'box': box_r, 'src': 'data:image/webp;base64,' + base64.b64encode(buf.getvalue()).decode()}
     im.save(os.path.join(CACHE, cid + '.relief.png'))
     # ledges: level lines across the steep faces only, which is where the rock shows its layers
     face = crag.buffer(-1.5)

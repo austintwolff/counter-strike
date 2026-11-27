@@ -21,11 +21,14 @@ const DAYS = 16, CORE = path.join(__dirname, '..', 'server', 'core.js');
   await p.evaluate(() => { const f = __fl, S = f.S, Q = []; window.setTimeout = fn => { Q.push(fn); return 0; }; // nothing waits: what the game would do later is done at once
     const BAD = { water: 1, void: 1, ob: 1, woods: 1 }, COST = { green: -4, fringe: 0, fairway: 0, tee: 0, rough: 7, native: 11, bunker: 15, creekbed: 11, snow: 15 };
     // where a shot should finish, by the game's own reckoning (no wind)
-    const fate = (h, b, c, p, a) => { const ux = Math.cos(a), uy = Math.sin(a), flat = p * c.carry * f.lieMult(S.lie, c) * (c.bomb || 1), car = f.flightCarry(h, b, ux, uy, flat, c.loft), L = { x: b.x + ux * car, y: b.y + uy * car }, l0 = f.lieAt(h, L);
+    // A ball lost on a line is not sent down the same line again from the same spot. The pro reckons without trees and without the
+    // last few yards of run, so a line it thinks just safe can be one that is lost every time; a golfer would learn that at once.
+    let dead = [];
+    const fate = (h, b, c, p, a) => { if (dead.some(q => Math.hypot(q.x - b.x, q.y - b.y) < 2 && Math.abs(q.a - a) < .1)) return null; const ux = Math.cos(a), uy = Math.sin(a), flat = p * c.carry * f.lieMult(S.lie, c) * (c.bomb || 1), car = f.flightCarry(h, b, ux, uy, flat, c.loft), L = { x: b.x + ux * car, y: b.y + uy * car }, l0 = f.lieAt(h, L);
       if (BAD[l0]) return null; const run = f.runOut(h, L, ux, uy, flat, c), E = { x: L.x + ux * run, y: L.y + uy * run }, l1 = f.lieAt(h, E); if (BAD[l1] || BAD[f.lieAt(h, { x: E.x + ux * 1.5, y: E.y + uy * 1.5 })]) return null;
       return { E, lie: l1, left: Math.hypot(h.pin.x - E.x, h.pin.y - E.y) }; };
-    window.playHole = (id, day) => { S.key = day; S.holes.length = 0; S.round = { type: 'nine', ids: [id, id], scores: [], course: null, part: 'f', log: [] }; f.startHole(0); S.mode = 'ready'; Q.length = 0; let n = 0;
-      while (S.round.scores[0] == null && n++ < 24) { const h = f.cur(), B = S.ball, dx = h.pin.x - B.x, dy = h.pin.y - B.y, d = Math.hypot(dx, dy) || 1e-6, a0 = Math.atan2(dy, dx);
+    window.playHole = (id, day) => { S.key = day; S.holes.length = 0; S.round = { type: 'nine', ids: [id, id], scores: [], course: null, part: 'f', log: [] }; f.startHole(0); S.mode = 'ready'; Q.length = 0; dead = []; let n = 0;
+      while (S.round.scores[0] == null && n++ < 24) { let shot = null; const from = { x: S.ball.x, y: S.ball.y }; const h = f.cur(), B = S.ball, dx = h.pin.x - B.x, dy = h.pin.y - B.y, d = Math.hypot(dx, dy) || 1e-6, a0 = Math.atan2(dy, dx);
         if (S.club.putt) { S.mark = { x: h.pin.x + dx / d * Math.min(.6, d * .1), y: h.pin.y + dy / d * Math.min(.6, d * .1) }; f.fire(1, { x: dx / d, y: dy / d }, 0, null, 0, 1); }
         else { let best = null; const list = S.clubs.filter(c => !c.putt).flatMap(c => c.style != null ? f.CHIPS : [c]);
           // how much of the hole is left from a point, measured along its line
@@ -43,9 +46,12 @@ const DAYS = 16, CORE = path.join(__dirname, '..', 'server', 'core.js');
           if (!best) along(); // nowhere safe on any line near the flag's: play along the hole instead
           if (!best) best = { c: S.club, pw: Math.min(1, d / (S.club.carry * (1 + S.club.roll))), a: a0 }; // nowhere safe: straight at it
           if (window.__trace) __trace.push('shot ' + (S.strokes + 1) + ' from ' + S.lie + ', ' + Math.round(d) + ' to the pin: ' + best.c.name + ' at ' + Math.round(best.pw * 100) + '%' + (best.cost == null ? ' (nowhere safe)' : ''));
-          S.club = best.c; f.fire(best.pw, { x: Math.cos(best.a), y: Math.sin(best.a) }, 0, null, 0, 1); }
+          if (window.__trace) __trace.push('   ball ' + Math.round(B.x) + ',' + Math.round(B.y) + ' aim ' + Math.round(best.a * 57.3) + ' deg, expects ' + JSON.stringify(fate(h, B, best.c, best.pw, best.a), (k, v) => typeof v === 'number' ? Math.round(v) : v));
+          shot = best.a; S.club = best.c; f.fire(best.pw, { x: Math.cos(best.a), y: Math.sin(best.a) }, 0, null, 0, 1); }
         let k = 0; while (S.mode === 'flight' && k++ < 200000) f.stepBall(f.STEP);
+        if (window.__trace) __trace.push('   came to rest ' + Math.round(S.ball.x) + ',' + Math.round(S.ball.y) + ' ' + f.lieAt(f.cur(), S.ball) + (S.ball.tree ? ' (hit a tree)' : ''));
         if (S.round.scores[0] == null) while (Q.length) Q.shift()(); // a penalty drop, taken at once
+        if (shot != null && S.round.scores[0] == null && Math.hypot(S.ball.x - from.x, S.ball.y - from.y) < 2) dead.push({ x: from.x, y: from.y, a: shot }); // lost, and played again from where it was
         if (S.mode !== 'ready' && S.round.scores[0] == null) break; }
       Q.length = 0; return S.round.scores[0] == null ? null : S.round.scores[0]; }; });
   // node tools/rate_courses.js --trace <id> <hole number>: one play of one hole, shot by shot

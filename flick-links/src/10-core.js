@@ -35,6 +35,9 @@ const TEX=(()=>{const r=mulberry32(4242),T={};
   // tufts for rough seen up close, and straw for prairie grass
   T.tuft=tex(128,128,(g,w,h)=>{g.lineCap='round';for(let i=0;i<420;i++){const x=r()*w,y=r()*h,l=2+r()*4,a=-1.57+(r()-.5)*1.1;g.strokeStyle=r()<.55?`rgba(8,34,6,${.16+r()*.2})`:`rgba(214,240,150,${.1+r()*.16})`;g.lineWidth=.8+r()*.8;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke()}});
   T.straw=tex(128,128,(g,w,h)=>{g.lineCap='round';for(let i=0;i<520;i++){const x=r()*w,y=r()*h,l=3+r()*7,a=.5+(r()-.5)*.9;g.strokeStyle=r()<.5?`rgba(90,70,20,${.14+r()*.2})`:`rgba(250,232,160,${.14+r()*.22})`;g.lineWidth=.7+r()*.7;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke()}});
+  // wind ripples in sand, and the speckle of bare stony ground: fine detail for a painted ground that is soft when seen close
+  {const r=mulberry32(5151);T.ripple=tex(128,128,(g,w,h)=>{g.lineWidth=1.1;for(let y=0;y<h;y+=8){const ph=r()*TAU,k=1+Math.floor(r()*2),a=1.4+r()*1.6;for(const[dy,c]of[[1.2,`rgba(96,118,160,${.2+r()*.14})`],[0,`rgba(255,255,255,${.5+r()*.3})`]]){g.strokeStyle=c;g.beginPath();for(let x=0;x<=w;x+=4)g.lineTo(x,y+dy+Math.sin(x/w*TAU*k+ph)*a);g.stroke()}}});
+  T.stone=tex(128,128,(g,w,h)=>{for(let i=0;i<1300;i++){g.fillStyle=r()<.55?`rgba(30,20,10,${.1+r()*.2})`:`rgba(255,246,226,${.1+r()*.2})`;const s=.8+r()*1.8;g.fillRect(r()*w,r()*h,s,s*(.6+r()*1.2))}})}
   return T})();
 const PAT={};for(const k in TEX)PAT[k]=ctx.createPattern(TEX[k],'repeat');
 // Texas trees seen from above. Each is a cluster of leafy clumps lit from the north-west; the recipe sets its character:
@@ -61,8 +64,18 @@ function treeSprite(kind,seed){const t=TREES[kind];return tex(128,128,g=>{const 
 function starSprite(seed,pal,soft,kk){return tex(128,128,g=>{const r=mulberry32(seed),n=(soft?13:9)+Math.floor(r()*4),rot=r()*TAU;
   const star=(R,k,col,dx)=>{g.fillStyle=col;g.beginPath();for(let i=0;i<n*2;i++){const a=rot+i/(n*2)*TAU,d=i%2?R*k*(.85+r()*.3):R*(.86+r()*.14);g.lineTo(64+dx+Math.cos(a)*d,64+dx+Math.sin(a)*d)}g.closePath();g.fill()};
   const k=kk||(soft?.74:.58);star(50,k,pal[0],3);star(47,k-.02,pal[1],0);star(36,k-.08,pal[2],-4);g.globalAlpha=.85;star(22,k-.13,pal[3],-8);g.globalAlpha=1;g.fillStyle=pal[4];g.beginPath();g.arc(54,54,4,0,TAU);g.fill()})}
-TREES.pine={size:.9};TREES.cypress={size:.84};TREES.palm={size:.62};TREES.agave={size:1};
+TREES.pine={size:.9};TREES.cypress={size:.84};TREES.palm={size:.62};TREES.agave={size:1};TREES.sequoia={size:1};
+// A giant sequoia: heavy boughs in a ring, and in the middle of them the top of a cinnamon trunk as wide as a road.
+function sequoiaSprite(seed){return tex(128,128,g=>{const r=mulberry32(seed),pal=['#14301f','#25492c','#3b6a3a','#6f9a54'],n=9+Math.floor(r()*3),rot=r()*TAU,cl=[];
+  for(let i=0;i<n;i++){const a=rot+i/n*TAU+(r()-.5)*.3,d=27+r()*8;cl.push({x:64+Math.cos(a)*d,y:64+Math.sin(a)*d,r:15+r()*5})}
+  for(let i=0;i<4;i++){const a=r()*TAU,d=10+r()*8;cl.push({x:64+Math.cos(a)*d,y:64+Math.sin(a)*d,r:11+r()*4})}
+  const lay=(col,k,sh)=>{g.fillStyle=col;for(const c of cl){g.beginPath();g.arc(c.x+sh*c.r,c.y+sh*c.r,c.r*k,0,TAU);g.fill()}};
+  lay(pal[0],1,.08);lay(pal[1],.9,-.02);lay(pal[2],.6,-.24);g.globalAlpha=.8;lay(pal[3],.26,-.46);g.globalAlpha=1;
+  g.fillStyle='rgba(20,10,4,.5)';g.beginPath();g.arc(66.5,66.5,13,0,TAU);g.fill();g.fillStyle='#8c4424';g.beginPath();g.arc(64,64,12,0,TAU);g.fill();
+  g.fillStyle='#b9683c';g.beginPath();g.arc(61.5,61.5,8.5,0,TAU);g.fill();g.fillStyle='#d99a66';g.beginPath();g.arc(59.5,59.5,3.6,0,TAU);g.fill();
+  g.strokeStyle='rgba(60,26,10,.5)';g.lineWidth=1.1;for(let i=0;i<9;i++){const a=i/9*TAU+rot;g.beginPath();g.moveTo(64+Math.cos(a)*4,64+Math.sin(a)*4);g.lineTo(64+Math.cos(a)*12,64+Math.sin(a)*12);g.stroke()}})}
 const SPR={agave:[81,82,83,84].map(x=>starSprite(x,['#2f4036','#4a6656','#74947e','#b4cbaa','#d9c264'],false,.26)),palm:[71,72,73,74].map(x=>starSprite(x,['#1c3a1c','#2c6a2e','#4a973f','#84c45c','#8a7a4a'],false,.3)),pine:[41,42,43,44].map(x=>starSprite(x,['#12281c','#1e4028','#2c5a34','#44774a','#5c8c58'])),cypress:[61,62,63,64].map(x=>starSprite(x,['#1b3a20','#2c6431','#479043','#7cc061','#a6dc84'],true)),
+  sequoia:[91,92,93,94].map(sequoiaSprite),
   shadow:tex(64,64,g=>softDot(g,32,32,32,'6,18,8',.62)),
   rock:[31,32,33].map(s=>tex(96,96,g=>{const r=mulberry32(s),n=7+Math.floor(r()*3),p=[];for(let i=0;i<n;i++){const a=i/n*TAU+r()*.5,d=28+r()*13;p.push([48+Math.cos(a)*d,48+Math.sin(a)*d])}
     const poly=(dx,dy)=>{g.beginPath();p.forEach(([x,y],i)=>i?g.lineTo(x+dx,y+dy):g.moveTo(x+dx,y+dy));g.closePath()};

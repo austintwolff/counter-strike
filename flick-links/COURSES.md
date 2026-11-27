@@ -176,6 +176,14 @@ National Parks (`np`) is one course whose eighteen holes are in eighteen differe
   (`"pad": 380`) and the course shows it to 290, gone by 350 (`fade` in the course's `th`). Beyond 235 yards half the
   plants are left out (`"thin": [235, 0.5]`), or a forest hole has six thousand trees to draw.
 - Check it like any course (`check_course.js np f` and `b`, `check_doglegs.js np`, `rate_courses.js np`).
+- **The ground is painted from a sharper photograph.** `python3 tools/terrain.py photo npNN` fetches the same aerial
+  photograph one zoom level closer, on a grid twice as fine as the terrain's (`data/cache/npNN.photo.npz`; the source has
+  nothing closer). A design with `"fine": {...}` is painted from it at 1.5 yards a cell instead of 3, keeping what the
+  photograph shows (a beach and its surf, a reef, the rings of a hot spring, the crowns of a forest) instead of smoothing it
+  to a tone. Fifteen of the eighteen holes use it. Three do not, because their photographs are no good at that size and
+  the older soft painting looks better: Sahale Arm (half in black shadow), Thor's Hammer and Ruby Beach (coarse squares
+  from the photograph's compression). Angels Landing is painted by height (`"look": "canyon"`), not from a photograph.
+  **Look at the raw photograph before choosing**: some places are sharp at this size and some are mush.
 
 What a design can say that the two older fantasy courses never needed (all in `tools/fantasy.py`, all off unless asked for):
 
@@ -203,10 +211,20 @@ What a design can say that the two older fantasy courses never needed (all in `t
 | `"depth": feet` | ground that far below the nearest high ground sinks into blue shadow, as on Bright Angel |
 | `th.fade: [from, gone]` with a larger `pad` | the hole is seen wider than the usual 94 to 165 yards from its line. `pad` must be at least `gone + 30`. The whole National Parks course uses it |
 | `"thin": [yards, share]` | beyond that far from the line only this share of the scattered plants is kept |
+| `"fine": {...}` (after `terrain.py photo`) | paints from the sharper photograph, twice as fine. In it: `"water": true` leaves the photograph's own water in the picture (with `th.wat.clear` the game then lays only a wash and a glint over it, and `th.real` drops the painted strand, beach and cliff outline); `"soft"` and `"crisp"` smooth away the last grain and draw the edges back; `"detail"`, `"over"`, `"floor"` say how much of the fine light and dark is kept and how dark it may go; `"rock"` how much of it shows through `strata` |
+| `fine.tints: [[r, g, b, from, to, amount], ...]` | ground whose brightness in the photograph lies in a range is pulled toward a colour: a forest photographed bare in winter made green (Acadia), dark ash made neutral and pale ash orange (Painted Dunes) |
+| `fine.shadows: [below, lift, reach]` | what the photograph has in deep shadow takes its colour and most of its brightness from the sunlit ground within reach, and none of its detail (lifted that far it is only compression): a canyon at noon, the foot of a headwall, long tree shadows |
+| `fine.pools: [r, g, b, amount]` | the colour of water set down by hand with `pools`, when the photograph's own is wrong |
+| `"crests": {...}` with `"flat"` | a dune field (White Sands). A photograph of white sand holds almost nothing but its crest lines; they are read off it, and each dune is built up again from its crest (a long slope from upwind, a short slip face beyond) and lit. Nothing is mown across a crest. Plants `"on": "flats"` grow only between the dunes |
+| `"woods": false` on a plant rule | keeps a solid tree out of the lost-ball forest and off its edge, where it would knock a good shot down into it |
+| prop `fallen` | a fallen giant sequoia beside the meadow |
+| `th.detail: [texture, strength, yards a pixel, turn]` | a fine texture over the painted ground, stronger the closer the view (`ripple` for sand, `stone` for bare ground), where the painting is too smooth seen close; `th.clouds: false` leaves the cloud shadows off (they dirty white sand) |
 | `"look": "canyon"` with its own `strata` and `ground` | the colours painted by height and steepness instead of taken from the photograph: for a gorge the photograph shows mostly as shadow |
 
 A hole may be a par 6 or 7 (Angels Landing is a 7). The server takes pars 3 to 7; the day's three and a three-hole match
 count anything over 5 as their long hole. The house pro (`tools/rate_courses.js`) plays a hole that turns hard along its
-line rather than at the flag; `node tools/rate_courses.js --trace <id> <hole>` shows one play shot by shot, which is the
-quickest way to find out why a hole rates badly.
+line rather than at the flag; `node tools/rate_courses.js --trace <id> <hole>` shows one play shot by shot (where each
+ball was aimed, where the pro expected it and where it came to rest), which is the quickest way to find out why a hole
+rates badly. The pro reckons without trees, so a ball it loses is not sent down the same line again from the same spot.
+`check_doglegs.js` counts a ball that comes down in lost-ball woods as dead, like one in water.
 

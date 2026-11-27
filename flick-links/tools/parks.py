@@ -20,8 +20,9 @@ if __name__ == '__main__':
     if cmd == 'fetch':
         import terrain
         for s in S:
-            if os.path.exists(os.path.join(CACHE, sid(s['n']) + '.terrain.npz')) and not want: continue
-            terrain.fetch(sid(s['n']), *s['box'])
+            # the ground, and the sharper photograph the holes are painted from ("fine" in a design)
+            if want or not os.path.exists(os.path.join(CACHE, sid(s['n']) + '.terrain.npz')): terrain.fetch(sid(s['n']), *s['box'])
+            if want or not os.path.exists(os.path.join(CACHE, sid(s['n']) + '.photo.npz')): terrain.fetch_photo(sid(s['n']))
     elif cmd == 'build':
         import fantasy
         rows = {}

@@ -1,6 +1,6 @@
 // Can a dogleg be cut? For every par 4 and 5: a pure full driver from the tee, aimed along the hole as designed and then straight
 // at the pin and at angles between. Where does each come to rest, on what, and how far from the pin?
-// A cut only counts against the hole if a slightly weak strike on the same line also stays in play: a carry that only a perfect
+// A ball that comes down in the woods is lost, like one in water: that is no way round. A cut only counts against the hole if a slightly weak strike on the same line also stays in play: a carry that only a perfect
 // drive makes is a gamble the hole is offering (shown as "gamble"), not a way round it.
 //   node tools/check_doglegs.js <course id> ...
 const { chromium } = require('playwright');
@@ -12,8 +12,8 @@ const { chromium } = require('playwright');
       const DR = S.clubs.find(c => c.id === 'DR') || S.clubs[S.clubs.length - 1], T = h.tee, R = h.route.pts, at = d => { let k = 0; while (k < R.length - 1 && Math.hypot(R[k].x - T.x, R[k].y - T.y) < d) k++; return R[k]; };
       const a1 = Math.atan2(at(230).y - T.y, at(230).x - T.x), a2 = Math.atan2(h.pin.y - T.y, h.pin.x - T.x); let da = a2 - a1; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
       const shot = (a, str = 1) => { const ux = Math.cos(a), uy = Math.sin(a), flat = DR.carry * 1.05 * str, car = f.flightCarry(h, T, ux, uy, flat, DR.loft), L = { x: T.x + ux * car, y: T.y + uy * car }, l0 = f.lieAt(h, L);
-        if (l0 === 'water' || l0 === 'void' || l0 === 'ob') return { lie: l0, left: null, car: Math.round(car) }; const run = f.runOut(h, L, ux, uy, flat, DR), E = { x: L.x + ux * run, y: L.y + uy * run }, l1 = f.lieAt(h, E);
-        return { lie: l1 === 'water' || l1 === 'void' ? l1 : l1, land: l0, left: l1 === 'water' || l1 === 'void' || l1 === 'ob' ? null : Math.round(Math.hypot(h.pin.x - E.x, h.pin.y - E.y)), car: Math.round(car) }; };
+        if (l0 === 'water' || l0 === 'void' || l0 === 'ob' || l0 === 'woods') return { lie: l0, left: null, car: Math.round(car) }; const run = f.runOut(h, L, ux, uy, flat, DR), E = { x: L.x + ux * run, y: L.y + uy * run }, l1 = f.lieAt(h, E);
+        return { lie: l1 === 'water' || l1 === 'void' ? l1 : l1, land: l0, left: l1 === 'water' || l1 === 'void' || l1 === 'ob' || l1 === 'woods' ? null : Math.round(Math.hypot(h.pin.x - E.x, h.pin.y - E.y)), car: Math.round(car) }; };
       const line = shot(a1), cuts = [.5, .75, 1].map(k => ({ k, ...shot(a1 + da * k), weak: shot(a1 + da * k, .93).left == null }));
       return { hole: h.n + ' ' + h.name, par: h.par, yd: h.yards, direct: Math.round(Math.hypot(h.pin.x - T.x, h.pin.y - T.y)), bend: Math.round(Math.abs(da) * 180 / Math.PI), line, cuts }; }, [id, part, i]);
     if (!r) continue; const show = s => s.left == null ? s.lie.toUpperCase() : s.left + ' left (' + s.lie + (s.weak ? ', gamble' : '') + ')';

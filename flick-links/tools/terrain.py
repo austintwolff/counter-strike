@@ -2,6 +2,7 @@
 """Real terrain for a course laid out on wild ground (see COURSES.md, "Fantasy courses").
 
   python3 tools/terrain.py fetch <id> <south> <west> <north> <east>
+  python3 tools/terrain.py photo <id>          the photograph once more, a zoom level closer and twice as fine (for "fine" designs)
 
 downloads, for that box, into data/cache/:
   elevation   Mapzen/AWS terrain tiles (for the US: USGS 3DEP, public domain)
@@ -64,6 +65,18 @@ def fetch(cid, s, w, n, e, zdem=14, zimg=15):
     json.dump({'name': cid, 'box': [s, w, n, e]}, open(os.path.join(CACHE, cid + '.place.json'), 'w'))
     print(cid, 'grid', W, 'x', H, 'cells of', STEP, 'yd; elevation', round(float(elev.min()) * 3), 'to', round(float(elev.max()) * 3), 'ft; origin', round(lat0, 6), round(lon0, 6))
 
+def fetch_photo(cid, z=16, k=2):
+    """The photograph again, one zoom level closer, on a grid k times as fine as the terrain's: each of the terrain's cells is
+    k by k of these, centred on it. Saved as <id>.photo.npz; the ground is painted from it when a design asks for "fine"
+    (see COURSES.md)."""
+    from scipy.ndimage import map_coordinates
+    d = np.load(os.path.join(CACHE, cid + '.terrain.npz')); s, w, n, e = map(float, d['box']); lat0, lon0 = map(float, d['origin']); H, W = d['elev'].shape; step = float(d['step']) / k
+    kx = math.cos(math.radians(lat0)) * 111320 * YD; ky = 110574 * YD
+    xs = (np.arange(W * k) - W * k / 2 - (k - 1) / 2) * step; ys = (np.arange(H * k) - H * k / 2 - (k - 1) / 2) * step; LON, LAT = np.meshgrid(lon0 + xs / kx, lat0 - ys / ky)
+    im, ix0, iy0 = mosaic('usgs', z, s - .001, w - .001, n + .001, e + .001)
+    px, py = tile_xy(LAT, LON, z); rgb = np.stack([map_coordinates(im[..., c].astype(np.float32), [(py - iy0) * 256 - .5, (px - ix0) * 256 - .5], order=1, mode='nearest') for c in range(3)], -1).clip(0, 255).astype(np.uint8)
+    np.savez_compressed(os.path.join(CACHE, cid + '.photo.npz'), rgb=rgb, k=k, z=z); print(cid, 'photograph at zoom', z, rgb.shape[1], 'x', rgb.shape[0], 'cells of', step, 'yd')
+
 class Terrain:
     """The saved grid, with lookups in the game's coordinates."""
     def __init__(self, cid):
@@ -86,4 +99,5 @@ class Terrain:
 
 if __name__ == '__main__':
     if len(sys.argv) >= 7 and sys.argv[1] == 'fetch': fetch(sys.argv[2], *map(float, sys.argv[3:7]))
+    elif len(sys.argv) >= 3 and sys.argv[1] == 'photo': fetch_photo(sys.argv[2])
     else: print(__doc__)

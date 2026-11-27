@@ -24,13 +24,18 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   // the land: what lies outside the property, then the property itself
   if(G.boundary){grass(null,th.outer,tG*.5,tF,.6);ctx.strokeStyle=th.floor;ctx.globalAlpha=.5;ctx.lineWidth=5;ctx.stroke(G.boundary.path);ctx.globalAlpha=1;grass(G.boundary.path,th.floor,tG*.6,tF,native?.55:.7);if(native)texFill(G.boundary.path,'straw',.75,.09,.3)}
   else{grass(null,th.floor,tG*.6,tF,native?.55:.7);if(native&&!G.land)texFill(null,'straw',.75,.09,.3)}
-  if(G.land){const img=reliefOf(G.land),b=G.land.relief.box;if(img){ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,b[0],b[1],b[2],b[3]);texFill(null,'grain',.45*tG,.09)}
+  if(G.land){const img=reliefOf(G.land),b=G.land.relief.box;if(img){ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,b[0],b[1],b[2],b[3]);
+      // a place's own fine detail over its painted ground (th.detail: [texture, strength, yards a pixel, turn]), stronger the closer the view
+      if(th.detail)texFill(null,th.detail[0],th.detail[1]*clamp(.35+z/5,.35,1),th.detail[2]||.2,th.detail[3]||0);else texFill(null,'grain',.45*tG,.09)}
     // cliffs: the picture shows them; a shade and a hard edge say plainly where the ground stops
-    for(const v of G.void)if(seen(v)){ctx.fillStyle=th.cliff||'rgba(34,14,10,.2)';ctx.fill(v.path);inner(v.path,-SUN.x*2.2,-SUN.y*2.2,'#1c0c08',.34,5);ctx.strokeStyle='rgba(40,18,12,.6)';ctx.lineWidth=.7;ctx.stroke(v.path)}
+    for(const v of G.void)if(seen(v)){ctx.fillStyle=th.cliff||'rgba(34,14,10,.2)';ctx.fill(v.path);inner(v.path,-SUN.x*2.2,-SUN.y*2.2,'#1c0c08',th.real?.2:.34,5);if(!th.real){ctx.strokeStyle='rgba(40,18,12,.6)';ctx.lineWidth=.7;ctx.stroke(v.path)}}
     // ledges: each level line a lit edge with a shadow beneath it, so the faces look layered
     ctx.lineCap='butt';ctx.lineWidth=clamp(1.5/z,.35,1.1);ctx.save();ctx.translate(SUN.x*.7,SUN.y*.7);ctx.strokeStyle=th.ledgeLo||'rgba(24,10,8,.34)';for(const l of G.ledges)if(seen(l))ctx.stroke(l.path);ctx.restore();
     ctx.strokeStyle=th.ledgeHi||'rgba(255,224,190,.2)';for(const l of G.ledges)if(seen(l))ctx.stroke(l.path);ctx.lineCap='round';
-    for(const v of G.snow)if(seen(v)){ctx.fillStyle='#eef4f8';ctx.fill(v.path);inner(v.path,SUN.x*2.4,SUN.y*2.4,'#8fb0c8',.5,5);inner(v.path,-SUN.x,-SUN.y,'#ffffff',.9,2.2);texFill(v.path,'glint',.5,.16,.8)}}
+    // on photographed ground a snowfield has a soft edge and the blue of its own hollows, or it reads as a white card laid on the picture
+    if(th.real)for(const v of G.snow)if(seen(v)){ctx.strokeStyle='#eef4f8';for(const[w,a]of[[11,.16],[7,.24],[3.5,.4]]){ctx.globalAlpha=a;ctx.lineWidth=w;ctx.stroke(v.path)}ctx.globalAlpha=1;ctx.fillStyle='#eef4f8';ctx.fill(v.path);
+      texFill(v.path,'cloud',.3,.42,.7);inner(v.path,SUN.x*2.4,SUN.y*2.4,'#8fb0c8',.3,7);texFill(v.path,'glint',.4,.16,.8)}
+    else for(const v of G.snow)if(seen(v)){ctx.fillStyle='#eef4f8';ctx.fill(v.path);inner(v.path,SUN.x*2.4,SUN.y*2.4,'#8fb0c8',.5,5);inner(v.path,-SUN.x,-SUN.y,'#ffffff',.9,2.2);texFill(v.path,'glint',.5,.16,.8)}}
   // streets and the neighbourhood
   for(const r of G.roads)if(seen2(r)){ctx.strokeStyle='#3d4038';ctx.lineWidth=r.w+1.6;ctx.stroke(r.path);ctx.strokeStyle='#5d5f58';ctx.lineWidth=r.w;ctx.stroke(r.path);
     if(r.w>=9&&z>1.6){ctx.setLineDash([3,4]);ctx.strokeStyle='rgba(240,214,110,.7)';ctx.lineWidth=.35;ctx.stroke(r.path);ctx.setLineDash([])}}
@@ -42,7 +47,7 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   if(native){const ck=th.collar==null?1:th.collar;ctx.strokeStyle=th.rough;for(const[list,w0]of[[G.fair,50],[G.green,56],[G.tee,24]]){const w=w0*ck;ctx.lineWidth=w;for(const s of list)if(seen(s)){ctx.globalAlpha=.4;ctx.lineWidth=w+12*ck;ctx.stroke(s.path);ctx.globalAlpha=1;ctx.lineWidth=w;ctx.stroke(s.path)}}
     for(const s of G.rough)if(seen(s))grass(s.path,th.rough,tG,tF,.75);
   }
-  for(const s of G.woods)if(seen(s)){ctx.fillStyle=th.woods;ctx.fill(s.path);texFill(s.path,'mottle',.8,.35,.9)}
+  for(const s of G.woods)if(seen(s)){if(th.real){ctx.globalAlpha=.3;ctx.fillStyle=th.woods;ctx.fill(s.path);ctx.globalAlpha=1}else{ctx.fillStyle=th.woods;ctx.fill(s.path);texFill(s.path,'mottle',.8,.35,.9)}}
   for(const b of G.blooms)if(seen(b)){ctx.fillStyle='#3d6a3c';ctx.globalAlpha=.4;ctx.fill(b.path);ctx.globalAlpha=1;texFill(b.path,th.bloom,.95,.085,b.rot)}
   // mapped flower beds
   for(const b of G.bed)if(seen(b)){ctx.fillStyle='#35602f';ctx.fill(b.path);texFill(b.path,th.beds||th.bloom,1,.07,.4);ctx.strokeStyle='rgba(24,44,18,.55)';ctx.lineWidth=.45;ctx.stroke(b.path)}
@@ -67,8 +72,13 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   for(const s of G.pool)if(seen(s)){ctx.fillStyle='#e6e1d2';ctx.strokeStyle='#e6e1d2';ctx.lineWidth=1.6;ctx.stroke(s.path);ctx.fillStyle='#4fb6d8';ctx.fill(s.path)}
   // water: a soft shade on the grass, a thin muddy rim, then the water with pale shallows along the bank
   // the sea: a strand of pale sand and rock along the shore, under the water's edge
-  for(const w of G.water)if(w.sea&&seen(w)){ctx.lineJoin='round';ctx.strokeStyle='#8f8468';ctx.lineWidth=17;ctx.stroke(w.path);ctx.strokeStyle='#d6c9a2';ctx.lineWidth=12;ctx.stroke(w.path)}
   const WC=th.wat||K; // a course can have water of its own colour: a silty river, a glacial lake
+  // Water the photograph shows for itself (th.wat.clear, from 0 to 1: how much of the painted water is laid over it). The real
+  // shore, the shallows and the surf are all in the picture already, so only a wash of colour and the glint go on top.
+  const clear=WC.clear;
+  if(clear!=null){for(const w of G.water)if(seen(w)){if(th.detail&&G.land&&G.land.relief.ok){const b=G.land.relief.box;ctx.save();ctx.clip(w.path);ctx.drawImage(G.land.relief.img,b[0],b[1],b[2],b[3]);ctx.restore()}ctx.globalAlpha=clear;ctx.fillStyle=WC.water||K.water;ctx.fill(w.path);ctx.globalAlpha=1;texFill(w.path,'glint',.5,.2,.3,0,0)}}
+  else{
+  for(const w of G.water)if(w.sea&&seen(w)){ctx.lineJoin='round';ctx.strokeStyle='#8f8468';ctx.lineWidth=17;ctx.stroke(w.path);ctx.strokeStyle='#d6c9a2';ctx.lineWidth=12;ctx.stroke(w.path)}
   ctx.strokeStyle='rgba(16,32,12,.2)';for(const w of G.water)if(seen(w)){ctx.lineWidth=w.pond?6:4;ctx.stroke(w.path)}
   for(const w of G.water)if(seen(w)){ctx.strokeStyle=K.bank;ctx.globalAlpha=.8;ctx.lineWidth=w.pond?1.5:1.1;ctx.stroke(w.path);ctx.globalAlpha=1;
     if(w.round){if(!w.grad){const g=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.R*1.05);g.addColorStop(0,WC.deep);g.addColorStop(.62,WC.water);g.addColorStop(1,(WC.rim||'#2f8686'));w.grad=g}ctx.fillStyle=w.grad}
@@ -76,7 +86,7 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
     ctx.fill(w.path);if(w.sea){inner(w.path,0,0,'#7fd0cf',.3,26);inner(w.path,0,0,'#c9f2ea',.4,11);inner(w.path,0,0,'#ffffff',.75,3.4);texFill(w.path,'glint',.6,.2,.3,0,0);continue}inner(w.path,0,0,WC.shallow,.26,w.pond?7:2.6);inner(w.path,0,0,WC.shallow,.2,w.pond?2.4:1);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.38,2.4);
     texFill(w.path,'glint',.6,.2,.3,0,0);inner(w.path,0,0,'#eafffb',.2,.6);
     if(w.round&&w.area>150){const Rr=w.rx,sx=w.x-SUN.x*Rr*.3,sy=w.y-SUN.y*Rr*.3,gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rr*.7);gl.addColorStop(0,'rgba(255,250,215,.24)');gl.addColorStop(1,'rgba(255,250,215,0)');
-      ctx.save();ctx.clip(w.path);ctx.globalAlpha=.8;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr);ctx.restore()}}
+      ctx.save();ctx.clip(w.path);ctx.globalAlpha=.8;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr);ctx.restore()}}}
   if(z>1.2)for(const l of G.lilies)if(vis(l)){ctx.fillStyle='#2f6a3a';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.arc(l.x+.08,l.y+.1,l.r,l.a+.4,l.a+TAU);ctx.fill();
     ctx.fillStyle='#5a9f4e';ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.arc(l.x,l.y,l.r,l.a+.4,l.a+TAU);ctx.fill();ctx.fillStyle='rgba(215,245,160,.35)';disc(l.x-l.r*.25,l.y-l.r*.25,l.r*.38);
     if(l.fl){ctx.fillStyle='#fff3f7';disc(l.x+Math.cos(l.a)*l.r*.3,l.y+Math.sin(l.a)*l.r*.3,l.r*.34);ctx.fillStyle='#f4c84a';disc(l.x+Math.cos(l.a)*l.r*.3,l.y+Math.sin(l.a)*l.r*.3,l.r*.13)}}
@@ -84,7 +94,7 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
       for(const da of[-.6,0,.6]){ctx.moveTo(r.x,r.y);ctx.lineTo(r.x+Math.cos(r.a+da)*1.1*r.s,r.y+Math.sin(r.a+da)*1.1*r.s)}ctx.stroke();ctx.fillStyle='#6b4a2a';disc(r.x+Math.cos(r.a)*1.15*r.s,r.y+Math.sin(r.a)*1.15*r.s,.24*r.s)}
     for(const q of G.pebbles)if(vis(q)){ctx.fillStyle='rgba(20,24,16,.35)';disc(q.x+.12,q.y+.14,q.r);ctx.fillStyle='#bdb8a8';disc(q.x,q.y,q.r);ctx.fillStyle='#e4e0d3';disc(q.x-q.r*.25,q.y-q.r*.28,q.r*.5)}}
   // beaches lie over the water's edge: the map's coastline is the high-water mark and the sand runs out past it
-  for(const s of G.beach)if(seen(s)){ctx.fillStyle='#dccfa6';ctx.fill(s.path);texFill(s.path,'grain',.5,.11);inner(s.path,0,0,'#c2b388',.45,4);inner(s.path,0,0,'#f3ecd2',.35,1.2)}
+  if(!th.real)for(const s of G.beach)if(seen(s)){ctx.fillStyle='#dccfa6';ctx.fill(s.path);texFill(s.path,'grain',.5,.11);inner(s.path,0,0,'#c2b388',.45,4);inner(s.path,0,0,'#f3ecd2',.35,1.2)}
   // white water, where the creek really falls
   ctx.lineCap='round';for(const f of G.falls)if(seen2(f)){ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=f.w*1.15;ctx.stroke(f.path);ctx.setLineDash([.9,1.5]);ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=f.w*.8;ctx.stroke(f.path);ctx.setLineDash([])}
   for(const q of G.props||[])if(vis(q))drawProp(q);
@@ -121,10 +131,11 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
     ctx.strokeStyle='rgba(30,26,20,.6)';ctx.lineWidth=.4;ctx.lineJoin='miter';ctx.stroke(s.path);ctx.lineJoin='round'}
   // trees last: shadows, then canopies. Only the buckets in view are walked.
   const cells=[];for(let cx=Math.floor(VR[0]/120);cx<=Math.floor((VR[0]+VR[2])/120);cx++)for(let cy=Math.floor(VR[1]/120);cy<=Math.floor((VR[1]+VR[3])/120);cy++){const c=G.grid.get(cx+','+cy);if(c)cells.push(c)}
-  for(const k of['trees','solid'])for(const c of cells)for(const t of c[k])ctx.drawImage(SPR.shadow,t.x-t.r*1.35+SUN.x*t.r*.75,t.y-t.r*1.35+SUN.y*t.r*.75,t.r*2.7,t.r*2.7);
+  for(const k of['trees','solid'])for(const c of cells)for(const t of c[k]){ctx.drawImage(SPR.shadow,t.x-t.r*1.35+SUN.x*t.r*.75,t.y-t.r*1.35+SUN.y*t.r*.75,t.r*2.7,t.r*2.7);
+    if(t.kind==='sequoia')for(const m of[1.5,2.3])ctx.drawImage(SPR.shadow,t.x-t.r*1.2+SUN.x*t.r*m,t.y-t.r*1.2+SUN.y*t.r*m,t.r*2.4,t.r*2.4)} // a giant throws a long shadow
   for(const k of['trees','solid'])for(const c of cells)for(const t of c[k])ctx.drawImage(SPR[t.kind][t.v],t.x-t.r*1.28,t.y-t.r*1.28,t.r*2.56,t.r*2.56);
   // cloud shadows lie still on the ground: a drifting layer cost a full-screen fill every frame
-  if(Q>0)texFill(null,'cloud',.3,2.1,.4,0,0)}
+  if(Q>0&&th.clouds!==false)texFill(null,'cloud',.3,2.1,.4,0,0)}
 // The hole stands in a haze. Near the line of play everything is sharp; further out the same ground goes soft and misty,
 // and past the edge of what was built there is only the mist.
 const mixHex=(a,b,t)=>{const p=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16)),A=p(a),B=p(b);return'rgb('+A.map((v,i)=>Math.round(lerp(v,B[i],t))).join()+')'};
@@ -225,6 +236,12 @@ function drawProp(q){ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.a);const sv=
     ctx.strokeStyle='rgba(10,16,12,.3)';ctx.lineWidth=w*2;ctx.beginPath();ctx.moveTo(-L/2+sv.x*.4,sv.y*.4);ctx.lineTo(L/2+sv.x*.4,sv.y*.4);ctx.stroke();
     ctx.strokeStyle=c;ctx.beginPath();ctx.moveTo(-L/2,0);ctx.lineTo(L/2,0);ctx.stroke();ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=w*.5;ctx.beginPath();ctx.moveTo(-L/2+.3,-w*.3);ctx.lineTo(L/2-.3,-w*.3);ctx.stroke();
     if(r()<.4){ctx.strokeStyle=c;ctx.lineWidth=w*1.1;ctx.beginPath();ctx.moveTo(L*.2,0);ctx.lineTo(L*.2+1.1,(r()<.5?-1:1)*1.3);ctx.stroke()}}
+  else if(q.k==='fallen'){const L=q.r,w=L*.085;                                                                              // a fallen giant: a cinnamon trunk the length of a fairway's width, its root plate at one end
+    ctx.fillStyle='rgba(6,14,8,.4)';pill(-L/2+sv.x*1.1,-w+sv.y*1.1,L,w*2,w*.6);ctx.fill();ctx.beginPath();ctx.arc(-L/2+sv.x*1.1,sv.y*1.1,w*1.9,0,TAU);ctx.fill();
+    ctx.fillStyle='#3d2416';ctx.beginPath();for(let i=0;i<11;i++){const a=i/11*TAU,d=w*(1.5+r()*.7);ctx.lineTo(-L/2+Math.cos(a)*d,Math.sin(a)*d)}ctx.closePath();ctx.fill();
+    ctx.fillStyle='#8a4526';ctx.beginPath();ctx.moveTo(-L/2,-w);ctx.lineTo(L/2,-w*.5);ctx.lineTo(L/2+w*.4,0);ctx.lineTo(L/2,w*.5);ctx.lineTo(-L/2,w);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#b8693d';ctx.beginPath();ctx.moveTo(-L/2,-w*.75);ctx.lineTo(L/2,-w*.4);ctx.lineTo(L/2,-w*.05);ctx.lineTo(-L/2,-w*.1);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(50,22,8,.45)';ctx.lineWidth=w*.09;for(const f of[-.45,.2,.55]){ctx.beginPath();ctx.moveTo(-L/2+w,f*w);ctx.lineTo(L/2-w,f*w*.55);ctx.stroke()}}
   else if(q.k==='floe'){const n=7+Math.floor(r()*3),P=[];for(let i=0;i<n;i++){const a=i/n*TAU+r()*.5,d=q.r*(.7+r()*.5);P.push([Math.cos(a)*d,Math.sin(a)*d*.75])}                // ice adrift on a lake that never quite thaws
     const shp=(dx,dy,k)=>{ctx.beginPath();P.forEach((p,i)=>i?ctx.lineTo(p[0]*k+dx,p[1]*k+dy):ctx.moveTo(p[0]*k+dx,p[1]*k+dy));ctx.closePath()};
     ctx.fillStyle='rgba(170,225,235,.35)';shp(0,0,1.28);ctx.fill();ctx.fillStyle='rgba(4,24,40,.3)';shp(sv.x*.5,sv.y*.5,1);ctx.fill();ctx.fillStyle='#f6fcff';shp(0,0,1);ctx.fill();ctx.fillStyle='rgba(150,200,225,.5)';shp(sv.x*q.r*.22,sv.y*q.r*.22,.62);ctx.fill();ctx.fillStyle='#ffffff';shp(-sv.x*q.r*.1,-sv.y*q.r*.1,.5);ctx.fill()}

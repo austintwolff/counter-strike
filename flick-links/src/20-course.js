@@ -95,8 +95,8 @@ const COURSES=[
  th:{fade:[290,350],out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:0,bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
   collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
  /*NP:BEGIN*/
- holes:[["Sand Beach",4,448,9,53,"Acadia"],["Fort Jefferson",4,433,5,1,"Dry Tortugas"],["Sahale Arm",5,839,13,822,"North Cascades"],["The Door",4,444,11,79,"Badlands"],["Santa Elena",5,590,7,3,"Big Bend"],["Gypsum",4,381,15,4,"White Sands"],["Grand View",5,586,3,36,"Canyonlands"],["Thor's Hammer",3,339,17,400,"Bryce Canyon"],["Angels Landing",7,1172,1,263,"Zion"]],
- more:[["Oxbow Bend",5,627,8,5,"Grand Teton"],["Grand Prismatic",4,476,12,-3,"Yellowstone"],["Iceberg Lake",3,205,16,-4,"Glacier"],["Wizard Island",4,458,14,54,"Crater Lake"],["Painted Dunes",4,448,10,17,"Lassen Volcanic"],["Ruby Beach",4,497,14,-146,"Olympic"],["Crescent Meadow",5,574,6,125,"Sequoia"],["Firefall",3,773,2,3172,"Yosemite"],["Kilauea Iki",5,603,4,439,"Hawaii Volcanoes"]]
+ holes:[["Sand Beach",4,448,9,53,"Acadia"],["Fort Jefferson",4,433,5,1,"Dry Tortugas"],["Sahale Arm",5,839,13,822,"North Cascades"],["The Door",4,444,11,79,"Badlands"],["Santa Elena",5,633,7,-124,"Big Bend"],["Gypsum",4,386,15,0,"White Sands"],["Grand View",5,586,3,36,"Canyonlands"],["Thor's Hammer",3,339,17,400,"Bryce Canyon"],["Angels Landing",7,1172,1,263,"Zion"]],
+ more:[["Oxbow Bend",5,627,8,5,"Grand Teton"],["Grand Prismatic",4,476,12,-3,"Yellowstone"],["Iceberg Lake",3,229,16,-17,"Glacier"],["Wizard Island",4,458,14,54,"Crater Lake"],["Painted Dunes",4,639,10,561,"Lassen Volcanic"],["Ruby Beach",4,497,14,-146,"Olympic"],["Crescent Meadow",5,611,6,-36,"Sequoia"],["Firefall",3,773,2,3172,"Yosemite"],["Kilauea Iki",5,603,4,439,"Hawaii Volcanoes"]]
  /*NP:END*/}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
 // data/<id>.json; its other nine, if it has one, is `more`, drawn from data/<id>2.json. The second nines are added after all the
@@ -187,7 +187,7 @@ function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=themeOf(e),g={},rng=mulb
   // trees. Mapped single trees stand where they really are and stop a low ball. Woods are filled with the course's native mix.
   const pick=()=>{let u=rng();for(const[k,w]of th.mix)if((u-=w)<0)return k;return th.mix[0][0]},tree=(x,y,kind,r,solid)=>({x,y,kind,r:r*TREES[kind].size,v:Math.floor(rng()*4),solid,h:r*1.15+3});
   // a tree the map names is a landmark (the big oak behind Augusta's clubhouse): it is drawn as a very large live oak
-  g.solid=m.trees.filter(([x,y])=>nearHoles({x,y})).map(([x,y,sp])=>{const big=/!big/.test(sp),giant=/sequoia/.test(sp),k=giant?'pine':big?'liveoak':(SPECIES.find(([re])=>re.test(sp))||[0,pick()])[1],r=lerp(6,9.5,rng());return tree(x,y,!big&&!giant&&th.wet!==false&&wet({x,y},9)&&k!=='pecan'?'cypress':k,giant?lerp(10.5,14.5,rng()):big?12.5:r,true)});
+  g.solid=m.trees.filter(([x,y])=>nearHoles({x,y})).map(([x,y,sp])=>{const big=/!big/.test(sp),giant=/sequoia/.test(sp),k=giant?'sequoia':big?'liveoak':(SPECIES.find(([re])=>re.test(sp))||[0,pick()])[1],r=lerp(6,9.5,rng());return tree(x,y,!big&&!giant&&th.wet!==false&&wet({x,y},9)&&k!=='pecan'?'cypress':k,giant?lerp(10.5,14.5,rng()):big?12.5:r,true)});
   // The way off the tee stays open. A tee shot is still climbing for its first fifty yards, so a tree standing there cannot be cleared:
   // none is kept on the tee or along that stretch of the line of play, and nothing leafy is scattered over it either.
   // "The line" is both the way the hole runs and the straight line the camera first aims down, which differ on a dogleg.

@@ -83,7 +83,8 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   for(const w of G.water)if(seen(w)){ctx.strokeStyle=K.bank;ctx.globalAlpha=.8;ctx.lineWidth=w.pond?1.5:1.1;ctx.stroke(w.path);ctx.globalAlpha=1;
     if(w.round){if(!w.grad){const g=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.R*1.05);g.addColorStop(0,WC.deep);g.addColorStop(.62,WC.water);g.addColorStop(1,(WC.rim||'#2f8686'));w.grad=g}ctx.fillStyle=w.grad}
     else ctx.fillStyle=w.sea?'#2a7f93':WC.water;
-    ctx.fill(w.path);if(w.sea){inner(w.path,0,0,'#7fd0cf',.3,26);inner(w.path,0,0,'#c9f2ea',.4,11);inner(w.path,0,0,'#ffffff',.75,3.4);texFill(w.path,'glint',.6,.2,.3,0,0);continue}inner(w.path,0,0,WC.shallow,.26,w.pond?7:2.6);inner(w.path,0,0,WC.shallow,.2,w.pond?2.4:1);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.38,2.4);
+    ctx.fill(w.path);if(th.shoal&&w.area>4000)for(const[wd,a]of[[96,.07],[62,.08],[38,.1]])inner(w.path,0,0,w.sea?'#8fe6d8':WC.shallow,a,wd);
+    if(w.sea){inner(w.path,0,0,'#7fd0cf',.3,26);inner(w.path,0,0,'#c9f2ea',.4,11);inner(w.path,0,0,'#ffffff',.75,3.4);texFill(w.path,'glint',.6,.2,.3,0,0);continue}inner(w.path,0,0,WC.shallow,.26,w.pond?7:2.6);inner(w.path,0,0,WC.shallow,.2,w.pond?2.4:1);inner(w.path,SUN.x*1.5,SUN.y*1.5,'#031418',.38,2.4);
     texFill(w.path,'glint',.6,.2,.3,0,0);inner(w.path,0,0,'#eafffb',.2,.6);
     if(w.round&&w.area>150){const Rr=w.rx,sx=w.x-SUN.x*Rr*.3,sy=w.y-SUN.y*Rr*.3,gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rr*.7);gl.addColorStop(0,'rgba(255,250,215,.24)');gl.addColorStop(1,'rgba(255,250,215,0)');
       ctx.save();ctx.clip(w.path);ctx.globalAlpha=.8;ctx.fillStyle=gl;ctx.fillRect(sx-Rr,sy-Rr,2*Rr,2*Rr);ctx.restore()}}}
@@ -97,7 +98,7 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   if(clear==null)for(const s of G.beach)if(seen(s)){ctx.fillStyle=th.sand||'#dccfa6';ctx.fill(s.path);texFill(s.path,'grain',.5,.11);inner(s.path,0,0,'#c2b388',.45,4);inner(s.path,0,0,'#f3ecd2',.35,1.2)}
   // white water, where the creek really falls
   ctx.lineCap='round';for(const f of G.falls)if(seen2(f)){ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=f.w*1.15;ctx.stroke(f.path);ctx.setLineDash([.9,1.5]);ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=f.w*.8;ctx.stroke(f.path);ctx.setLineDash([])}
-  for(const q of G.props||[])if(vis(q))drawProp(q);
+  for(const q of G.props||[])if(q.k==='glow'||vis(q))drawProp(q);
   for(const b of G.bridges)if(vis(b))drawBridge(b,b.wide>6?'road':th.bridge,now);
   // every green on the property, bunkers, then the one being played with its contours
   ctx.lineJoin='round';for(const s of G.green)if(seen(s)){ctx.strokeStyle=K.fringe;ctx.lineWidth=4.8;ctx.stroke(s.path);ctx.fillStyle=K.fringe;ctx.fill(s.path)}
@@ -232,7 +233,18 @@ function drawBridge(b,style,now){const sv=rotv(SUN.x,SUN.y,-b.a),l=b.len,hl=l/2,
 // Small things that belong to a wild place. Sizes are in yards; each is drawn with its shadow.
 function drawProp(q){ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.a);const sv=rotv(SUN.x,SUN.y,-q.a),r=mulberry32(77+q.v*13+Math.round(q.x));ctx.lineCap='round';ctx.lineJoin='round';
   const pill=(x,y,w,h,rad)=>{ctx.beginPath();ctx.moveTo(x+rad,y);ctx.arcTo(x+w,y,x+w,y+h,rad);ctx.arcTo(x+w,y+h,x,y+h,rad);ctx.arcTo(x,y+h,x,y,rad);ctx.arcTo(x,y,x+w,y,rad);ctx.closePath()};
-  if(q.k==='log'){const L=q.r,w=.5+r()*.35,c=['#b9b3a4','#a9a08e','#c7c1b2'][q.v%3];                                               // a drift log, silvered by the sea
+  if(q.k==='glow'){const P=q.p,n=P.length,C=q.c==='fire'?['255,130,40','rgba(255,176,70,.7)','#fff3c0']:['255,70,16','rgba(255,128,28,.8)','#ffe69a'];   // a line of light: a fissure glowing in black lava, embers falling down a cliff
+    ctx.lineCap='round';ctx.lineJoin='round';
+    for(const[k,c]of[[11,'rgba('+C[0]+',.07)'],[6,'rgba('+C[0]+',.13)'],[3,'rgba('+C[0]+',.3)'],[1.5,C[1]],[.5,C[2]]]){ctx.strokeStyle=c;ctx.lineWidth=q.w*k;ctx.beginPath();ctx.moveTo(P[0]-q.x,P[1]-q.y);
+      for(let i=2;i<n-2;i+=2)ctx.quadraticCurveTo(P[i]-q.x,P[i+1]-q.y,(P[i]+P[i+2])/2-q.x,(P[i+1]+P[i+3])/2-q.y);ctx.lineTo(P[n-2]-q.x,P[n-1]-q.y);ctx.stroke()}
+    if(q.c==='fire'){const x=P[n-2]-q.x,y=P[n-1]-q.y,g=ctx.createRadialGradient(x,y,0,x,y,q.w*9);g.addColorStop(0,'rgba(255,190,90,.55)');g.addColorStop(1,'rgba(255,120,30,0)');ctx.fillStyle=g;ctx.fillRect(x-q.w*9,y-q.w*9,q.w*18,q.w*18)}}
+  else if(q.k==='steam'){for(let i=0;i<6;i++){const d=i*q.r*.42,rr=q.r*(.55+i*.2),y=Math.sin(i*1.7)*q.r*.18,g=ctx.createRadialGradient(d,y,0,d,y,rr);g.addColorStop(0,'rgba(255,255,255,'+(.4-i*.055)+')');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.fillRect(d-rr,y-rr,2*rr,2*rr)}} // steam drifting off a vent
+  else if(q.k==='boat'){const L=q.r,w=L*.3;                                                                                      // a sailboat at anchor, sails furled
+    ctx.fillStyle='rgba(2,30,40,.28)';ctx.beginPath();ctx.ellipse(sv.x*.7,sv.y*.7,L/2,w/2,0,0,TAU);ctx.fill();
+    ctx.fillStyle='#f7f5ee';ctx.beginPath();ctx.moveTo(L/2,0);ctx.quadraticCurveTo(L*.2,-w/2,-L/2,-w*.38);ctx.lineTo(-L/2,w*.38);ctx.quadraticCurveTo(L*.2,w/2,L/2,0);ctx.fill();
+    ctx.fillStyle='#c9b48a';ctx.beginPath();ctx.ellipse(-L*.1,0,L*.24,w*.24,0,0,TAU);ctx.fill();ctx.strokeStyle='rgba(20,40,50,.45)';ctx.lineWidth=.25;ctx.beginPath();ctx.moveTo(L*.12,0);ctx.lineTo(L*.12+sv.x*L*.55,sv.y*L*.55);ctx.stroke();
+    ctx.strokeStyle='#e9e4d2';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(L*.12,0);ctx.lineTo(-L*.3,0);ctx.stroke();ctx.fillStyle='#2f3d44';disc(L*.12,0,.32)}
+  else if(q.k==='log'){const L=q.r,w=.5+r()*.35,c=['#b9b3a4','#a9a08e','#c7c1b2'][q.v%3];                                               // a drift log, silvered by the sea
     ctx.strokeStyle='rgba(10,16,12,.3)';ctx.lineWidth=w*2;ctx.beginPath();ctx.moveTo(-L/2+sv.x*.4,sv.y*.4);ctx.lineTo(L/2+sv.x*.4,sv.y*.4);ctx.stroke();
     ctx.strokeStyle=c;ctx.beginPath();ctx.moveTo(-L/2,0);ctx.lineTo(L/2,0);ctx.stroke();ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=w*.5;ctx.beginPath();ctx.moveTo(-L/2+.3,-w*.3);ctx.lineTo(L/2-.3,-w*.3);ctx.stroke();
     if(r()<.4){ctx.strokeStyle=c;ctx.lineWidth=w*1.1;ctx.beginPath();ctx.moveTo(L*.2,0);ctx.lineTo(L*.2+1.1,(r()<.5?-1:1)*1.3);ctx.stroke()}}

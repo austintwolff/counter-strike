@@ -486,7 +486,9 @@ def build(path, probe=None):
                 a = edge.interpolate(s0 + (k - 1) * 7.5); b = edge.interpolate(s0 + (k - 1) * 7.5 + 1); nx, ny = -(b.y - a.y), b.x - a.x; side = 1 if water.contains(sg.Point(a.x + nx * 2, a.y + ny * 2)) else -1
                 props.append({'k': 'raft', 'x': round(a.x + nx * side * 1.2, 1), 'y': round(a.y + ny * side * 1.2, 1), 'a': round(math.atan2(ny * side, nx * side), 2), 'v': k})
         elif 'at' in pr and sg.Point(*pr['at']).distance(turf) < (0 if pr['kind'] == 'rapid' else 8): notes.append('the %s at %s is on or beside something mown and was left out' % (pr['kind'], pr['at']))
-        elif pr['kind'] == 'floe' and not water.buffer(-pr.get('r', 5) - 2).contains(sg.Point(*pr['at'])): pass  # ice floats: a floe set down on the shore is left out
+        elif pr['kind'] == 'glow':  # a line of light: {"kind": "glow", "p": [[x, y], ...], "c": "lava" | "fire", "w": yards}: a fissure in a lava lake, the Firefall down its cliff
+            props.append({'k': 'glow', 'x': round(float(np.mean([q[0] for q in pr['p']])), 1), 'y': round(float(np.mean([q[1] for q in pr['p']])), 1), 'a': 0, 'p': flat(pr['p']), 'c': pr.get('c', 'lava'), 'w': pr.get('w', 1.6), 'v': len(props)})
+        elif pr['kind'] in ('floe', 'boat') and not water.buffer(-pr.get('r', 5) - 2).contains(sg.Point(*pr['at'])): pass  # ice floats, and so does a boat: one set down on the shore is left out
         elif pr['kind'] == 'logs':  # drift logs along a tide line: {"kind": "logs", "along": [[x, y], ...], "n": 40, "spread": 9}
             ls = sg.LineString(pr['along']); rl = rng_for(cid, 'logs', len(props))
             for k in range(pr.get('n', 30)):

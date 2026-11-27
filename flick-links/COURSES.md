@@ -218,7 +218,7 @@ What a design can say that the two older fantasy courses never needed (all in `t
 | `fine.shadows: [below, lift, reach]` | what the photograph has in deep shadow takes its colour and most of its brightness from the sunlit ground within reach, and none of its detail (lifted that far it is only compression): a canyon at noon, the foot of a headwall, long tree shadows |
 | `"crests": {...}` with `"flat"` | a dune field (White Sands). A photograph of white sand holds almost nothing but its crest lines; they are read off it, and each dune is built up again from its crest (a long slope from upwind, a short slip face beyond) and lit. Nothing is mown across a crest. Plants `"on": "flats"` grow only between the dunes |
 | `"woods": false` on a plant rule | keeps a solid tree out of the lost-ball forest and off its edge, where it would knock a good shot down into it |
-| prop `fallen` | a fallen giant sequoia beside the meadow |
+| props `fallen`, `boat`, `steam`, `glow` | a fallen giant sequoia beside the meadow; a sailboat at anchor (left out if not in water); steam drifting off a vent; a line of light, `"c": "lava"` for a fissure or `"fire"` for the Firefall down its cliff. `th.shoal` on a course pales big water toward its shores in bands |
 | `th.detail: [texture, strength, yards a pixel, turn]` | a fine texture over the painted ground, stronger the closer the view (`ripple` for sand, `stone` for bare ground), where the painting is too smooth seen close; `th.clouds: false` leaves the cloud shadows off (they dirty white sand) |
 | `"look": "canyon"` with its own `strata` and `ground` | the colours painted by height and steepness instead of taken from the photograph: for a gorge the photograph shows mostly as shadow |
 

@@ -92,7 +92,7 @@ const COURSES=[
 // data/npNN.design.json), and carries its own look in its map (`th` there, laid over this one). The sixth figure is the park.
 {id:'np',code:'NP',club:'National Parks',tee:'Ranger',sites:true,
  // No haze close round these holes: each has its own ground, built out to 380 yards from its line, and is shown nearly that far.
- th:{fade:[290,350],out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:0,bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
+ th:{fade:[290,350],shoal:1,out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:0,bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
   collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
  /*NP:BEGIN*/
  holes:[["Sand Beach",4,448,9,53,"Acadia"],["Fort Jefferson",4,433,5,1,"Dry Tortugas"],["Sahale Arm",5,839,13,822,"North Cascades"],["The Door",4,444,11,79,"Badlands"],["Santa Elena",5,633,7,-124,"Big Bend"],["Gypsum",4,386,15,0,"White Sands"],["Grand View",5,586,3,36,"Canyonlands"],["Thor's Hammer",3,339,17,400,"Bryce Canyon"],["Angels Landing",7,1172,1,263,"Zion"]],

@@ -32,7 +32,7 @@ const CODE='ABCDEFGHJKMNPQRSTUVWXYZ23456789',COOKIE='fl';
 // RATING:BEGIN (written by tools/rate_courses.js; do not edit by hand)
 export const RATING={"gr":[3.63,4.31,2.5,4.25,3.31,3.25,3.88,2.81,3.25],"lp":[3.5,4,4.5,2.81,4.31,2.38,3.69,4,3.5,3.81,3.5,2.94,4.38,5,3.13,2.5,3.13,3.81],"hk":[2.94,3.19,4.31,3.13,2.94,3.81,3.19,2.94,3.06],"jc":[4.06,2.81,3.69,3.56,2.88,3.94,3.63,3.56,3.38,4.63,3.69,2.94,3.69,2.75,3.69,4,3.31,3.88],"mu":[2.94,2.75,3.88,3.25,3.81,3.13,3.63,2.31,3.19,3.69,3.94,3.81,2.69,3.5,3.25,2.63,3.75,2.69],"om":[3.31,3.63,2.75,3.13,4.44,2.31,4.06,3.44,4,3.69,3.19,2.94,3.19,2.75,3.44,3.31,3.44,3.5],"ts":[3.56,4.38,3.19,3.75,3.63,4.19,4.63,3.5,3.81,3.25,4.13,4,3.19,3.81,3.63,4.5,3.44,4.31],"an":[4,5.25,3.31,3,4.38,3,3.75,3.56,3.88,4,4.25,4.5,4.38,3.19,5.5,2.5,3.63,3.25],"pb":[3.44,3.44,3.5,3,2.88,3.94,2.5,3.19,3.94,4.38,3.56,2.81,3.63,5.75,3.63,3.94,2.56,3.5],"sa":[3.44,3.94,3.88,3.81,3.56,4,3.56,2.38,3.13,3.25,2.38,2.88,3.44,3.88,4.56,3.94,3.31,3.31],"ba":[3.94,4.06,2.81,3.88,4.06,5,3.69,3.63,3.56,3.5,3.94,3.31,4.44,3,2.69,4.25,4.06,4.63],"tl":[3.69,2.5,4.44,4.56,2.75,4,4.06,3.69,3.38,4.06,4.81,2.94,3,4.13,2.94,3.5,2.63,4.88]};
 // RATING:END
-const HCP_HOLES=90,HCP_MIN=9,counts=p=>p.kind!=='practice',rated=h=>{const m=/^([a-z]{2})(\d+)$/.exec(h.k||''),r=m&&RATING[m[1]]&&RATING[m[1]][m[2]-1];return r!=null?r:h.par-.55}; // a hole not yet rated: about what the pro averages everywhere
+const HCP_HOLES=90,HCP_MIN=9,counts=p=>p.kind==='daily'||p.kind==='event',rated=h=>{const m=/^([a-z]{2})(\d+)$/.exec(h.k||''),r=m&&RATING[m[1]]&&RATING[m[1]][m[2]-1];return r!=null?r:h.par-.55}; // a hole not yet rated: about what the pro averages everywhere
 function handicap(plays){const H=plays.filter(counts).flatMap(p=>p.holes).slice(-HCP_HOLES);if(H.length<HCP_MIN)return null;return Math.round(total(H.map(h=>h.s-rated(h)))/H.length*180)/10}
 function streakOf(rs,day){const set=new Set(rs.map(r=>r.day));let d=dayNum(day),n=0;if(!set.has(day))d--;while(set.has(numDay(d))){n++;d--}return n}
 function maxStreak(rs){const ds=[...new Set(rs.map(r=>dayNum(r.day)))].sort((a,b)=>a-b);let best=0,run=0,prev=null;for(const d of ds){run=prev!==null&&d===prev+1?run+1:1;best=Math.max(best,run);prev=d}return best}
@@ -100,9 +100,28 @@ async function clubView(store,club,pid,day){const ms=await store.list('m:'+club.
   return{code:club.code,name:club.name,founder:club.owner===pid,member:members.some(m=>m.id===pid),count:members.length,today,standings,records:{low,courses,feed:feed.reverse().slice(0,12)}}}
 async function state(store,ses,day,code){const out={me:null,club:null};
   if(ses){const rs=await roundsOf(store,ses.pid),logs=(await store.list('g:'+ses.pid+':')).map(x=>x.v),clubs=[];for(const c of ses.player.clubs||[]){const cl=await store.get('c:'+c);if(cl)clubs.push({code:c,name:cl.name})}
-    out.me={id:ses.pid,user:ses.player.user||null,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day,logs),today:rs.find(r=>r.day===day)||null}}
+    out.me={id:ses.pid,user:ses.player.user||null,name:ses.player.name,passkey:!!(ses.player.keys&&ses.player.keys.length),clubs,stats:personal(rs,day,logs),today:rs.find(r=>r.day===day)||null,matches:matchSummary(await matchesOf(store,ses.pid),ses.pid)}}
   if(code){const club=await store.get('c:'+String(code).toUpperCase());if(club)out.club=await clubView(store,club,ses&&ses.pid,day)}
   return out}
+
+// ───────── head to head
+// A match is a challenge from one member of a clubhouse to another: 3, 9 or 18 holes of one course, with the same pins and wind
+// for both (the match's id seeds them). It is played either each in their own time, or shot for shot: then the server keeps
+// where both balls lie and whose turn it is (the honour on the tee, then whoever is further from the hole, as on a course),
+// and each phone asks every couple of seconds whether the other has played. Fewest strokes wins.
+// Kept as 'x:<id>'; 'xi:<player>' lists a player's matches, oldest first. st: open (sent), on (taken up), done, off (declined
+// or withdrawn). sc: each side's strokes on the holes finished. A player's record against each opponent is read off these.
+const sideOf=(x,pid)=>x.a===pid?'a':x.b===pid?'b':null,OTHER={a:'b',b:'a'};
+function matchDone(x){const n=x.holes.length;if(x.sc.a.length>=n&&x.sc.b.length>=n){x.st='done';const A=total(x.sc.a),B=total(x.sc.b);x.win=A<B?'a':B<A?'b':'tie';x.turn=null}}
+async function matchesOf(store,pid){const out=[];for(const id of((await store.get('xi:'+pid))||[]).slice(-150)){const x=await store.get('x:'+id);if(x)out.push(x)}return out}
+function matchSummary(list,pid){const vs={};let w=0,l=0,t=0;
+  for(const x of list){if(x.st!=='done')continue;const s=sideOf(x,pid),o=OTHER[s],r=vs[x[o]]=vs[x[o]]||{id:x[o],w:0,l:0,t:0};r.nick=x[o+'n'];
+    if(x.win==='tie'){r.t++;t++}else if(x.win===s){r.w++;w++}else{r.l++;l++}}
+  const rows=list.filter(x=>x.st!=='off').map(x=>{const s=sideOf(x,pid),o=OTHER[s],n=x.holes.length;
+    return{id:x.id,club:x.club,vs:x[o+'n'],vsId:x[o],course:x.course,part:x.part,n,live:!!x.live,st:x.st,from:s==='a',mine:x.sc[s],theirs:x.sc[o],par:total(x.holes.map(h=>h.par)),
+      win:x.win?(x.win==='tie'?'tie':x.win===s?'me':'them'):null,turn:x.st==='done'?null:x.live?(x.st==='open'?(s==='b'?'me':'them'):x.turn===s?'me':'them'):(x.sc[s].length<n?'me':'them'),u:x.u}})
+    .sort((p,q)=>(p.st==='done')-(q.st==='done')||q.u-p.u);
+  return{rows:rows.slice(0,40),w,l,t,vs:Object.values(vs).sort((p,q)=>q.w+q.l+q.t-(p.w+p.l+p.t))}}
 
 // ───────── passkeys (WebAuthn): the server keeps a public key; the phone proves it holds the private one
 function derToRaw(der){let o=der[1]&0x80?2+(der[1]&0x7f):2;const int=()=>{if(der[o++]!==2)throw new Error('der');const len=der[o++];let v=der.slice(o,o+len);o+=len;
@@ -122,6 +141,7 @@ export async function handle(req,store,opts={}){const url=new URL(req.url),path=
     if(m==='GET'&&path==='/ping')return json({ok:true,v:1});
     let ses=await session(req,store);
     if(m==='GET'&&path==='/state'){const day=validDay(url.searchParams.get('day'))||numDay(Math.floor(Date.now()/864e5));return json({ok:true,...await state(store,ses,day,url.searchParams.get('club'))})}
+    if(m==='GET'&&path==='/match'){if(!ses)return fail('no_player',401);const x=await store.get('x:'+String(url.searchParams.get('id')||''));if(!x||!sideOf(x,ses.pid))return fail('no_match',404);return json({ok:true,match:{...x,side:sideOf(x,ses.pid)}})}
     if(m!=='POST')return fail('not_found',404);
     const o=req.headers.get('origin');if(o&&o!==origin&&!opts.local)return fail('bad_origin',403);
     const b=await req.json().catch(()=>({})),head={},extra={};
@@ -155,9 +175,35 @@ export async function handle(req,store,opts={}){const url=new URL(req.url),path=
         const key='r:'+ses.pid+':'+day;if(!(await store.get(key)))await store.put(key,{day,holes:h,pars:p,scores:s,tot:total(s),par:total(p),ts:Date.now()}); // the first card of the day stands
         return done()}
       // the full record of rounds, daily and practice, hole by hole. Kept as sent (after checking its shape) so that later tables can be built from it.
+      case'/match/new':{if(!ses)return fail('no_player',401);const code=String(b.club||'').toUpperCase(),to=String(b.to||''),hs=b.holes,mine=await store.get('m:'+code+':'+ses.pid),theirs=await store.get('m:'+code+':'+to);
+        if(!mine||!theirs||to===ses.pid)return fail('member');
+        if(!Array.isArray(hs)||![3,9,18].includes(hs.length)||!hs.every(h=>h&&/^[a-z]{2}([1-9]|1[0-8])$/.test(h.k)&&[3,4,5].includes(h.par))||new Set(hs.map(h=>h.k.slice(0,2))).size!==1||new Set(hs.map(h=>h.k)).size!==hs.length)return fail('holes');
+        if((await matchesOf(store,ses.pid)).filter(x=>x.st==='open'||x.st==='on').length>=12)return fail('too_many');
+        const id=[...rand(6)].map(v=>v.toString(16).padStart(2,'0')).join(''),now=Date.now();
+        const x={id,club:code,a:ses.pid,b:to,an:mine.nick,bn:theirs.nick,course:hs[0].k.slice(0,2),part:/^[fba]$/.test(b.part||'')?b.part:null,holes:hs.map(h=>({k:h.k,par:h.par})),live:!!b.live,st:'open',t:now,u:now,sc:{a:[],b:[]},hi:0,hon:'a',turn:b.live?'a':null,pos:{a:null,b:null},last:null,seq:1};
+        await store.put('x:'+id,x);for(const q of[ses.pid,to]){const ix=(await store.get('xi:'+q))||[];ix.push(id);await store.put('xi:'+q,ix.slice(-300))}return done({match:{...x,side:'a'}})}
+      // taking up a challenge, declining it, or (the challenger) withdrawing it before it is taken up
+      case'/match/answer':{if(!ses)return fail('no_player',401);const x=await store.get('x:'+String(b.id||'')),side=x&&sideOf(x,ses.pid);if(!side||x.st!=='open')return fail('no_match',404);
+        if(b.yes){if(side!=='b')return fail('not_yours');x.st='on'}else x.st='off';x.u=Date.now();x.seq++;await store.put('x:'+x.id,x);return done({match:{...x,side}})}
+      // in your own time: a hole's score, in order. The challenger may play before the challenge is taken up; the other takes it up by playing.
+      case'/match/score':{if(!ses)return fail('no_player',401);const x=await store.get('x:'+String(b.id||'')),side=x&&sideOf(x,ses.pid);if(!side||x.live||x.st==='off')return fail('no_match',404);
+        const hi=+b.hi,sc=+b.s;if(x.sc[side][hi]===sc)return done({match:{...x,side}}); // sent twice
+        if(x.st==='done'||hi!==x.sc[side].length||hi>=x.holes.length||!Number.isInteger(sc)||sc<1||sc>x.holes[hi].par+5)return fail('score');
+        if(side==='b'&&x.st==='open')x.st='on';x.sc[side].push(sc);matchDone(x);x.u=Date.now();x.seq++;await store.put('x:'+x.id,x);return done({match:{...x,side}})}
+      // shot for shot: where my ball came to rest. The server answers with whose turn it is now.
+      case'/match/shot':{if(!ses)return fail('no_player',401);const x=await store.get('x:'+String(b.id||'')),side=x&&sideOf(x,ses.pid);if(!side||!x.live||x.st!=='on')return fail('no_match',404);
+        const hi=+b.hi,n=+b.n,num=(v,lo,up)=>Number.isFinite(+v)?Math.min(up,Math.max(lo,+v)):0;
+        if(x.last&&x.last.side===side&&x.last.hi===hi&&x.last.n===n)return done({match:{...x,side}}); // sent twice
+        if(hi!==x.hi||x.turn!==side)return fail('turn');const par=x.holes[hi].par;if(!Number.isInteger(n)||n<1||n>par+5||(x.pos[side]&&n<=x.pos[side].n))return fail('score');
+        const holed=!!b.in||n>=par+5,o=OTHER[side],po=x.pos[o];
+        x.last={side,hi,n,fx:num(b.fx,-1e5,1e5),fy:num(b.fy,-1e5,1e5),x:num(b.x,-1e5,1e5),y:num(b.y,-1e5,1e5),c:String(b.c||'').slice(0,12),in:holed,z:num(b.z,0,200),putt:!!b.putt};
+        x.pos[side]={x:x.last.x,y:x.last.y,n,d:num(b.d,0,3000),in:holed};if(holed)x.sc[side][hi]=n;
+        if(holed&&po&&po.in){const A=x.sc.a[hi],B=x.sc.b[hi];x.hon=A<B?'a':B<A?'b':x.hon;x.hi++;x.pos={a:null,b:null};x.turn=x.hon;matchDone(x)} // the hole is over: the winner has the honour
+        else x.turn=holed?o:po&&po.in?side:!po?o:x.pos[side].d>=po.d?side:o; // the other if I am in or they have yet to tee off; else whoever is further from the hole
+        x.u=Date.now();x.seq++;await store.put('x:'+x.id,x);return done({match:{...x,side}})}
       case'/log':{if(!ses)return fail('no_player',401);const rs=b.rounds;if(!Array.isArray(rs)||rs.length>25)return fail('rounds');
         const num=(v,lo,hi)=>v==null?null:Number.isFinite(+v)?Math.min(hi,Math.max(lo,Math.round(+v))):null,idx=(await store.get('gi:'+ses.pid))||[];let saved=0;
-        for(const r of rs){if(!r||typeof r.id!=='string'||!/^[a-z0-9]{6,24}$/.test(r.id)||!['daily','practice','event'].includes(r.kind)||!validDay(r.day)||!Array.isArray(r.holes)||r.holes.length<1||r.holes.length>18||idx.includes(r.id))continue;
+        for(const r of rs){if(!r||typeof r.id!=='string'||!/^[a-z0-9]{6,24}$/.test(r.id)||!['daily','practice','event','match'].includes(r.kind)||!validDay(r.day)||!Array.isArray(r.holes)||r.holes.length<1||r.holes.length>18||idx.includes(r.id))continue;
           const holes=r.holes.map(h=>h&&/^[a-z]{2}([1-9]|1[0-8])$/.test(h.k)&&(h.par===3||h.par===4||h.par===5)&&Number.isInteger(h.s)&&h.s>=1&&h.s<=h.par+5?{k:h.k,par:h.par,s:h.s,p:num(h.p,0,12),pen:num(h.pen,0,10),sw:num(h.sw,0,12),pure:num(h.pure,0,12),fw:h.fw==null?null:h.fw?1:0,gir:h.gir?1:0,dr:num(h.dr,0,450),fp:num(h.fp,0,400),hf:num(h.hf,0,1500),chip:h.chip?1:0}:null);
           if(holes.some(h=>!h))continue;
           await store.put('g:'+ses.pid+':'+r.id,{id:r.id,kind:r.kind,day:r.day,course:/^[a-z]{2}$/.test(r.course||'')?r.course:null,part:/^[fba]$/.test(r.part||'')?r.part:null,holes,tot:total(holes.map(h=>h.s)),par:total(holes.map(h=>h.par)),t:num(r.t,0,4e12),b:num(r.b,0,4e12),ts:Date.now()});idx.push(r.id);saved++}

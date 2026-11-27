@@ -22,7 +22,7 @@ function scoreCard(ids,scores){const hs=ids.map(INFO),wide=ids.length<=3,one=hs.
     return`<table class="sc${wide?' wide':''}">${wide&&!one?row('h','Course',H.map(h=>h.course.club),''):''}${row(wide?'n':'h','Hole',H.map(h=>h.n),label)}
 ${row('g',wide?'Yards':c.tee,H.map(h=>h.yards),sum(H.map(h=>h.yards)))}${row('k','Hcp',H.map(h=>h.hcp),'')}${row('p','Par',H.map(h=>h.par),sum(H.map(h=>h.par)))}
 ${row('s','You',H.map((h,i)=>sc[i]!=null?mk(sc[i],h.par):''),full?sum(sc):'')}</table>`};
-  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${wide?"Today's Three":c.club}</b><span>${wide?(one?c.club+' · ':'')+'No. '+S.day:(all?'Eighteen':!c.more?'Nine holes':hs[0].n>9?'Back nine':'Front nine')+' · practice'}</span></div>
+  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${inMatch()?'Match v '+esc(S.round.vs):wide?"Today's Three":c.club}</b><span>${inMatch()?c.club+' · '+ids.length+' holes':wide?(one?c.club+' · ':'')+'No. '+S.day:(all?'Eighteen':!c.more?'Nine holes':hs[0].n>9?'Back nine':'Front nine')+' · practice'}</span></div>
 ${wide?table(0,3,'Total'):all?table(0,9,'Out')+table(9,18,'In'):table(0,9,hs[0].n>9?'In':'Out')}
 <div class="sc-foot"><span>Date <i>${d.getMonth()+1}/${d.getDate()}</i></span><span>${all?'Total':'Scorer'} <i>${all?(n?sum(scores.slice(0,n)):''):'You'}</i></span><span>To par <i>${toPar}</i></span></div></div>`}
 const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
@@ -30,13 +30,13 @@ const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{w
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
 // the practice menu lists the famous courses first, then the Texas ones; the order of COURSES itself never changes
 const FAMOUS=['ts','an','pb','sa'],WILD=['ba','tl'],tomorrowCourse=()=>{const n=COURSES.length;return COURSES[(dayNumber(S.key)%n+n)%n]};
-function titleCard(){const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
+function titleCard(){matchQuit();const d=fetchKey(S.key),ids=todaysIds(d),seen=fetchKey('seen');
   S.mode='title';S.round={type:'daily',ids,scores:d&&d.scores?d.scores.slice():[]};S.hi=0;setBall(cur().tee.x,cur().tee.y);setupShot();overviewCam(.2,.3,true);hud();hintOff();
   sheet(`<div class="mast">${CREST}<h1>Breakfast<br>Ball</h1>${meChip()}</div>
 <div class="flourish"></div><p class="eyebrow stamp"><span>${dateLine()}</span><span id="buildAge">${buildAge()}</span></p>
 ${scoreCard(ids,d&&d.scores?d.scores:[])}
 <button class="btn" data-act="daily">Today's three</button>
-${saveStrip()}${clubStrip()}
+${saveStrip()}${matchStrip()}${clubStrip()}
 ${[['Famous courses',COURSES.filter(c=>FAMOUS.includes(c.id))],['Fantasy, on real ground',COURSES.filter(c=>WILD.includes(c.id))],['Texas',COURSES.filter(c=>!FAMOUS.includes(c.id)&&!WILD.includes(c.id))]].map(([t,cs])=>`<p class="eyebrow">Practice · ${t}</p>
 <div class="pick">${cs.map(c=>{const n=['f','b','a'].map(p=>inPlay(c.id,p)).find(Boolean);return`<button class="btn green sm" data-act="course" data-c="${c.id}">${c.club}${n?'<small>In play · No. '+n+'</small>':''}</button>`}).join('')}</div>`).join('')}`,titleCard)}
 // a course with both nines asks which to play
@@ -50,7 +50,7 @@ function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button></div>`)}
 // Leaving a round part-way. Its place is always kept (every shot is saved as it is played); a practice round can also be thrown away.
 function leaveCard(){const nine=S.round.type==='nine',h=cur();
-  sheet(`<p class="eyebrow">${nine?'Practice · '+h.course.club:"Today's three"}</p><h2>Leave the round?</h2>
+  sheet(`<p class="eyebrow">${nine?'Practice · '+h.course.club:inMatch()?'Match v '+esc(S.round.vs):"Today's three"}</p><h2>Leave the round?</h2>
 <button class="btn" data-act="close">Carry on</button>
 <button class="btn green" data-act="leave">Save and exit<small>Pick it up again at No. ${h.n}</small></button>
 ${nine?'<button class="btn ghost" data-act="quit">Quit the round</button>':''}`)}
@@ -60,7 +60,7 @@ function quitCard(){sheet(`<p class="eyebrow">Practice · ${cur().course.club}</
 const inPlay=(c,p)=>{const sv=fetchKey('rd:'+c+':'+p),ids=courseIds(c,p);return sv&&!sv.done&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length&&(sv.hi>0||sv.strokes>0)?INFO(ids[sv.hi]).n:0};
 function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:INFO(S.round.ids[S.hi+1]);
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
-${scoreCard(S.round.ids,S.round.scores)}
+${scoreCard(S.round.ids,S.round.scores)}${inLive()&&MT.x?`<p class="fine">${esc(S.round.vs)} made ${MT.x.sc[otherSide(MT.x)][S.hi]}. You ${sum(MT.x.sc[MT.x.side])}, ${esc(S.round.vs)} ${sum(MT.x.sc[otherSide(MT.x)])}.</p>`:''}
 <button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
 // What goes in the group chat: the name and number, a mark for each hole, and the score against par in words.
 function shareText(){const r=S.round,hs=r.ids.map(INFO),d=sum(r.scores)-sum(hs.map(h=>h.par)),em=(a,b,j)=>r.scores.slice(a,b).map((s,i)=>emo(s,hs[a+i].par)).join(j),par=d===0?'Even':d<0?-d+' under':d+' over';
@@ -90,8 +90,12 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='course'){const c=COURSES.find(c=>c.id===b.dataset.c);c&&c.more?courseCard(c.id):begin('nine',b.dataset.c,'f')}
   else if(a==='again'){store(saveKey(),null);begin('nine',S.round.course,S.round.part)}
   else if(a==='close')closeSheet();
-  else if(a==='next'){closeSheet();startHole(S.hi+1)}
-  else if(a==='results')resultsCard();
+  else if(a==='next'){closeSheet();startHole(S.hi+1);if(inLive())liveNext()}
+  else if(a==='results')inMatch()?matchResults():resultsCard();
+  else if(a==='mnew')newMatchCard();
+  else if(a==='match')matchCard(b.dataset.id);
+  else if(a==='mplay')playMatch();
+  else if(a==='mno')answerMatch(false);
   else if(a==='title')titleCard();
   else if(a==='leave'){save();titleCard()}
   else if(a==='quit')quitCard();
@@ -117,7 +121,7 @@ function startHole(i,sv){clearTimeout(S.hzT);closeSheet();S.hi=i;S.marks=[];S.sh
   overviewCam(.5,.76,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,h.course.club,1800);
   hintOff();if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
-function begin(type,course,part){const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';if(nine&&(!COURSES.find(c=>c.id===course).more||!/^[fba]$/.test(part||'')))part='f';
+function begin(type,course,part){matchQuit();const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';if(nine&&(!COURSES.find(c=>c.id===course).more||!/^[fba]$/.test(part||'')))part='f';
   S.round={type,course:nine?course:null,part:nine?part:null,ids:[],scores:[],log:[]};let sv=fetchKey(saveKey())||(nine?fetchKey(S.key+':rd:'+course+':'+part):null); // (the second: a round saved before practice saves outlived the day)
   if(nine&&sv&&sv.done&&sv.day!==S.key)sv=null; // yesterday's finished card: start afresh
   if(sv&&Array.isArray(sv.log))S.round.log=sv.log;S.round.ids=nine?courseIds(course,part):todaysIds(sv);const ids=S.round.ids;

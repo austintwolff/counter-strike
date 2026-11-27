@@ -172,9 +172,14 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-num
 .field label{font:400 11.5px/1 var(--caps);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
 .field input{font:600 19px/1.2 var(--display);color:var(--ink);padding:11px 12px;border:1px solid var(--rule);border-radius:4px;background:#fffdf6;width:100%;box-sizing:border-box;-webkit-user-select:text;user-select:text}
 .field input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.field select{font:600 17px/1.2 var(--display);color:var(--ink);padding:10px 12px;border:1px solid var(--rule);border-radius:4px;background:#fffdf6;width:100%;box-sizing:border-box}
+.rec.mt li{padding:0}.rec.mt button{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;text-align:left;font:inherit;color:inherit}
+.rec.mt .nm{flex:0 0 auto;max-width:36%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rec.mt small{flex:1;color:var(--ink-2);font:400 12px/1.2 var(--display)}
+.rec.mt em{font:400 11px/1 var(--caps);letter-spacing:.08em;text-transform:uppercase;font-style:normal;color:var(--ink-2);white-space:nowrap}.rec.mt em.go{color:var(--claret,#8a2233);font-weight:700}
+.st.mc td,.st.mc th{padding:5px 2px;text-align:center;font-size:12.5px}.st.mc td:first-child,.st.mc th:first-child{text-align:left;padding-left:8px;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .err{color:var(--claret);min-height:1.3em}
 .link{align-self:flex-start;padding:6px 0;font:italic 600 14px/1.2 var(--display);color:var(--club);text-decoration:underline}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--club);border-radius:6px;overflow:hidden}
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--club);border-radius:6px;overflow:hidden}
 .tabs button{padding:11px 4px 9px;font:400 12px/1 var(--caps);letter-spacing:.11em;text-transform:uppercase;color:var(--club)}
 .tabs button+button{border-left:1px solid var(--club)}
 .tabs button[aria-selected="true"]{background:var(--club);color:var(--cream)}

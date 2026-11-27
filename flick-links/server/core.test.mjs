@@ -101,4 +101,38 @@ assert.deepEqual([rp(cr.records.courses.jc.f), rp(cr.records.courses.jc.a), rp(c
 assert.deepEqual([rp(cr.records.courses.hk.f), cr.records.courses.hk.a], [-9, undefined], 'a nine-hole course has one record');
 assert.deepEqual([rp(cr.records.courses.mu.f), rp(cr.records.courses.mu.a), rp(cr.records.courses.mu.b)], [1, 1, 0]); assert.equal(rp(cr.records.courses.lp.f), -1); assert.equal(cr.records.courses.jc.f.nick, 'Pro');
 assert.equal(cr.standings.find(x => x.nick === 'Pro').hcp, null, 'practice alone gives no handicap in the standings');
+// head to head: a challenge between two members, each in their own time or shot for shot
+{ const st5 = new MemStore(), who = () => { let c = ''; return async (m, pth, b) => { const r = await handle(new Request('https://golf.test/api' + pth, { method: m, headers: { cookie: c, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }), st5, { local: true }); const j = await r.json(); if (j.session) c = 'fl=' + j.session; return j; }; };
+  const ann = who(), bob = who(), cat = who(); await ann('POST', '/player', { name: 'Ann', user: 'ann' }); await bob('POST', '/player', { name: 'Bob', user: 'bob' }); await cat('POST', '/player', { name: 'Cat', user: 'cat' });
+  const club = (await ann('POST', '/club', { name: 'Match Club', nick: 'Ann' })).code; await bob('POST', '/join', { code: club, nick: 'Bob' });
+  const me = async w => (await w('GET', '/state?day=' + today)).me, bobId = (await me(bob)).id, catId = (await me(cat)).id, three = [{ k: 'hk2', par: 3 }, { k: 'hk5', par: 4 }, { k: 'hk7', par: 5 }];
+  assert.equal((await ann('POST', '/match/new', { club, to: catId, holes: three })).error, 'member', 'only a member of the clubhouse can be challenged');
+  assert.equal((await ann('POST', '/match/new', { club, to: bobId, holes: three.slice(0, 2) })).error, 'holes', 'three, nine or eighteen holes');
+  // in their own time
+  const m1 = (await ann('POST', '/match/new', { club, to: bobId, holes: three })).match; assert.equal(m1.st, 'open'); assert.equal(m1.side, 'a'); assert.equal(m1.an, 'Ann'); assert.equal(m1.bn, 'Bob');
+  assert.equal((await me(bob)).matches.rows[0].turn, 'me'); assert.equal((await me(bob)).matches.rows[0].vs, 'Ann'); assert.equal((await cat('GET', '/match?id=' + m1.id)).error, 'no_match', 'nobody else can read it');
+  assert.equal((await ann('POST', '/match/score', { id: m1.id, hi: 1, s: 4 })).error, 'score', 'holes in order');
+  for (const [i, sc] of [3, 4, 5].entries()) assert.ok((await ann('POST', '/match/score', { id: m1.id, hi: i, s: sc })).ok);
+  assert.ok((await ann('POST', '/match/score', { id: m1.id, hi: 2, s: 5 })).ok, 'a score sent twice is taken once'); assert.equal((await me(ann)).matches.rows[0].turn, 'them');
+  assert.equal((await bob('POST', '/match/score', { id: m1.id, hi: 0, s: 2 })).match.st, 'on', 'playing takes the challenge up');
+  await bob('POST', '/match/score', { id: m1.id, hi: 1, s: 4 }); const end = (await bob('POST', '/match/score', { id: m1.id, hi: 2, s: 5 })).match; assert.equal(end.st, 'done'); assert.equal(end.win, 'b');
+  { const a = (await me(ann)).matches, b = (await me(bob)).matches; assert.deepEqual([a.w, a.l, a.t], [0, 1, 0]); assert.deepEqual([b.w, b.l, b.t], [1, 0, 0]); assert.deepEqual([a.vs[0].nick, a.vs[0].l], ['Bob', 1]); assert.equal(a.rows[0].win, 'them'); assert.equal(b.rows[0].win, 'me'); }
+  // declined, and withdrawn
+  const m2 = (await bob('POST', '/match/new', { club, to: (await me(ann)).id, holes: three })).match; assert.equal((await bob('POST', '/match/answer', { id: m2.id, yes: true })).error, 'not_yours', 'the challenger cannot take up their own challenge');
+  assert.equal((await ann('POST', '/match/answer', { id: m2.id, yes: false })).match.st, 'off'); assert.equal((await me(ann)).matches.rows.some(r => r.id === m2.id), false, 'a declined match drops out of the list');
+  // shot for shot: the honour on the tee, then whoever is further from the hole; the hole's winner has the next honour
+  const m3 = (await ann('POST', '/match/new', { club, to: bobId, holes: three, live: true })).match; assert.equal(m3.turn, 'a'); const shot = (w, o) => w('POST', '/match/shot', { id: m3.id, ...o });
+  assert.equal((await shot(ann, { hi: 0, n: 1, x: 1, y: 1, d: 30 })).error, 'no_match', 'not until it is taken up'); assert.equal((await bob('POST', '/match/answer', { id: m3.id, yes: true })).match.st, 'on');
+  assert.equal((await shot(bob, { hi: 0, n: 1, x: 5, y: 5, d: 10 })).error, 'turn', 'Ann has the honour');
+  assert.equal((await shot(ann, { hi: 0, n: 1, x: 1, y: 1, d: 30 })).match.turn, 'b', 'then Bob tees off');
+  assert.equal((await shot(ann, { hi: 0, n: 1, x: 1, y: 1, d: 30 })).match.seq, (await ann('GET', '/match?id=' + m3.id)).match.seq, 'a shot sent twice is taken once');
+  assert.equal((await shot(bob, { hi: 0, n: 1, x: 5, y: 5, d: 10 })).match.turn, 'a', 'Ann is further away');
+  assert.equal((await shot(ann, { hi: 0, n: 2, x: 2, y: 2, d: 12 })).match.turn, 'a', 'and still is');
+  assert.equal((await shot(ann, { hi: 0, n: 3, x: 3, y: 3, d: 2 })).match.turn, 'b');
+  assert.equal((await shot(bob, { hi: 0, n: 2, x: 6, y: 6, d: 0, in: true })).match.turn, 'a', 'Bob is in; Ann plays on');
+  { const x = (await shot(ann, { hi: 0, n: 4, x: 6, y: 6, d: 0, in: true })).match; assert.deepEqual([x.hi, x.turn, x.sc.a[0], x.sc.b[0], x.pos.a], [1, 'b', 4, 2, null], 'next hole, Bob to play first'); assert.equal(x.last.hi, 0); }
+  for (const hi of [1, 2]) { await shot(bob, { hi, n: 1, x: 9, y: 9, d: 0, in: true }); await shot(ann, { hi, n: 1, x: 9, y: 9, d: 0, in: true }); }
+  { const x = (await ann('GET', '/match?id=' + m3.id)).match; assert.deepEqual([x.st, x.win, x.turn], ['done', 'b', null]); const a = (await me(ann)).matches; assert.deepEqual([a.w, a.l, a.t], [0, 2, 0]); assert.equal(a.vs[0].l, 2); }
+  // a match round goes into the record of play but not the handicap
+  assert.equal((await ann('POST', '/log', { rounds: [{ id: 'matchlog1', kind: 'match', day: today, course: 'hk', part: 'f', holes: H18('hk', par => par).slice(0, 9), t: 1, b: 1 }] })).saved, 1); assert.equal((await me(ann)).stats.counted, 0); assert.equal((await me(ann)).stats.holes, 9); }
 console.log('server core: all checks passed');

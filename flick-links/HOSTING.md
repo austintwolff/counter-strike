@@ -49,6 +49,20 @@ address, so change it there if the site moves. Chat apps cache previews: a link 
 - `tools/dev-server.mjs` runs the same server in memory for local testing: `node tools/dev-server.mjs`.
 - `server/core.test.mjs` checks the server with several simulated players: `node server/core.test.mjs`.
 
+## Matches (head to head)
+
+A member can challenge another to 3, 9 or 18 holes of any course, from the clubhouse's Matches tab. Both get the same pins and
+wind (the match's id seeds them). Fewest strokes wins; the record against each opponent is read off the finished matches.
+
+- **Own time**: each plays the round when they like. A hole's score goes up as it is finished (`/match/score`).
+- **Shot for shot**: every shot goes up as the ball stops (`/match/shot`) and the server says whose turn is next: the honour on
+  the tee, then whoever is further from the hole. There is no open connection between phones, so a phone waiting on the other
+  player asks `/match` every two seconds and plays their shot back when it arrives. Either player can leave and come back; the
+  server holds where both balls lie.
+
+Matches are stored as `x:<id>`, with `xi:<player>` listing each player's. They go into the record of play (kind `match`) but
+not the handicap. The page code is `src/47-match.js`; the rules are in `server/core.js` and tested in `server/core.test.mjs`.
+
 ## How players are identified
 
 A player gets a random sign-in token the first time they post a score. It is kept in an HttpOnly cookie,

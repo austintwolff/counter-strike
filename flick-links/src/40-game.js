@@ -46,12 +46,12 @@ function dailyIds(key){const r=mulberry32(hashStr('fl-day:'+key)),n=COURSES.leng
 const S={mode:'title',key:'',day:1,holes:[],round:{type:'daily',ids:[0,1,2],scores:[]},hi:0,strokes:0,lie:'tee',clubs:[],ci:0,club:CLUBS[6],
   ball:{x:0,y:0,z:0,vx:0,vy:0,vz:0,air:false,spin:0,club:null,putt:false,gone:false,tree:null,rollK:1},prev:{x:0,y:0},g:null,trail:[],fx:[],parts:[],hintShots:0,chip:1,pk:1,muted:false,mark:{x:0,y:0},pmode:'aim',marks:[]};S.round.course='gr';
 // holes are built the first time they are needed; the day's pins and wind are part of the build
-const HOLE=i=>ALL[i]?S.holes[i]||(S.holes[i]=buildHole(i,S.key)):undefined;
+const HOLE=i=>ALL[i]?S.holes[i]||(S.holes[i]=buildHole(i,S.hkey||S.key)):undefined; // S.hkey: a match's own seed for pins and wind
 const cur=()=>HOLE(S.round.ids[S.hi]);
 const maxScore=()=>cur().par+MAX_OVER;
 // where a round in progress is kept: the daily under its date; a practice round under its course and nine, whatever the day,
 // so one saved today can be picked up tomorrow
-const saveKey=()=>S.round.type==='nine'?'rd:'+S.round.course+':'+(S.round.part||'f'):S.key;
+const saveKey=()=>S.round.type==='nine'?'rd:'+S.round.course+':'+(S.round.part||'f'):S.round.type==='match'?'mt:'+S.round.mid:S.key;
 const onRange=()=>S.round.type==='range';
 function save(){if(onRange())return;const n=S.round.ids.length;store(saveKey(),{day:S.key,ids:S.round.ids,scores:S.round.scores,hi:S.hi,strokes:S.strokes,bx:S.ball.x,by:S.ball.y,done:S.round.scores.length>=n,hs:S.hs,log:S.round.log||[]})}
 // ───────── the record of play
@@ -65,7 +65,7 @@ const newHs=()=>({p:0,pen:0,sw:0,pure:0,fw:null,gir:0,dr:null,fp:null,hf:null,ch
 function noteRest(l){const hs=S.hs,h=cur();if(!hs||onRange())return;if(hs.tee){hs.tee=false;if(h.par>3){hs.dr=S.shot?Math.round(S.shot.d):null;hs.fw=l==='fairway'||l==='green'||l==='fringe'?1:0}}
   if(l==='green'&&S.strokes<=h.par-2)hs.gir=1}
 function logRound(){const r=S.round,hs=r.log||[];if(hs.filter(Boolean).length<r.ids.length)return;const L=fetchKey('log')||[],c=INFO(r.ids[0]).course.id;
-  L.push({v:1,id:Math.random().toString(36).slice(2,10)+Date.now().toString(36),kind:r.type==='daily'?'daily':'practice',day:S.key,course:c,part:r.part||null,holes:hs,tot:sum(r.scores),par:sum(hs.map(x=>x.par)),t:Date.now(),b:BUILD_TS});
+  L.push({v:1,id:Math.random().toString(36).slice(2,10)+Date.now().toString(36),kind:r.type==='daily'?'daily':r.type==='match'?'match':'practice',day:S.key,course:c,part:r.part||null,holes:hs,tot:sum(r.scores),par:sum(hs.map(x=>x.par)),t:Date.now(),b:BUILD_TS});
   while(L.length>400)L.shift();store('log',L)}
 
 // ───────── sound (starts on the first touch)
@@ -178,7 +178,7 @@ function gPos(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:
 cv.addEventListener('pointerdown',e=>{
   ac();
   if(S.mode==='intro'){clearTimeout(introT);S.mode='ready';aimCam();return}
-  if(S.mode!=='ready'||S.g)return;
+  if(S.mode!=='ready'||S.g||S.hold)return; // hold: in a shot-for-shot match it is the other player's turn
   try{cv.setPointerCapture(e.pointerId)}catch(_){}
   const p=gPos(e);hintOff();
   if(S.club.putt&&S.pmode==='aim'){S.g={id:e.pointerId,drag:true,x:p.x,y:p.y};return}
@@ -305,7 +305,7 @@ function hazard(kind){const b=S.ball,fell=kind==='void',water=kind==='water'||fe
 function atRest(){const l=lieAt(cur(),S.ball);if(!onRange()&&(l==='woods'||l==='ob'))return hazard(l);S.shot=shotLen();noteRest(l);afterShot()} // on the range a wild one is just fetched back
 function afterShot(){if(onRange())return rangeAfter(false);if(S.strokes>=maxScore()){toast('Picked up','Max '+maxScore(),1600);return finishHole(maxScore())}
   setupShot();
-  S.mode='ready';aimCam();hud();save()}
+  S.mode='ready';aimCam();hud();save();if(inLive())liveShot(false)}
 function holed(){const b=S.ball,h=cur();b.x=h.pin.x;b.y=h.pin.y;b.vx=b.vy=b.vz=b.z=0;b.air=false;b.gone=true;sfx.cup();burst(b.x,b.y,K.gold,26,5,11);burst(b.x,b.y,'#fff8e0',12,3,8);
   S.fx.push({type:'ring',x:b.x,y:b.y,t0:performance.now()});
   if(S.hs&&!onRange()&&S.from){S.hs.hf=Math.max(1,Math.round(S.from.d*3));S.hs.chip=S.from.putt?0:1;if(S.strokes<=h.par-2)S.hs.gir=1}
@@ -315,6 +315,8 @@ function finishHole(score){if(onRange()){S.mode='wait';return setTimeout(()=>ran
   store(saveKey(),{day:S.key,ids:S.round.ids,scores:S.round.scores,hi:Math.min(n-1,S.hi+1),strokes:0,bx:0,by:0,done:last,hs:null,log:S.round.log});
   if(last)logRound();
   if(last){if(S.round.type==='daily')bumpStreak();refresh()} // refresh posts the finished card to the clubhouse
+  if(inLive())return void liveShot(true,score); // shot for shot: the hole's card waits until both are in
+  if(inMatch())matchPush();
   setTimeout(()=>holeCard(score),900)}
 function bumpStreak(){const m=fetchKey('meta')||{last:0,streak:0};if(m.last===S.day)return;m.streak=m.last===S.day-1?m.streak+1:1;m.last=S.day;store('meta',m)}
 
@@ -332,7 +334,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last
   const g=S.g;if(g&&!g.drag&&g.t0&&g.phase==='aim'){const tk=Math.floor((phaseAt(g,performance.now())+TD)/(TU+TD));if(tk>g.tick){g.tick=tk;sfx.tick()}}
   updateCam(dt);
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  drawScene(now);drawPreview(now);drawFlag(now);drawBall(dt);drawGesture(now);drawDemo(now);
+  drawScene(now);drawPreview(now);drawFlag(now);drawOpp(now);drawBall(dt);drawGesture(now);drawDemo(now);
   if(S.fx.length>12)S.fx.splice(0,S.fx.length-12);
   const ws=rotv(cur().wind.x,cur().wind.y,cam.r),deg=Math.round(Math.atan2(ws.y,ws.x)/DEG+90);
   if(deg!==windDeg){windDeg=deg;$('windArrow').style.transform=`rotate(${deg}deg)`}}
@@ -351,6 +353,7 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n)+(Math.abs(h.drop)>=60?' · '+(h.drop>0?'drops ':'climbs ')+Math.abs(h.drop).toLocaleString()+' ft':'');
+  if(S.hold&&inLive())$('hStroke').textContent=S.round.vs+' to play';
   $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('btnExit').hidden=onRange();S.fresh=!fetchKey('seen');S.fewPutts=(fetchKey('putts')||0)<2;
   $('btnPutt').classList.toggle('pulse',!!(onRange()&&S.tut&&S.tut.step==='mark'&&S.tut.moved&&S.pmode==='aim'));$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;

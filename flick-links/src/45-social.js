@@ -77,8 +77,8 @@ ${!C.me&&Net.remote&&window.PublicKeyCredential?'<button class="link" type="butt
 async function guest(){try{for(let i=0;i<4&&!C.me;i++){const j=await Net.call('POST','/player',{name:'Guest',user:'guest'+Math.floor(1e4+Math.random()*9e4)});if(j.ok||j.error!=='user_taken')break}await refresh()}catch(e){}titleCard()}
 function clubCard(){const c=C.club;if(!c||!c.member)return titleCard();const t=C.tab,others=(C.me?C.me.clubs:[]).filter(x=>x.code!==c.code);
   sheet(`<p class="eyebrow">Clubhouse · ${plural(c.count,'member')}${Net.remote?'':' · this device only'}</p><h2>${esc(c.name)}</h2>
-<div class="tabs" role="tablist">${[['today','Today'],['standings','Standings'],['records','Records']].map(([k,l])=>`<button role="tab" aria-selected="${t===k}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
-${t==='today'?tabToday(c):t==='standings'?tabStandings(c):tabRecords(c)}
+<div class="tabs" role="tablist">${[['today','Today'],['standings','Standings'],['matches','Matches'],['records','Records']].map(([k,l])=>`<button role="tab" aria-selected="${t===k}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
+${t==='today'?tabToday(c):t==='standings'?tabStandings(c):t==='matches'?tabMatches(c):tabRecords(c)}
 <div class="row"><button class="btn" data-act="invite">Invite friends</button><button class="btn ghost" data-act="title">Back</button></div>
 <p class="fine" id="shareNote"></p>${others.length?`<p class="eyebrow">Your other clubhouses</p><div class="row">${others.map(x=>`<button class="btn ghost sm" data-act="pick" data-c="${x.code}">${esc(x.name)}</button>`).join('')}</div>`:''}`,clubCard)}
 // what the record of play says about a kind of round ('daily' or 'practice')
@@ -114,7 +114,8 @@ async function invite(){const note=$('shareNote'),c=C.club;if(!Net.remote){note.
   const url=location.origin+location.pathname+'?c='+c.code,text=`Join ${c.name} on Breakfast Ball. Three holes a day.\n${url}`;
   if(navigator.share)try{await navigator.share({text});return}catch(e){if(e&&e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(text);note.textContent='Invite copied.'}catch(e){note.textContent=url}}
-$('card').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),uf=$('userName'),user=uf?uf.value.trim().toLowerCase():'',btn=f.querySelector('[type=submit]');
+$('card').addEventListener('change',e=>{if(e.target.id==='mCourse')matchLens()});
+$('card').addEventListener('submit',async e=>{e.preventDefault();if(e.target.id==='matchForm')return sendMatch();const f=e.target,kind=f.dataset.kind,say=m=>{$('formErr').textContent=m},nick=$('nickName').value.trim(),uf=$('userName'),user=uf?uf.value.trim().toLowerCase():'',btn=f.querySelector('[type=submit]');
   const cname=kind==="club"?$("houseName").value.trim():"";if(uf&&!/^[a-z0-9_]{3,16}$/.test(user))return say(MSG.user);if(!nick)return say(MSG.name);if(kind==='club'&&cname.length<2)return say('Give the clubhouse a name.');
   btn.disabled=true;
   try{const fresh=!C.me;if(fresh||uf||kind==='name'||kind==='welcome'){const j=await Net.call('POST','/player',uf?{name:(kind==='join'||kind==='club')&&C.me?C.me.name:nick,user}:{name:nick});if(!j.ok)throw j}

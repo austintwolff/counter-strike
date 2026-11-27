@@ -129,8 +129,12 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
 // and past the edge of what was built there is only the mist.
 const mixHex=(a,b,t)=>{const p=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16)),A=p(a),B=p(b);return'rgb('+A.map((v,i)=>Math.round(lerp(v,B[i],t))).join()+')'};
 function drawStatic(h){const B=h.geo.box;if(!h.fog){h.mist=mixHex(h.th.floor,'#dde4d0',.42);h.fog=fogOf(h)}
-  ctx.fillStyle=h.mist;ctx.fillRect(VR[0],VR[1],VR[2],VR[3]);ctx.save();ctx.beginPath();ctx.rect(B[0],B[1],B[2],B[3]);ctx.clip();drawScenery(h);ctx.restore();
-  ctx.drawImage(h.fog,B[0]-1,B[1]-1,B[2]+2,B[3]+2)}
+  ctx.save();ctx.beginPath();ctx.rect(B[0],B[1],B[2],B[3]);ctx.clip();drawScenery(h);ctx.restore();
+  ctx.drawImage(h.fog,B[0]-1,B[1]-1,B[2]+2,B[3]+2);
+  // The mist past the edge goes on last, round the outside of the box. Laid first, under everything, it was lost in Chrome: the
+  // ground's first fill covers the whole view from inside the clip, the browser took that for a wipe of the canvas and dropped
+  // what was under it, and the land then showed as a pale rectangle on whatever had been there before.
+  ctx.fillStyle=h.mist;ctx.beginPath();ctx.rect(VR[0],VR[1],VR[2],VR[3]);ctx.rect(B[0],B[1],B[2],B[3]);ctx.fill('evenodd')}
 function fogOf(h){const B=h.geo.box,u=4,w=Math.ceil(B[2]/u),hh=Math.ceil(B[3]/u),sm=t=>{t=clamp(t,0,1);return t*t*(3-2*t)},keepV=VR,keepZ=RZ;
   const world=x=>{x.setTransform(1/u,0,0,1/u,-B[0]/u,-B[1]/u);x.lineCap=x.lineJoin='round'};
   // rub a layer out along the line of play, leaving keep(d) of it at d yards from the line

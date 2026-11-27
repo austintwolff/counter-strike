@@ -14,17 +14,21 @@ const rel=n=>n===0?'E':(n>0?'+':'−')+Math.abs(n);
 function scoreName(s,par){if(s===1)return'Hole in one';const d=s-par;return d<=-3?'Albatross':d===-2?'Eagle':d===-1?'Birdie':d===0?'Par':d===1?'Bogey':d===2?'Double bogey':d===3?'Triple bogey':rel(d)+' on the hole'}
 const emo=(s,par)=>s===1?'🎯':s-par<=-2?'🦅':s-par===-1?'🐦':s===par?'⚪':s-par===1?'🟧':'🟥';
 const mk=(s,par)=>{const d=s-par,c=d<=-2?'eagle':d===-1?'birdie':d===1?'bogey':d>=2?'dbl':'';return`<span class="mk ${c}">${s}</span>`};
-// a round's card. Today's three can mix courses, so it carries a course row; a practice nine carries its tee.
-function scoreCard(ids,scores){const hs=ids.map(INFO),wide=ids.length<=3,one=hs.every(h=>h.course===hs[0].course),all=ids.length>9,n=scores.filter(s=>s!=null).length,c=hs[0].course,d=new Date();
-  const toPar=n?rel(sum(scores.slice(0,n))-sum(hs.slice(0,n).map(h=>h.par))):'';
-  const row=(cls,label,cells,out)=>`<tr class="${cls}"><th>${label}</th>${cells.map(x=>`<td>${x}</td>`).join('')}<td class="out">${out}</td></tr>`;
-  const table=(a,b,label)=>{const H=hs.slice(a,b),sc=scores.slice(a,b),full=H.every((h,i)=>sc[i]!=null);
+// a round's card. Today's three can mix courses, so it carries a course row; a practice nine carries its tee. A match's card
+// (m: who it is against, and their scores) carries both players, with the better score on each hole shaded.
+function scoreCard(ids,scores,m){m=m||(inMatch()&&MT.x?{vs:S.round.vs,theirs:MT.x.sc[otherSide(MT.x)]}:null);
+  const hs=ids.map(INFO),wide=ids.length<=3,one=hs.every(h=>h.course===hs[0].course),all=ids.length>9,n=scores.filter(s=>s!=null).length,c=hs[0].course,d=new Date(),T=m?m.theirs:null,k=T?Math.min(n,T.length):0;
+  const toPar=n?rel(sum(scores.slice(0,n))-sum(hs.slice(0,n).map(h=>h.par))):'',nm=m?esc(m.vs.length>11?m.vs.slice(0,10)+'…':m.vs):'';
+  const row=(cls,label,cells,out)=>`<tr class="${cls}"><th>${label}</th>${cells.map(x=>Array.isArray(x)?`<td class="${x[1]}">${x[0]}</td>`:`<td>${x}</td>`).join('')}<td class="out">${out}</td></tr>`;
+  const marks=(H,sc,ot)=>H.map((h,i)=>sc[i]==null?'':[mk(sc[i],h.par),ot&&ot[i]!=null&&sc[i]<ot[i]?'hw':'']),tot=(H,sc)=>H.every((h,i)=>sc[i]!=null)?sum(sc):'';
+  const table=(a,b,label)=>{const H=hs.slice(a,b),sc=scores.slice(a,b),tc=T?T.slice(a,b):null;
     return`<table class="sc${wide?' wide':''}">${wide&&!one?row('h','Course',H.map(h=>h.course.club),''):''}${row(wide?'n':'h','Hole',H.map(h=>h.n),label)}
 ${row('g',wide?'Yards':c.tee,H.map(h=>h.yards),sum(H.map(h=>h.yards)))}${row('k','Hcp',H.map(h=>h.hcp),'')}${row('p','Par',H.map(h=>h.par),sum(H.map(h=>h.par)))}
-${row('s','You',H.map((h,i)=>sc[i]!=null?mk(sc[i],h.par):''),full?sum(sc):'')}</table>`};
-  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${inMatch()?'Match v '+esc(S.round.vs):wide?"Today's Three":c.club}</b><span>${inMatch()?c.club+' · '+ids.length+' holes':wide?(one?c.club+' · ':'')+'No. '+S.day:(all?'Eighteen':!c.more?'Nine holes':hs[0].n>9?'Back nine':'Front nine')+' · practice'}</span></div>
+${row('s','You',marks(H,sc,tc),tot(H,sc))}${T?row('s o',esc(m.vs),marks(H,tc,sc),tot(H,tc)):''}</table>`};
+  return`<div class="card-sc"><div class="sc-head">${CREST}<b>${m?'Match v '+esc(m.vs):wide?"Today's Three":c.club}</b><span>${m?c.club+' · '+ids.length+' holes':wide?(one?c.club+' · ':'')+'No. '+S.day:(all?'Eighteen':!c.more?'Nine holes':hs[0].n>9?'Back nine':'Front nine')+' · practice'}</span></div>
 ${wide?table(0,3,'Total'):all?table(0,9,'Out')+table(9,18,'In'):table(0,9,hs[0].n>9?'In':'Out')}
-<div class="sc-foot"><span>Date <i>${d.getMonth()+1}/${d.getDate()}</i></span><span>${all?'Total':'Scorer'} <i>${all?(n?sum(scores.slice(0,n)):''):'You'}</i></span><span>To par <i>${toPar}</i></span></div></div>`}
+<div class="sc-foot">${k?`<span>You <i>${sum(scores.slice(0,k))}</i></span><span>${nm} <i>${sum(T.slice(0,k))}</i></span><span>Thru <i>${k}</i></span>`
+    :`<span>Date <i>${d.getMonth()+1}/${d.getDate()}</i></span><span>${all?'Total':'Scorer'} <i>${all?(n?sum(scores.slice(0,n)):''):'You'}</i></span><span>To par <i>${toPar}</i></span>`}</div></div>`}
 const dateLine=()=>`No. ${S.day} · `+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
 // a day's saved round keeps the holes it was drawn with, so a later change to the draw cannot scramble it
 const todaysIds=d=>d&&Array.isArray(d.ids)&&d.ids.length===3&&d.ids.every(i=>ALL[i])?d.ids:dailyIds(S.key);
@@ -49,19 +53,21 @@ function helpCard(){sheet(`<h2>How to play</h2>${HOW}
 <p class="fine">© OpenStreetMap contributors.</p>
 <div class="row"><button class="btn" data-act="close">Carry on</button><button class="btn ghost" data-act="range">Practice range</button></div>`)}
 // Leaving a round part-way. Its place is always kept (every shot is saved as it is played); a practice round can also be thrown away.
-function leaveCard(){const nine=S.round.type==='nine',h=cur();
-  sheet(`<p class="eyebrow">${nine?'Practice · '+h.course.club:inMatch()?'Match v '+esc(S.round.vs):"Today's three"}</p><h2>Leave the round?</h2>
+function leaveCard(){const nine=S.round.type==='nine',h=cur(),x=inMatch()?MT.x:null,vs=x?esc(S.round.vs):'';
+  sheet(`<p class="eyebrow">${nine?'Practice · '+h.course.club:inMatch()?'Match v '+esc(S.round.vs):"Today's three"}</p><h2>Leave the ${inMatch()?'match':'round'}?</h2>
 <button class="btn" data-act="close">Carry on</button>
 <button class="btn green" data-act="leave">Save and exit<small>Pick it up again at No. ${h.n}</small></button>
-${nine?'<button class="btn ghost" data-act="quit">Quit the round</button>':''}`)}
+${nine?'<button class="btn ghost" data-act="quit">Quit the round</button>':''}${!x?'':x.st==='open'?'<button class="btn ghost" data-act="moff">Withdraw the challenge</button>'
+    :x.st!=='on'?'':x.end===x.side?`<button class="btn ghost" data-act="mon">Play on after all<small>You asked to call it off</small></button>`:`<button class="btn ghost" data-act="moff">Call the match off<small>${vs} has to agree</small></button>`}`)}
 function quitCard(){sheet(`<p class="eyebrow">Practice · ${cur().course.club}</p><h2>Quit this round?</h2><p class="fine">Its score so far will be lost.</p>
 <div class="row"><button class="btn" data-act="quitsure">Quit</button><button class="btn ghost" data-act="close">Keep playing</button></div>`)}
 // the hole a saved practice round has reached, or 0 if there is none
 const inPlay=(c,p)=>{const sv=fetchKey('rd:'+c+':'+p),ids=courseIds(c,p);return sv&&!sv.done&&Array.isArray(sv.scores)&&sv.hi>=0&&sv.hi<ids.length&&(sv.hi>0||sv.strokes>0)?INFO(ids[sv.hi]).n:0};
-function holeCard(score){const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:INFO(S.round.ids[S.hi+1]);
+function holeCard(score){if(score==null)score=S.round.scores[S.hi];const h=cur(),last=S.hi>=S.round.ids.length-1,nx=last?null:INFO(S.round.ids[S.hi+1]),x=inMatch()?MT.x:null,vs=x?esc(S.round.vs):'',how=x?standing(S.round.scores,x.sc[otherSide(x)],vs,S.round.ids.length):'';
   sheet(`<p class="eyebrow">${h.course.club} No. ${h.n} · ${h.name} · Par ${h.par}</p><h2>${scoreName(score,h.par)}</h2>
-${scoreCard(S.round.ids,S.round.scores)}${inLive()&&MT.x?`<p class="fine">${esc(S.round.vs)} made ${MT.x.sc[otherSide(MT.x)][S.hi]}. You ${sum(MT.x.sc[MT.x.side])}, ${esc(S.round.vs)} ${sum(MT.x.sc[otherSide(MT.x)])}.</p>`:''}
-<button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>`)}
+${scoreCard(S.round.ids,S.round.scores)}${how?`<p class="fine stand">${how}</p>`:''}
+<button class="btn" data-act="${last?'results':'next'}">${last?'Sign the card':'On to '+(S.round.type==='nine'?'':nx.course.club+' ')+'No. '+nx.n+'<small>'+nx.name+' · Par '+nx.par+' · '+nx.yards+' yd</small>'}</button>
+${x&&x.st==='on'&&x.end===otherSide(x)?`<button class="btn ghost" data-act="moff">Call the match off<small>${vs} has asked to</small></button>`:''}`,holeCard)}
 // What goes in the group chat: the name and number, a mark for each hole, and the score against par in words.
 function shareText(){const r=S.round,hs=r.ids.map(INFO),d=sum(r.scores)-sum(hs.map(h=>h.par)),em=(a,b,j)=>r.scores.slice(a,b).map((s,i)=>emo(s,hs[a+i].par)).join(j),par=d===0?'Even':d<0?-d+' under':d+' over';
   let t=r.type==='nine'?`Breakfast Ball · ${hs[0].course.club}${hs.length>9||!hs[0].course.more?'':hs[0].n>9?' back nine':' front nine'}\n`+(hs.length>9?em(0,9,'')+'\n'+em(9,18,''):em(0,9,''))+`\n${par}`
@@ -96,6 +102,8 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
   else if(a==='match')matchCard(b.dataset.id);
   else if(a==='mplay')playMatch();
   else if(a==='mno')answerMatch(false);
+  else if(a==='moff'||a==='mon'){b.disabled=true;matchEnd(a==='moff')}
+  else if(a==='mback'){titleCard();C.tab='matches';refresh().then(()=>{if(S.mode==='title'&&C.club&&C.club.member)clubCard()})}
   else if(a==='title')titleCard();
   else if(a==='leave'){save();titleCard()}
   else if(a==='quit')quitCard();
@@ -118,7 +126,7 @@ $('card').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if
 let introT=0;
 function startHole(i,sv){clearTimeout(S.hzT);closeSheet();S.hi=i;S.marks=[];S.shot=null;S.from=null;{const bl=C.me&&C.me.stats.balls&&C.me.stats.balls[INFO(S.round.ids[i]).course.id];S.tier=bl?(bl.g?'g':bl.s?'s':bl.b?'b':''):''}S.hs=sv&&sv.strokes&&sv.hs?sv.hs:newHs();const h=cur();S.strokes=sv?sv.strokes||0:0;setBall(sv&&sv.strokes?sv.bx:h.tee.x,sv&&sv.strokes?sv.by:h.tee.y);setupShot();
   if(S.strokes>=maxScore())return finishHole(maxScore());
-  overviewCam(.5,.76,false);S.mode='intro';hud();toast(`No. ${h.n} · ${h.name}`,h.course.club,1800);
+  overviewCam(.5,.76,false);S.mode='intro';hud();
   hintOff();if(S.hintShots<3&&!fetchKey('seen'))hintOn('Pull back to aim, flick up on gold');
   clearTimeout(introT);introT=setTimeout(()=>{if(S.mode==='intro'){S.mode='ready';aimCam()}},1900);save()}
 function begin(type,course,part){matchQuit();const nine=type==='nine';if(nine&&!COURSES.some(c=>c.id===course))course='gr';if(nine&&(!COURSES.find(c=>c.id===course).more||!/^[fba]$/.test(part||'')))part='f';

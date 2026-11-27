@@ -109,8 +109,8 @@ async function state(store,ses,day,code){const out={me:null,club:null};
 // for both (the match's id seeds them). It is played either each in their own time, or shot for shot: then the server keeps
 // where both balls lie and whose turn it is (the honour on the tee, then whoever is further from the hole, as on a course),
 // and each phone asks every couple of seconds whether the other has played. Fewest strokes wins.
-// Kept as 'x:<id>'; 'xi:<player>' lists a player's matches, oldest first. st: open (sent), on (taken up), done, off (declined
-// or withdrawn). sc: each side's strokes on the holes finished. A player's record against each opponent is read off these.
+// Kept as 'x:<id>'; 'xi:<player>' lists a player's matches, oldest first. st: open (sent), on (taken up), done, off (declined,
+// withdrawn, or called off by both). sc: each side's strokes on the holes finished. A player's record against each opponent is read off these.
 const sideOf=(x,pid)=>x.a===pid?'a':x.b===pid?'b':null,OTHER={a:'b',b:'a'};
 function matchDone(x){const n=x.holes.length;if(x.sc.a.length>=n&&x.sc.b.length>=n){x.st='done';const A=total(x.sc.a),B=total(x.sc.b);x.win=A<B?'a':B<A?'b':'tie';x.turn=null}}
 async function matchesOf(store,pid){const out=[];for(const id of((await store.get('xi:'+pid))||[]).slice(-150)){const x=await store.get('x:'+id);if(x)out.push(x)}return out}
@@ -119,7 +119,7 @@ function matchSummary(list,pid){const vs={};let w=0,l=0,t=0;
     if(x.win==='tie'){r.t++;t++}else if(x.win===s){r.w++;w++}else{r.l++;l++}}
   const rows=list.filter(x=>x.st!=='off').map(x=>{const s=sideOf(x,pid),o=OTHER[s],n=x.holes.length;
     return{id:x.id,club:x.club,vs:x[o+'n'],vsId:x[o],course:x.course,part:x.part,n,live:!!x.live,st:x.st,from:s==='a',mine:x.sc[s],theirs:x.sc[o],par:total(x.holes.map(h=>h.par)),
-      win:x.win?(x.win==='tie'?'tie':x.win===s?'me':'them'):null,turn:x.st==='done'?null:x.live?(x.st==='open'?(s==='b'?'me':'them'):x.turn===s?'me':'them'):(x.sc[s].length<n?'me':'them'),u:x.u}})
+      win:x.win?(x.win==='tie'?'tie':x.win===s?'me':'them'):null,end:x.end?(x.end===s?'me':'them'):null,turn:x.st==='done'?null:x.end===o?'me':x.live?(x.st==='open'?(s==='b'?'me':'them'):x.turn===s?'me':'them'):(x.sc[s].length<n?'me':'them'),u:x.u}})
     .sort((p,q)=>(p.st==='done')-(q.st==='done')||q.u-p.u);
   return{rows:rows.slice(0,40),w,l,t,vs:Object.values(vs).sort((p,q)=>q.w+q.l+q.t-(p.w+p.l+p.t))}}
 
@@ -185,6 +185,12 @@ export async function handle(req,store,opts={}){const url=new URL(req.url),path=
       // taking up a challenge, declining it, or (the challenger) withdrawing it before it is taken up
       case'/match/answer':{if(!ses)return fail('no_player',401);const x=await store.get('x:'+String(b.id||'')),side=x&&sideOf(x,ses.pid);if(!side||x.st!=='open')return fail('no_match',404);
         if(b.yes){if(side!=='b')return fail('not_yours');x.st='on'}else x.st='off';x.u=Date.now();x.seq++;await store.put('x:'+x.id,x);return done({match:{...x,side}})}
+      // Calling a match off once it is under way takes both players: one asks (end is their side), the other agrees or plays on.
+      // Whoever asked can take it back. Before it is taken up there is nobody to ask, and it simply ends. A match called off
+      // counts for nobody.
+      case'/match/end':{if(!ses)return fail('no_player',401);const x=await store.get('x:'+String(b.id||'')),side=x&&sideOf(x,ses.pid);if(!side||(x.st!=='on'&&x.st!=='open'))return fail('no_match',404);
+        if(!b.yes)x.end=null;else if(x.st==='open'||(x.end&&x.end!==side)){x.st='off';x.end=null;x.turn=null}else x.end=side;
+        x.u=Date.now();x.seq++;await store.put('x:'+x.id,x);return done({match:{...x,side}})}
       // in your own time: a hole's score, in order. The challenger may play before the challenge is taken up; the other takes it up by playing.
       case'/match/score':{if(!ses)return fail('no_player',401);const x=await store.get('x:'+String(b.id||'')),side=x&&sideOf(x,ses.pid);if(!side||x.live||x.st==='off')return fail('no_match',404);
         const hi=+b.hi,sc=+b.s;if(x.sc[side][hi]===sc)return done({match:{...x,side}}); // sent twice

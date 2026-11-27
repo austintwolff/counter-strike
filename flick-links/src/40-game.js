@@ -88,6 +88,7 @@ const sfx={
   tick:()=>tone(1500,1200,.03,'sine',.07),
   pure:()=>{tone(1320,1760,.12,'sine',.14,.02);tone(1760,2640,.16,'sine',.1,.1)},
   cup:()=>{tone(700,500,.06,'square',.12);tone(520,380,.07,'square',.12,.09);tone(880,1320,.25,'sine',.2,.2)},
+  turn:()=>{tone(660,660,.1,'sine',.16);tone(990,990,.18,'sine',.16,.12)},
   bad:()=>tone(220,120,.25,'sawtooth',.1)};
 
 // ───────── camera: focus point sits at (W/2, H*ay); r rotates the target to straight up
@@ -115,7 +116,7 @@ const toPin=()=>{const h=cur(),b=S.ball,d=hyp(h.pin.x-b.x,h.pin.y-b.y)||1;return
 function reachOf(c){if(c.putt)return markDist();const u=toPin();return flightCarry(cur(),S.ball,u.x,u.y,c.carry*lieMult(S.lie,c),c.loft)+c.carry*lieMult(S.lie,c)*c.roll}
 function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
   const t=d<=285?h.pin:rAt(h.route,Math.min(h.total,rProj(h.route,b)+250));
-  const view=S.club.putt?clamp(Math.max(d,markDist())*1.3,7,70):clamp(Math.min(d*1.18,reachOf(S.club)*1.15),7,430);
+  const view=S.club.putt?clamp(Math.max(d,markDist())*1.3,7,70):clamp(Math.min(d*1.18,reachOf(S.club)*1.15),7,640); // far enough back that the pin, or as far as the club goes, clears the plates even off a 500-yard drop
   camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.6/view;if(d>.02)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
 function updateCam(dt){
   const b=S.ball;let ease=0;
@@ -145,9 +146,9 @@ function runOut(h,p,ux,uy,carry,c){const l0=lieAt(h,p);let E=muFor(l0,{})*carry*
 // how much of the shot's reach a full pull gives: all of it, except in the short game, where it is 1.6 times the way to the pin
 function setPk(){const c=S.club,h=cur();S.pk=c.style!=null?clamp(hyp(S.ball.x-h.pin.x,S.ball.y-h.pin.y)*1.6/reachOf(c),.3,1):1}
 function setChip(i){if(S.mode!=='ready'||S.club.style==null||S.g)return;S.chip=i;S.clubs=S.clubs.map(c=>c.id==='CH'?CHIPS[i]:c);S.club=S.clubs[S.ci];setPk();S.idle0=performance.now();aimCam();hud()}
-// the aim marker starts a little past the cup on the straight line; tap-ins go straight to the stroke
+// the aim marker starts a little past the cup on the straight line. Every putt starts on the aim, tap-ins too.
 function placeMarker(){const h=cur(),b=S.ball,dx=h.pin.x-b.x,dy=h.pin.y-b.y,d=hyp(dx,dy)||1,past=Math.min(.5,d*.25);
-  S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode=d<1.4?'stroke':'aim'}
+  S.mark={x:h.pin.x+dx/d*past,y:h.pin.y+dy/d*past};S.pmode='aim'}
 function setBall(x,y){Object.assign(S.ball,{x,y,z:0,zv:0,vx:0,vy:0,vz:0,air:false,spin:0,putt:false,gone:false,tree:null,rollK:1});S.trail.length=0}
 function changeClub(d){if(S.mode!=='ready')return;S.ci=clamp(S.ci+d,0,S.clubs.length-1);S.club=S.clubs[S.ci];placeMarker();setPk();aimCam();hud()}
 
@@ -353,7 +354,7 @@ function hudClub(){const h=cur(),c=S.club,m=lieMult(S.lie,c);$('clubName').textC
 function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready'||S.mode==='aim'||S.mode==='intro';
   $('hHole').textContent=`${S.round.type==='nine'?'No.':h.course.code} ${h.n} · Par ${h.par} · ${h.yards} yd`;$('hName').textContent=h.name;
   $('hStroke').textContent='Shot '+(S.mode==='flight'||S.mode==='wait'?Math.max(1,S.strokes):S.strokes+1)+(S.round.type==='nine'?'':' · hole '+(S.hi+1)+' of '+n)+(Math.abs(h.drop)>=60?' · '+(h.drop>0?'drops ':'climbs ')+Math.abs(h.drop).toLocaleString()+' ft':'');
-  if(S.hold&&inLive())$('hStroke').textContent=S.round.vs+' to play';
+  {const v=$('hVs'),live=inLive()&&!!MT.x;v.hidden=!live;$('app').classList.toggle('live',live);if(live)v.innerHTML=(S.hold?'':'<i>Your turn</i>')+esc(liveLine())}
   $('app').classList.toggle('tut',onRange());$('coach').hidden=!onRange();$('btnExit').hidden=onRange();S.fresh=!fetchKey('seen');S.fewPutts=(fetchKey('putts')||0)<2;
   $('btnPutt').classList.toggle('pulse',!!(onRange()&&S.tut&&S.tut.step==='mark'&&S.tut.moved&&S.pmode==='aim'));$('hWind').textContent=h.wind.sp;hudDist();hudLast();hudClub();
   $('clubPrev').disabled=S.ci<=0;$('clubNext').disabled=S.ci>=S.clubs.length-1;
@@ -363,7 +364,7 @@ function hud(){const h=cur(),c=S.club,n=S.round.ids.length,ready=S.mode==='ready
   if(S.chipHint){S.chipHint=false;hintOff()}
   // the first few putts name the controls; after that the green is left to be read from its streaks. The range has its own card.
   if(c.putt&&ready&&!onRange()&&(fetchKey('putts')||0)<4)hintOn(S.pmode==='aim'?'Drag the marker, then press Putt':'Pull back, flick on gold');else if(c.putt||onRange())hintOff()}
-let toastT=0;function toast(s,sub,ms){if(typeof sub==='number'){ms=sub;sub=''}const t=$('toast');t.textContent=s;if(sub){const e=document.createElement('small');e.textContent=sub;t.appendChild(e)}
+let toastT=0;function toast(s,sub,ms,big){if(typeof sub==='number'){ms=sub;sub=''}const t=$('toast');t.textContent=s;t.classList.toggle('big',!!big);if(sub){const e=document.createElement('small');e.textContent=sub;t.appendChild(e)}
   t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms||1400)}
 function hintOn(s){const e=$('hint');e.textContent=s;e.style.opacity=1}
 function hintOff(){$('hint').style.opacity=0}

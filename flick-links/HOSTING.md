@@ -58,7 +58,9 @@ wind (the match's id seeds them). Fewest strokes wins; the record against each o
 - **Shot for shot**: every shot goes up as the ball stops (`/match/shot`) and the server says whose turn is next: the honour on
   the tee, then whoever is further from the hole. There is no open connection between phones, so a phone waiting on the other
   player asks `/match` every two seconds and plays their shot back when it arrives. Either player can leave and come back; the
-  server holds where both balls lie.
+  server holds where both balls lie. When the turn comes round the phone says so, with the shot the other player is on.
+- **Calling it off** (`/match/end`) takes both players once a match is under way: one asks, the other agrees or plays on.
+  Before it is taken up, the challenger simply withdraws it. A match called off counts for nobody.
 
 Matches are stored as `x:<id>`, with `xi:<player>` listing each player's. They go into the record of play (kind `match`) but
 not the handicap. The page code is `src/47-match.js`; the rules are in `server/core.js` and tested in `server/core.test.mjs`.

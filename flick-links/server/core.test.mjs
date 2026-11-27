@@ -133,6 +133,16 @@ assert.equal(cr.standings.find(x => x.nick === 'Pro').hcp, null, 'practice alone
   { const x = (await shot(ann, { hi: 0, n: 4, x: 6, y: 6, d: 0, in: true })).match; assert.deepEqual([x.hi, x.turn, x.sc.a[0], x.sc.b[0], x.pos.a], [1, 'b', 4, 2, null], 'next hole, Bob to play first'); assert.equal(x.last.hi, 0); }
   for (const hi of [1, 2]) { await shot(bob, { hi, n: 1, x: 9, y: 9, d: 0, in: true }); await shot(ann, { hi, n: 1, x: 9, y: 9, d: 0, in: true }); }
   { const x = (await ann('GET', '/match?id=' + m3.id)).match; assert.deepEqual([x.st, x.win, x.turn], ['done', 'b', null]); const a = (await me(ann)).matches; assert.deepEqual([a.w, a.l, a.t], [0, 2, 0]); assert.equal(a.vs[0].l, 2); }
+  // calling a match off takes both
+  { const m0 = (await ann('POST', '/match/new', { club, to: bobId, holes: three })).match; assert.equal((await ann('POST', '/match/end', { id: m0.id, yes: true })).match.st, 'off', 'before it is taken up there is nobody to ask');
+    const m4 = (await ann('POST', '/match/new', { club, to: bobId, holes: three })).match, end = (w, yes) => w('POST', '/match/end', { id: m4.id, yes }); await bob('POST', '/match/score', { id: m4.id, hi: 0, s: 3 });
+    assert.equal((await cat('POST', '/match/end', { id: m4.id, yes: true })).error, 'no_match');
+    { const x = (await end(ann, true)).match; assert.deepEqual([x.st, x.end], ['on', 'a'], 'asking alone ends nothing'); assert.equal((await end(ann, true)).match.st, 'on', 'nor does asking twice'); }
+    { const r = (await me(bob)).matches.rows.find(r => r.id === m4.id); assert.deepEqual([r.end, r.turn], ['them', 'me'], 'it waits on Bob'); assert.equal((await me(ann)).matches.rows.find(r => r.id === m4.id).end, 'me'); }
+    assert.equal((await end(bob, false)).match.end, null, 'Bob plays on'); assert.equal((await end(bob, true)).match.end, 'b'); assert.equal((await end(bob, false)).match.end, null, 'or takes his own request back');
+    await end(bob, true); const x = (await end(ann, true)).match; assert.deepEqual([x.st, x.end], ['off', null], 'both agreed');
+    const a = (await me(ann)).matches; assert.equal(a.rows.some(r => r.id === m4.id), false, 'it drops out of the list'); assert.deepEqual([a.w, a.l, a.t], [0, 2, 0], 'and counts for nobody');
+    assert.equal((await bob('POST', '/match/score', { id: m4.id, hi: 1, s: 3 })).error, 'no_match', 'and cannot be played on'); }
   // a match round goes into the record of play but not the handicap
   assert.equal((await ann('POST', '/log', { rounds: [{ id: 'matchlog1', kind: 'match', day: today, course: 'hk', part: 'f', holes: H18('hk', par => par).slice(0, 9), t: 1, b: 1 }] })).saved, 1); assert.equal((await me(ann)).stats.counted, 0); assert.equal((await me(ann)).stats.holes, 9); }
 console.log('server core: all checks passed');

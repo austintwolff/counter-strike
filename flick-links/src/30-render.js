@@ -87,7 +87,7 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   for(const s of G.beach)if(seen(s)){ctx.fillStyle='#dccfa6';ctx.fill(s.path);texFill(s.path,'grain',.5,.11);inner(s.path,0,0,'#c2b388',.45,4);inner(s.path,0,0,'#f3ecd2',.35,1.2)}
   // white water, where the creek really falls
   ctx.lineCap='round';for(const f of G.falls)if(seen2(f)){ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=f.w*1.15;ctx.stroke(f.path);ctx.setLineDash([.9,1.5]);ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=f.w*.8;ctx.stroke(f.path);ctx.setLineDash([])}
-  for(const q of G.props||[])if(q.k!=='arch'&&vis(q))drawProp(q);
+  for(const q of G.props||[])if(vis(q))drawProp(q);
   for(const b of G.bridges)if(vis(b))drawBridge(b,b.wide>6?'road':th.bridge,now);
   // every green on the property, bunkers, then the one being played with its contours
   ctx.lineJoin='round';for(const s of G.green)if(seen(s)){ctx.strokeStyle=K.fringe;ctx.lineWidth=4.8;ctx.stroke(s.path);ctx.fillStyle=K.fringe;ctx.fill(s.path)}
@@ -123,7 +123,6 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
   const cells=[];for(let cx=Math.floor(VR[0]/120);cx<=Math.floor((VR[0]+VR[2])/120);cx++)for(let cy=Math.floor(VR[1]/120);cy<=Math.floor((VR[1]+VR[3])/120);cy++){const c=G.grid.get(cx+','+cy);if(c)cells.push(c)}
   for(const k of['trees','solid'])for(const c of cells)for(const t of c[k])ctx.drawImage(SPR.shadow,t.x-t.r*1.35+SUN.x*t.r*.75,t.y-t.r*1.35+SUN.y*t.r*.75,t.r*2.7,t.r*2.7);
   for(const k of['trees','solid'])for(const c of cells)for(const t of c[k])ctx.drawImage(SPR[t.kind][t.v],t.x-t.r*1.28,t.y-t.r*1.28,t.r*2.56,t.r*2.56);
-  for(const q of G.props||[])if(q.k==='arch')drawProp(q); // what stands over everything goes on last
   // cloud shadows lie still on the ground: a drifting layer cost a full-screen fill every frame
   if(Q>0)texFill(null,'cloud',.3,2.1,.4,0,0)}
 // The hole stands in a haze. Near the line of play everything is sharp; further out the same ground goes soft and misty,
@@ -222,11 +221,10 @@ function drawBridge(b,style,now){const sv=rotv(SUN.x,SUN.y,-b.a),l=b.len,hl=l/2,
 // Small things that belong to a wild place. Sizes are in yards; each is drawn with its shadow.
 function drawProp(q){ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.a);const sv=rotv(SUN.x,SUN.y,-q.a),r=mulberry32(77+q.v*13+Math.round(q.x));ctx.lineCap='round';ctx.lineJoin='round';
   const pill=(x,y,w,h,rad)=>{ctx.beginPath();ctx.moveTo(x+rad,y);ctx.arcTo(x+w,y,x+w,y+h,rad);ctx.arcTo(x+w,y+h,x,y+h,rad);ctx.arcTo(x,y+h,x,y,rad);ctx.arcTo(x,y,x+w,y,rad);ctx.closePath()};
-  if(q.k==='arch'){const R=q.r,S=R*.62;                                                                                    // the Gateway Arch from above: a steel band from leg to leg, 630 feet up at the middle, and its shadow
-    ctx.strokeStyle='rgba(6,16,10,.26)';ctx.lineWidth=6.5;ctx.beginPath();ctx.moveTo(-R,0);ctx.quadraticCurveTo(sv.x*S*2,sv.y*S*2,R,0);ctx.stroke();
-    const band=(w0,w1,sgn)=>{ctx.beginPath();ctx.moveTo(-R,0);ctx.quadraticCurveTo(0,0,R,0);ctx.lineTo(R,sgn*w0);ctx.quadraticCurveTo(R*.45,sgn*w1,0,sgn*w1);ctx.quadraticCurveTo(-R*.45,sgn*w1,-R,sgn*w0);ctx.closePath()},lit=sv.y>0?-1:1;
-    ctx.fillStyle='#eef2f4';band(9,2.9,lit);ctx.fill();ctx.fillStyle='#aab5bd';band(9,2.9,-lit);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(-R,0);ctx.lineTo(R,0);ctx.stroke();
-    ctx.strokeStyle='rgba(40,52,60,.55)';ctx.lineWidth=.45;band(9,2.9,1);ctx.stroke();band(9,2.9,-1);ctx.stroke()}
+  if(q.k==='log'){const L=q.r,w=.5+r()*.35,c=['#b9b3a4','#a9a08e','#c7c1b2'][q.v%3];                                               // a drift log, silvered by the sea
+    ctx.strokeStyle='rgba(10,16,12,.3)';ctx.lineWidth=w*2;ctx.beginPath();ctx.moveTo(-L/2+sv.x*.4,sv.y*.4);ctx.lineTo(L/2+sv.x*.4,sv.y*.4);ctx.stroke();
+    ctx.strokeStyle=c;ctx.beginPath();ctx.moveTo(-L/2,0);ctx.lineTo(L/2,0);ctx.stroke();ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=w*.5;ctx.beginPath();ctx.moveTo(-L/2+.3,-w*.3);ctx.lineTo(L/2-.3,-w*.3);ctx.stroke();
+    if(r()<.4){ctx.strokeStyle=c;ctx.lineWidth=w*1.1;ctx.beginPath();ctx.moveTo(L*.2,0);ctx.lineTo(L*.2+1.1,(r()<.5?-1:1)*1.3);ctx.stroke()}}
   else if(q.k==='floe'){const n=7+Math.floor(r()*3),P=[];for(let i=0;i<n;i++){const a=i/n*TAU+r()*.5,d=q.r*(.7+r()*.5);P.push([Math.cos(a)*d,Math.sin(a)*d*.75])}                // ice adrift on a lake that never quite thaws
     const shp=(dx,dy,k)=>{ctx.beginPath();P.forEach((p,i)=>i?ctx.lineTo(p[0]*k+dx,p[1]*k+dy):ctx.moveTo(p[0]*k+dx,p[1]*k+dy));ctx.closePath()};
     ctx.fillStyle='rgba(170,225,235,.35)';shp(0,0,1.28);ctx.fill();ctx.fillStyle='rgba(4,24,40,.3)';shp(sv.x*.5,sv.y*.5,1);ctx.fill();ctx.fillStyle='#f6fcff';shp(0,0,1);ctx.fill();ctx.fillStyle='rgba(150,200,225,.5)';shp(sv.x*q.r*.22,sv.y*q.r*.22,.62);ctx.fill();ctx.fillStyle='#ffffff';shp(-sv.x*q.r*.1,-sv.y*q.r*.1,.5);ctx.fill()}

@@ -87,16 +87,16 @@ const COURSES=[
  th2:{wat:{water:'#3fa7b5',deep:'#2a8aa0',shallow:'#b4ece4',rim:'#3597a6'}},
  holes:[["Greenstone",4,407,9,-107],["Wasco",3,170,15,0],["Hidden Lake",5,555,5,-152],["Steelhead",4,486,3,155],["Excelsior",3,180,13,-12],["Shamrock",4,247,7,17],["Mill Creek",5,522,1,280],["Lake Helen",3,227,5,-17],["Twin Lakes",4,344,17,-206]],
  more:[["Lee Vining Creek",5,529,12,-21],["The Cascade",5,594,4,-297],["Conness Lake",3,159,14,41],["North Peak",4,281,10,-204],["Glacial Flour",4,371,2,-303],["Snowmelt Tarn",3,140,16,-160],["Mount Conness",4,359,6,467],["Alpenglow",3,170,18,0],["Tioga Crest",4,453,8,-8]]},
-// One course in eighteen places: a hole in each of eighteen national parks, east to west, from first light on the coast of Maine to
-// a crater in Hawaii. Every hole stands on its own piece of real ground (data/npNN.json, built by tools/parks.py from
+// One course in eighteen places: a hole in each of eighteen national parks, from first light on the coast of Maine to a crater
+// in Hawaii. Every hole stands on its own piece of real ground (data/npNN.json, built by tools/parks.py from
 // data/npNN.design.json), and carries its own look in its map (`th` there, laid over this one). The sixth figure is the park.
 {id:'np',code:'NP',club:'National Parks',tee:'Ranger',sites:true,
  // No haze close round these holes: each has its own ground, built out to 380 yards from its line, and is shown nearly that far.
  th:{fade:[290,350],out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:0,bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
   collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
  /*NP:BEGIN*/
- holes:[["Sand Beach",4,448,9,53,"Acadia"],["Fort Jefferson",4,433,5,1,"Dry Tortugas"],["The Arch",3,211,13,-2,"Gateway Arch"],["The Door",4,444,11,79,"Badlands"],["Santa Elena",5,590,7,3,"Big Bend"],["Gypsum",4,381,15,4,"White Sands"],["Grand View",5,586,3,36,"Canyonlands"],["Thor's Hammer",3,339,17,400,"Bryce Canyon"],["Angels Landing",7,1172,1,263,"Zion"]],
- more:[["Oxbow Bend",5,627,8,5,"Grand Teton"],["Grand Prismatic",4,476,12,-3,"Yellowstone"],["Iceberg Lake",3,205,16,-4,"Glacier"],["Wizard Island",4,458,14,54,"Crater Lake"],["Painted Dunes",4,448,10,17,"Lassen Volcanic"],["Devil's Golf Course",3,174,18,-2,"Death Valley"],["Crescent Meadow",5,574,6,125,"Sequoia"],["Firefall",3,773,2,3172,"Yosemite"],["Kilauea Iki",5,603,4,439,"Hawaii Volcanoes"]]
+ holes:[["Sand Beach",4,448,9,53,"Acadia"],["Fort Jefferson",4,433,5,1,"Dry Tortugas"],["Sahale Arm",5,839,13,822,"North Cascades"],["The Door",4,444,11,79,"Badlands"],["Santa Elena",5,590,7,3,"Big Bend"],["Gypsum",4,381,15,4,"White Sands"],["Grand View",5,586,3,36,"Canyonlands"],["Thor's Hammer",3,339,17,400,"Bryce Canyon"],["Angels Landing",7,1172,1,263,"Zion"]],
+ more:[["Oxbow Bend",5,627,8,5,"Grand Teton"],["Grand Prismatic",4,476,12,-3,"Yellowstone"],["Iceberg Lake",3,205,16,-4,"Glacier"],["Wizard Island",4,458,14,54,"Crater Lake"],["Painted Dunes",4,448,10,17,"Lassen Volcanic"],["Ruby Beach",4,497,14,-146,"Olympic"],["Crescent Meadow",5,574,6,125,"Sequoia"],["Firefall",3,773,2,3172,"Yosemite"],["Kilauea Iki",5,603,4,439,"Hawaii Volcanoes"]]
  /*NP:END*/}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from
 // data/<id>.json; its other nine, if it has one, is `more`, drawn from data/<id>2.json. The second nines are added after all the

@@ -160,8 +160,7 @@ What the builder makes from the terrain, and how the game uses it:
 
 ## A course in many places: National Parks
 
-National Parks (`np`) is one course whose eighteen holes are in eighteen different parks, east to west from Acadia to
-Kilauea. Each hole stands on its own piece of real ground, so each is built on its own:
+National Parks (`np`) is one course whose eighteen holes are in eighteen different parks, from Acadia to Kilauea. Each hole stands on its own piece of real ground, so each is built on its own:
 
 - `data/np.design.json` lists the places and the box of ground fetched for each. `python3 tools/parks.py fetch` downloads
   any not yet in `data/cache/` (as `npNN`).
@@ -193,9 +192,12 @@ What a design can say that the two older fantasy courses never needed (all in `t
 | `"beaches": true` | the map's sand is beach: it plays as sand and nothing is mown on it |
 | `"without": ["trails", "creeks", "buildings"]` | leaves the map's own out (a boardwalk the photograph already shows) |
 | `"buildings": [polygons]` | roofs the map lacks or carries as one block (the walls of Fort Jefferson) |
-| `"ground": "sand"` with `th.ground:'sand'` | whatever is not mown is sand (White Sands, Devil's Golf Course) |
+| `"ground": "sand"` with `th.ground:'sand'` | whatever is not mown is sand (White Sands) |
 | `"strew": [rules]` | what grows where, by rule; `"solid": true` makes single trees a ball cannot pass (the giant sequoias) |
-| props `arch`, `floe` | the Gateway Arch from above with its shadow; ice adrift on Iceberg Lake |
+| props `floe`, `logs` | ice adrift on Iceberg Lake; drift logs strewn along a tide line (Ruby Beach) |
+| `"flat": feet` and `"stacks": [...]` | made ground, for a shore the survey is no use on: everything level at one height, and rock that stands up out of it (a sea stack, or an island with a level `top`), with cliff sides and heights to match. Stacks in the sea are land |
+| `"woods": [polygons]`; `"woods": true` on a plant rule | forest said by hand (a ball in it is lost), and plants kept inside it |
+| `"snow_yields": true` | the fairway is laid through late snow instead of stopping at it; the snow stays beside it (Sahale Arm) |
 | `"level": true` on a hole | its line runs along a crest narrower than the heights can hold (the fin of Angels Landing, where the trail goes): the ground under its tee, fairways (`fw`) and green is taken as level; all to either side stays cliff |
 | `"under": feet` | ground more than this far below the nearest point of a hole's line is cliff: on a mesa or a fin a ball that comes to rest a thousand feet down could never be got back up |
 | `"depth": feet` | ground that far below the nearest high ground sinks into blue shadow, as on Bright Angel |

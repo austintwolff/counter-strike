@@ -2,7 +2,7 @@
  "sites": [
   {"n": 1, "park": "Acadia", "state": "Maine", "box": [44.317, -68.196, 44.334, -68.172]},
   {"n": 2, "park": "Dry Tortugas", "state": "Florida", "box": [24.621, -82.881, 24.636, -82.865]},
-  {"n": 3, "park": "Gateway Arch", "state": "Missouri", "box": [38.617, -90.194, 38.633, -90.176]},
+  {"n": 3, "park": "North Cascades", "state": "Washington", "box": [48.463, -121.084, 48.493, -121.032]},
   {"n": 4, "park": "Badlands", "state": "South Dakota", "box": [43.752, -101.942, 43.77, -101.914]},
   {"n": 5, "park": "Big Bend", "state": "Texas", "box": [29.157, -103.623, 29.175, -103.599]},
   {"n": 6, "park": "White Sands", "state": "New Mexico", "box": [32.811, -106.285, 32.829, -106.261]},
@@ -14,7 +14,7 @@
   {"n": 12, "park": "Glacier", "state": "Montana", "box": [48.806, -113.762, 48.822, -113.734]},
   {"n": 13, "park": "Crater Lake", "state": "Oregon", "box": [42.93, -122.162, 42.948, -122.132]},
   {"n": 14, "park": "Lassen Volcanic", "state": "California", "box": [40.537, -121.334, 40.555, -121.304]},
-  {"n": 15, "park": "Death Valley", "state": "California", "box": [36.279, -116.838, 36.295, -116.814]},
+  {"n": 15, "park": "Olympic", "state": "Washington", "box": [47.7, -124.43, 47.718, -124.404]},
   {"n": 16, "park": "Sequoia", "state": "California", "box": [36.548, -118.759, 36.563, -118.739]},
   {"n": 17, "park": "Yosemite", "state": "California", "box": [37.725, -119.588, 37.747, -119.558]},
   {"n": 18, "park": "Hawaii Volcanoes", "state": "Hawaii", "box": [19.406, -155.258, 19.422, -155.232]}

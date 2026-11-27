@@ -155,6 +155,9 @@ def build(path, probe=None):
     xs = T.x0 + np.arange(j0, j1) * st; ys = T.y0 + np.arange(i0, i1) * st; E = T.elev[i0:i1, j0:j1].astype(np.float64); RGB = T.rgb[i0:i1, j0:j1].astype(np.float32)
     # relief_z: low dunes or a salt pan want their few feet of relief drawn larger
     SL, DX, DY = T.slope(); SL = SL[i0:i1, j0:j1]; SH = T.shade(alt=42, z=D.get('relief_z', 1.0))[i0:i1, j0:j1]; XX, YY = np.meshgrid(xs, ys)
+    # "flat": feet. Where the heights are no use (a beach the survey caught at low tide, with holes in it) the ground is taken as
+    # level at this height, and what stands on it is said by hand ("stacks").
+    if D.get('flat') is not None: E = np.full(E.shape, D['flat'] / 3.0); SL = np.zeros(E.shape); SH = np.full(E.shape, .62)
     def raster(geom):  # which cells lie inside a shape
         if geom.is_empty: return np.zeros(E.shape, bool)
         im = Image.new('L', (E.shape[1], E.shape[0]), 0); d = ImageDraw.Draw(im)
@@ -175,6 +178,14 @@ def build(path, probe=None):
         o = {'p': flat(list(g.exterior.coords)[:-1], nd)}; hs = [flat(list(r.coords)[:-1], nd) for r in g.interiors if sg.Polygon(r).area > 40]
         if hs: o['h'] = hs
         return o if hs else o['p']
+    # "stacks": rock that stands up out of level ground or the sea: [{"p": [[x, y], ...]} or {"at": [x, y, rx, ry, rot]}, with "h": feet
+    # and, for one with a level top, "top": yards in from its edge]. Its sides are cliff; the heights are raised to match, so a low
+    # shot hits it and the ledge lines draw themselves.
+    for k_, q_ in enumerate(D.get('stacks', [])):
+        g_ = sg.Polygon(q_['p']).buffer(0) if 'p' in q_ else sg.Polygon(blob(q_['at'][0], q_['at'][1], q_['at'][2], q_['at'][3], q_['at'][4], rng_for(cid, 'stack', k_), .2, 20))
+        d_ = ndi.distance_transform_edt(raster(g_)) * st; E = np.maximum(E, np.clip(d_ / (q_.get('top') or max(d_.max(), 1e-6)), 0, 1) ** .7 * q_.get('h', 60) / 3.0)
+    if D.get('stacks') or D.get('flat') is not None:  # slope and light from the ground as made
+        gy_, gx_ = np.gradient(E, st); SL = np.degrees(np.arctan(np.hypot(gx_, gy_))); a_ = math.radians(42); SH = ((gx_ * .62 * math.cos(a_) + gy_ * .78 * math.cos(a_) + math.sin(a_)) / np.sqrt(gx_ * gx_ + gy_ * gy_ + 1)).clip(0, 1)
     # "level": true on a hole says its line runs along a crest narrower than the heights can hold (a rock fin with a trail along its
     # top): the ground under its tee, its fairways and its green is taken as level, whatever slope the grid reads there. Everything
     # to either side stays as steep as it is, so the fairway is a ribbon with the cliff on both hands.
@@ -203,7 +214,7 @@ def build(path, probe=None):
         water = so.unary_union([water] + shapes_of(low, 1.2, 300)); E = np.where(low, max(D['sea'], 0) / 3, np.maximum(E, D['sea'] / 3))
     # "land": [[[x, y], ...], ...]: where the heights cannot tell a low island from the sea round it, the land is traced by hand and
     # everything else is sea
-    if D.get('land'): water = so.unary_union([water, sg.box(bx0 - 5, by0 - 5, bx1 + 5, by1 + 5).difference(so.unary_union([sg.Polygon(q).buffer(0) for q in D['land']]))])
+    if D.get('land'): water = so.unary_union([water, sg.box(bx0 - 5, by0 - 5, bx1 + 5, by1 + 5).difference(so.unary_union([sg.Polygon(q).buffer(0) for q in D['land']] + [sg.Polygon(q_['p']).buffer(0) if 'p' in q_ else sg.Polygon(blob(q_['at'][0], q_['at'][1], q_['at'][2], q_['at'][3], q_['at'][4], rng_for(cid, 'stack', k_), .2, 20)) for k_, q_ in enumerate(D.get('stacks', []))]))])  # a stack in the surf is land
     pools_ = [sg.Polygon(b['p']).buffer(0) if isinstance(b, dict) else sg.Polygon(blob(b[0], b[1], b[2], b[3], b[4], rng_for(cid, 'pool', b[0]), .08, 30)) for b in D.get('pools', [])]
     if pools_: water = so.unary_union([water] + pools_)
     water = water.intersection(sg.box(bx0 - 5, by0 - 5, bx1 + 5, by1 + 5)); W = raster(water)
@@ -238,7 +249,7 @@ def build(path, probe=None):
     Es = ndi.gaussian_filter(E, 5); gy, gx = np.gradient(Es, st)
     # running creeks are kept clear of turf too: a fairway is cut where one crosses it, and no green or tee sits in one
     runs = [sg.LineString(f['p']).buffer(D.get('creeks', {}).get(f['name'], 5 if f['name'] else 3.2) / 2 + 2.5) for f in F['stream'] if not (f['river'] or ((f['dry'] or (D.get('dry_unnamed') and not f['name'])) and f['name'] not in D.get('wet', [])))]
-    wet = so.unary_union([water.buffer(4)] + runs); crag = so.unary_union(shapes_of(steep, 2, 60)) if steep.any() else sg.Polygon(); cold = so.unary_union(shapes_of(snow, 2, 60)) if snow.any() else sg.Polygon(); # Nothing mown may lie on ground that would make it look pasted on: slopes too steep to hold a fairway, trails, buildings and
+    wet = so.unary_union([water.buffer(4)] + runs); crag = so.unary_union(shapes_of(steep, 2, 60)) if steep.any() else sg.Polygon(); cold = so.unary_union(shapes_of(snow, 2, 60)) if snow.any() and not D.get('snow_yields') else sg.Polygon(); # Nothing mown may lie on ground that would make it look pasted on: slopes too steep to hold a fairway, trails, buildings and
     # dry washes are all kept clear, with room to spare from a cliff's edge. A trail or a wash that crosses a fairway cuts it.
     box_ = sg.box(bx0, by0, bx1, by1); SLs = ndi.gaussian_filter(SL, 1.0); tilted = so.unary_union(shapes_of(SLs >= D.get('gentle', 21), 1.5, 40, .8)) if (SLs >= D.get('gentle', 21)).any() else sg.Polygon()
     trails = so.unary_union([sg.LineString(f['p']).buffer(2.4) for f in F['path'] if sg.LineString(f['p']).intersects(region)] or [sg.Polygon()]).intersection(box_)
@@ -318,7 +329,7 @@ def build(path, probe=None):
             if placed and G['bunker'][-1].geom_type != 'Polygon': G['bunker'][-1] = max(G['bunker'][-1].geoms, key=lambda q: q.area)
         # the card, the fall from tee to green, and which way the green really tilts
         gi, gj = int((end[1] - ys[0]) / st), int((end[0] - xs[0]) / st); gxv, gyv = gx[gi, gj], gy[gi, gj]; m = math.hypot(gxv, gyv); sm = min(.34, .16 + math.degrees(math.atan(m)) * .012)  # a green is built flatter than the ground it sits on, but falls the same way
-        tilt[n] = [round(-gxv / (m or 1) * sm, 3), round(-gyv / (m or 1) * sm, 3)]; drop = round((T.at(*L[0]) - T.at(*end)) * 3)
+        tilt[n] = [round(-gxv / (m or 1) * sm, 3), round(-gyv / (m or 1) * sm, 3)]; drop = round((T.at(*L[0]) - T.at(*end)) * 3) if D.get('flat') is None else int(round((E[int((L[0][1] - ys[0]) / st), int((L[0][0] - xs[0]) / st)] - E[gi, gj]) * 3))
         card[n] = {'par': par, 'yd': int(round(total)), 'hcp': h.get('hcp'), 'drop': drop, 'name': h.get('name', '')}; lines[n] = flat(h['line'])
         mine[n] = {k: list(range(was[k], len(G[k]))) for k in G}
     # One hole's ground is not another's. A tee must stand clear of every other hole's green and off every fairway (the forward
@@ -410,6 +421,7 @@ def build(path, probe=None):
             m = masks[r.get('on', 'green')] & (SL < r.get('flat', 90))
             if 'near' in r: m = m & (dstream < r['near'])
             if 'far' in r: m = m & (dstream >= r['far'])
+            if r.get('woods'): m = m & raster(so.unary_union([sg.Polygon(q).buffer(0) for q in D.get('woods', [])] or [sg.Polygon()]))  # only inside the forest said by hand
             if 'above' in r: m = m & (E * 3 >= r['above'])
             if 'below' in r: m = m & (E * 3 < r['below'])
             strew(m, r['kind'], r.get('r', [3, 5])[0], r.get('r', [3, 5])[1], r.get('cell', 10), (r.get('need', .4), r.get('p', .6)), bool(r.get('solid')))
@@ -433,6 +445,7 @@ def build(path, probe=None):
     if solid_: far_ = prep(turf.buffer(7)); out['trees'] = [q for q in solid_ if not off_.contains(sg.Point(q[0], q[1])) and not far_.contains(sg.Point(q[0], q[1]))]
     if D.get('ground') == 'sand': out['sandy'] = True  # everything that is not mown is sand: the dunes, the salt
     if D.get('th'): out['th'] = D['th']  # this place's own look, over the course's (a course in many places)
+    if D.get('woods'): out['wood'] = [flat(q) for q in D['woods']]  # forest as one shape: the game fills it with trees, and a ball in it is lost
     # small things that belong to the place, set down where they really are: a mule train on a named trail, rafts drawn up where a
     # trail meets the river, a tent, white water. In the design: {"kind": "mules", "trail": name, "near": [x, y], "n": 6},
     # {"kind": "rafts", "trail": name, "n": 3}, {"kind": "tent" or "rapid", "at": [x, y], "a": degrees, "r": size}
@@ -454,6 +467,12 @@ def build(path, probe=None):
                 props.append({'k': 'raft', 'x': round(a.x + nx * side * 1.2, 1), 'y': round(a.y + ny * side * 1.2, 1), 'a': round(math.atan2(ny * side, nx * side), 2), 'v': k})
         elif 'at' in pr and sg.Point(*pr['at']).distance(turf) < (0 if pr['kind'] == 'rapid' else 8): notes.append('the %s at %s is on or beside something mown and was left out' % (pr['kind'], pr['at']))
         elif pr['kind'] == 'floe' and not water.buffer(-pr.get('r', 5) - 2).contains(sg.Point(*pr['at'])): pass  # ice floats: a floe set down on the shore is left out
+        elif pr['kind'] == 'logs':  # drift logs along a tide line: {"kind": "logs", "along": [[x, y], ...], "n": 40, "spread": 9}
+            ls = sg.LineString(pr['along']); rl = rng_for(cid, 'logs', len(props))
+            for k in range(pr.get('n', 30)):
+                a = ls.interpolate(rl.random() * ls.length); b = ls.interpolate(min(ls.length, ls.project(a) + 1)); x, y = a.x + rl.normal(0, pr.get('spread', 8)), a.y + rl.normal(0, pr.get('spread', 8)); q = sg.Point(x, y)
+                if q.distance(turf) < 5 or water.contains(q) or crag.contains(q): continue
+                props.append({'k': 'log', 'x': round(x, 1), 'y': round(y, 1), 'a': round(math.atan2(b.y - a.y, b.x - a.x) + rl.normal(0, .5), 2), 'r': round(float(rl.uniform(2.2, 6.5)), 1), 'v': len(props)})
         elif 'at' in pr: props.append({'k': pr['kind'], 'x': pr['at'][0], 'y': pr['at'][1], 'a': round(math.radians(pr.get('a', 0)), 2), 'r': pr.get('r', 30), 'v': len(props)})
     out['props'] = props
     # the ground itself, painted from the elevation (and, in the mountains, from the photograph's own colours)

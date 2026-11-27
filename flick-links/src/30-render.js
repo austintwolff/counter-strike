@@ -136,7 +136,7 @@ function drawStatic(h){const B=h.geo.box;if(!h.fog){h.mist=mixHex(h.th.floor,'#d
   // ground's first fill covers the whole view from inside the clip, the browser took that for a wipe of the canvas and dropped
   // what was under it, and the land then showed as a pale rectangle on whatever had been there before.
   ctx.fillStyle=h.mist;ctx.beginPath();ctx.rect(VR[0],VR[1],VR[2],VR[3]);ctx.rect(B[0],B[1],B[2],B[3]);ctx.fill('evenodd')}
-function fogOf(h){const B=h.geo.box,u=4,w=Math.ceil(B[2]/u),hh=Math.ceil(B[3]/u),sm=t=>{t=clamp(t,0,1);return t*t*(3-2*t)},keepV=VR,keepZ=RZ;
+function fogOf(h){const B=h.geo.box,[FADE0,FADE1]=h.geo.fade,u=4,w=Math.ceil(B[2]/u),hh=Math.ceil(B[3]/u),sm=t=>{t=clamp(t,0,1);return t*t*(3-2*t)},keepV=VR,keepZ=RZ;
   const world=x=>{x.setTransform(1/u,0,0,1/u,-B[0]/u,-B[1]/u);x.lineCap=x.lineJoin='round'};
   // rub a layer out along the line of play, leaving keep(d) of it at d yards from the line
   const rub=(x,d0,d1,keep)=>{const N=18;world(x);x.globalCompositeOperation='destination-out';x.strokeStyle='#000';x.beginPath();h.route.pts.forEach((q,i)=>i?x.lineTo(q.x,q.y):x.moveTo(q.x,q.y));

@@ -195,6 +195,8 @@ What a design can say that the two older fantasy courses never needed (all in `t
 | `"level": true` on a hole | its line runs along a crest narrower than the heights can hold (the fin of Angels Landing, where the trail goes): the ground under its tee, fairways (`fw`) and green is taken as level; all to either side stays cliff |
 | `"under": feet` | ground more than this far below the nearest point of a hole's line is cliff: on a mesa or a fin a ball that comes to rest a thousand feet down could never be got back up |
 | `"depth": feet` | ground that far below the nearest high ground sinks into blue shadow, as on Bright Angel |
+| `th.fade: [from, gone]` with a larger `pad` | the hole is seen wider than the usual 94 to 165 yards from its line (Angels Landing shows the river a quarter of a mile below on both sides). `pad` must be at least `gone + 30` |
+| `"look": "canyon"` with its own `strata` and `ground` | the colours painted by height and steepness instead of taken from the photograph: for a gorge the photograph shows mostly as shadow |
 
 A hole may be a par 6 or 7 (Angels Landing is a 7). The server takes pars 3 to 7; the day's three and a three-hole match
 count anything over 5 as their long hole. The house pro (`tools/rate_courses.js`) plays a hole that turns hard along its

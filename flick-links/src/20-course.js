@@ -119,17 +119,20 @@ const SPECIES=[[/quercus|oak/i,'liveoak'],[/carya|pecan/i,'pecan'],[/ulmus|elm/i
 // ───────── a course's ground, built once
 // Only the hole being played is built: its own ground and whatever of the course lies within sight of it.
 // Past FADE0 yards from the line of play the picture fades out, and by FADE1 it is gone (and the ball is off the map).
-const FADE0=94,FADE1=165,PAD=FADE1+30;
+// A hole whose setting is the point of it can be seen wider: `fade:[from, gone]` in its look (Angels Landing, with the river
+// a quarter of a mile below on both sides).
+const FADE0=94,FADE1=165;
 // a course's second nine can have a look of its own (th2 over th), and so can a single place (the `th` its map carries)
 const themeOf=e=>e.th||(e.th=MAPS[e.map].th?{...e.c.th,...MAPS[e.map].th}:e.map!==e.c.id&&e.c.th2?{...e.c.th,...e.c.th2}:e.c.th);
 const GREEN_GAP=5; // yards of ground a green keeps between itself and water
 function buildGeo(e){const c=e.c,k=e.k,m=MAPS[e.map],th=themeOf(e),g={},rng=mulberry32(hashStr('geo:'+c.id+k)),R=g.route=mkRoute(catmull(pts(m.lines[e.n]),3));
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of R.pts){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)}
+  const F0=th.fade?th.fade[0]:FADE0,F1=th.fade?th.fade[1]:FADE1,PAD=F1+30;g.fade=[F0,F1];
   g.box=[x0-PAD,y0-PAD,x1-x0+2*PAD,y1-y0+2*PAD];
   const local=f=>{const P=f.p||f;let a=1e9,b=1e9,c2=-1e9,d=-1e9;for(let i=0;i<P.length;i+=2){a=Math.min(a,P[i]);b=Math.min(b,P[i+1]);c2=Math.max(c2,P[i]);d=Math.max(d,P[i+1])}return c2>x0-PAD&&a<x1+PAD&&d>y0-PAD&&b<y1+PAD};
   const shp=f=>polyShape(pts(f.p||f),false,f.h&&f.h.map(pts)),box=f=>polyShape(pts(f.p||f),true),shapes=(list,mk)=>list.filter(local).map(mk);
   // which 30-yard squares lie within reach of a hole: one lookup then rules out far-off ground
-  const NEAR=FADE1+8,CELL=30,reach=d=>{const set=new Set(),n=Math.ceil(d/CELL);for(let i=0;i<R.pts.length;i+=2){const q=R.pts[i];
+  const NEAR=F1+8,CELL=30,reach=d=>{const set=new Set(),n=Math.ceil(d/CELL);for(let i=0;i<R.pts.length;i+=2){const q=R.pts[i];
       for(let a=-n;a<=n;a++)for(let b=-n;b<=n;b++)if(a*a+b*b<=(n+.7)*(n+.7))set.add((Math.floor(q.x/CELL)+a)+','+(Math.floor(q.y/CELL)+b))}return p=>set.has(Math.floor(p.x/CELL)+','+Math.floor(p.y/CELL))};
   const nearHoles=reach(NEAR),inPlay=reach(PAD+60);
   for(const k of['fair','green','bunker','rough','rock'])g[k]=shapes(m[k],shp);for(const k of['tee','pool','parking'])g[k]=shapes(m[k],box);for(const k of['beach','bed'])g[k]=shapes(m[k]||[],shp);
@@ -258,7 +261,7 @@ function slopeAt(h,q){let x=h.slope.x,y=h.slope.y;for(const b of h.bumps){const 
 function phiAt(h,q){let p=-(h.slope.x*(q.x-h.green.x)+h.slope.y*(q.y-h.green.y));for(const b of h.bumps){const dx=q.x-b.x,dy=q.y-b.y;p+=b.a*Math.exp(-(dx*dx+dy*dy)/(2*b.s*b.s))}return p}
 // what the ball is lying on. The whole course is live: a neighbouring fairway is still fairway.
 function lieAt(h,q){const g=h.geo,off=distLine(h.route.pts,q);
-  if(off>FADE1-14)return'ob';
+  if(off>g.fade[1]-14)return'ob';
   if(inSh(h.green,q))return'green';
   for(const b of g.bunker)if(inSh(b,q))return'bunker';
   if(inSh(h.fringe,q))return'fringe';

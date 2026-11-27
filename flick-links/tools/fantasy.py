@@ -386,14 +386,18 @@ def build(path, probe=None):
     # what grows there, read off the photograph and scattered where it really is
     rngv = rng_for(cid, 'veg'); r_, g_, b_ = RGB[..., 0], RGB[..., 1], RGB[..., 2]; lum = (r_ + g_ + b_) / 3; exg = (2 * g_ - r_ - b_) / (lum + 30); kinds = D.get('plants', ['pine']); sc = []
     free = ~raster(turf.buffer(3)) & ~W & ~snow & ~steep & ~raster(crag.buffer(3)) & ~raster(trails) & ~raster(houses.buffer(-3)) & ~raster(so.unary_union(runs + [washes])); dstream = ndi.distance_transform_edt(~raster(so.unary_union([sg.LineString(np.array(s['p']).reshape(-1, 2)).buffer(4) for s in out['streams'] if not s['dry']] + [water]) if out['streams'] or not water.is_empty else sg.Polygon())) * st
-    solid_ = []
+    solid_ = []; thin_ = D.get('thin'); from shapely.prepared import prep as prep_; close_ = prep_(so.unary_union([sg.LineString(h['line']).buffer(thin_[0]) for h in holes.values()])) if thin_ else None
     def strew(mask, kind, rmin, rmax, cell, chance, solid=False):
         k = kinds.index(kind) if not solid else 0; c = max(1, int(cell / st))
         for i in range(0, mask.shape[0] - c, c):
             for j in range(0, mask.shape[1] - c, c):
                 if mask[i:i + c, j:j + c].mean() > chance[0] and rngv.random() < chance[1]:
                     x = xs[j] + rngv.random() * cell; y = ys[i] + rngv.random() * cell
-                    if region.contains(sg.Point(x, y)): (solid_ if solid else sc).append([int(round(x)), int(round(y)), kind] if solid else [int(round(x)), int(round(y)), round(float(rngv.uniform(rmin, rmax)) * 2) / 2, k])
+                    if not region.contains(sg.Point(x, y)): continue
+                    # "thin": [yards, share]: beyond that far from any hole's line only this share of the plants is kept. A hole shown
+                    # without its haze has three times the ground in view, and a forest of six thousand trees is slow to draw on a phone.
+                    if thin_ and not solid and not close_.contains(sg.Point(x, y)) and rngv.random() > thin_[1]: continue
+                    (solid_ if solid else sc).append([int(round(x)), int(round(y)), kind] if solid else [int(round(x)), int(round(y)), round(float(rngv.uniform(rmin, rmax)) * 2) / 2, k])
     D2 = D.get('veg', {})
     if D.get('strew') is not None:
         # The design says what grows where, for a place neither of the two looks was written for. Each rule:

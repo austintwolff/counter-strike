@@ -40,7 +40,7 @@ function fetchKey(k){try{return JSON.parse(localStorage.getItem(KEY+k)||'null')}
 // one par 3, one par 4 and one par 5 drawn from every course, played in card order
 // Today's three: the courses take the day in turn, and the day's course gives a par 3, a par 4 and a par 5, played in hole order.
 function dailyIds(key){const r=mulberry32(hashStr('fl-day:'+key)),n=COURSES.length,c=COURSES[((dayNumber(key)-1)%n+n)%n],own=ALL.map((e,i)=>e.c===c?i:-1).filter(i=>i>=0),out=[];
-  for(const p of[3,4,5]){const left=own.filter(i=>!out.includes(i)),a=left.filter(i=>ALL[i].def.par===p),from=a.length?a:left;out.push(from[Math.floor(r()*from.length)])}
+  for(const p of[3,4,5]){const left=own.filter(i=>!out.includes(i)),a=left.filter(i=>p===5?ALL[i].def.par>=5:ALL[i].def.par===p),from=a.length?a:left;out.push(from[Math.floor(r()*from.length)])}
   return out.sort((a,b)=>ALL[a].n-ALL[b].n)}
 
 const S={mode:'title',key:'',day:1,holes:[],round:{type:'daily',ids:[0,1,2],scores:[]},hi:0,strokes:0,lie:'tee',clubs:[],ci:0,club:CLUBS[6],

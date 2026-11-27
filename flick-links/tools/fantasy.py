@@ -175,13 +175,26 @@ def build(path, probe=None):
         o = {'p': flat(list(g.exterior.coords)[:-1], nd)}; hs = [flat(list(r.coords)[:-1], nd) for r in g.interiors if sg.Polygon(r).area > 40]
         if hs: o['h'] = hs
         return o if hs else o['p']
+    # "level": true on a hole says its line runs along a crest narrower than the heights can hold (a rock fin with a trail along its
+    # top): the ground under its tee, its fairways and its green is taken as level, whatever slope the grid reads there. Everything
+    # to either side stays as steep as it is, so the fairway is a ribbon with the cliff on both hands.
+    lev_ = []
+    for n, h in holes.items():
+        if not h.get('level'): continue
+        L_ = ctr[n]; S_ = along(L_); gr_0 = h.get('green') or [15, 12.5, None]
+        lev_.append(sg.Point(*L_[0]).buffer(17)); lev_.append(sg.Point(*L_[-1]).buffer(max(gr_0[0], gr_0[1]) + 14))
+        for s0, s1, w in (h.get('fw') or []): lev_.append(sg.LineString([tuple(at_dist(L_, S_, s_)[0]) for s_ in np.arange(s0, s1 + .1, 5)]).buffer(w + 11))
+    LV = raster(so.unary_union(lev_)) if lev_ else np.zeros(E.shape, bool); SL = np.where(LV, np.minimum(SL, 9), SL)
     # water: lakes and rivers from the map, with their islands
     # A long river's outline runs far past the downloaded map and comes in unclosed. Its two loose ends are both out there, so
     # joining them closes it harmlessly, as long as they really are outside this course's ground.
     far = lambda q: not (bx0 - 400 < q[0] < bx1 + 400 and by0 - 400 < q[1] < by1 + 400)
+    # ... or, when one end is nearer, as long as the straight join between the two ends passes clear of everything that is built
+    clear_ = lambda f: not sg.LineString([f['p'][0], f['p'][-1]]).intersects(sg.box(bx0 - 30, by0 - 30, bx1 + 30, by1 + 30))
+    joins = lambda f: (far(f['p'][0]) and far(f['p'][-1])) or clear_(f)
     for f in F['water']:
-        if f.get('open') and not (far(f['p'][0]) and far(f['p'][-1])): print('  NOTE an unclosed water outline ends inside the course:', f.get('name'), [round(v) for v in f['p'][0]], [round(v) for v in f['p'][-1]])
-    ok = lambda f: len(f['p']) > 2 and (not f.get('open') or (far(f['p'][0]) and far(f['p'][-1])))
+        if f.get('open') and not joins(f): print('  NOTE an unclosed water outline ends inside the course:', f.get('name'), [round(v) for v in f['p'][0]], [round(v) for v in f['p'][-1]])
+    ok = lambda f: len(f['p']) > 2 and (not f.get('open') or joins(f))
     outer = [sg.Polygon(f['p']).buffer(0) for f in F['water'] if not f.get('inner') and ok(f)]; inner = [sg.Polygon(f['p']).buffer(0) for f in F['water'] if f.get('inner') and ok(f)]
     water = so.unary_union(outer).difference(so.unary_union(inner)) if outer else sg.Polygon()
     if D.get('sea') is not None:
@@ -196,6 +209,17 @@ def build(path, probe=None):
     water = water.intersection(sg.box(bx0 - 5, by0 - 5, bx1 + 5, by1 + 5)); W = raster(water)
     # ground too steep to play: cliffs, crags and the walls of the gorge
     lim = D.get('steep', 33); steep = ndi.binary_closing(ndi.binary_opening(SL > lim, iterations=1), iterations=2) & ~W; lab, n = ndi.label(steep); size = ndi.sum(steep, lab, range(1, n + 1)); steep = np.isin(lab, [k + 1 for k, v in enumerate(size) if v >= D.get('crag', 150)])
+    # "under": feet. On a mesa or a fin the level ground far below is not somewhere to play from: a ball that goes over the edge and
+    # comes to rest a thousand feet down could never be got back up. Ground more than this far below the nearest point of a hole's
+    # line is cliff, like the faces above it. (Under a shot that leaps a gap the line's own ground is low, so nothing is lost.)
+    if D.get('under'):
+        onl = np.zeros(E.shape, bool)
+        for n_, L_ in ctr.items():
+            S_ = along(L_)
+            for s_ in np.arange(0, S_[-1] + .1, 2.0):
+                q_ = at_dist(L_, S_, s_)[0]; i_, j_ = int((q_[1] - ys[0]) / st), int((q_[0] - xs[0]) / st)
+                if 0 <= i_ < E.shape[0] and 0 <= j_ < E.shape[1]: onl[i_, j_] = True
+        ix_ = ndi.distance_transform_edt(~onl, return_distances=False, return_indices=True); steep |= (E * 3 < E[ix_[0], ix_[1]] * 3 - D['under']) & ~W & ~LV
     # snow and ice: the mapped glacier, and whatever the photograph shows as bright and colourless high up
     snow = raster(so.unary_union([sg.Polygon(f['p']).buffer(0) for f in F['glacier'] if len(f['p']) > 2])) if F['glacier'] else np.zeros(E.shape, bool)
     if look == 'alpine':
@@ -456,6 +480,9 @@ def build(path, probe=None):
             f2 = ft + slow * 14; tab = D['strata']; rock_ = np.stack([np.interp(f2, [t[0] for t in tab], [t[1][c] for t in tab]) for c in range(3)], -1)
             wf = np.clip((SL - D.get('strata_from', 14)) / D.get('strata_over', 13), 0, 1)[..., None] * D.get('strata_mix', .85); band = (.5 + .5 * np.sin(ft / D.get('band', 6.5) + slow * .8))[..., None]
             col = col * (1 - wf) + rock_ * (1 - .2 * band) * wf
+        # "depth": feet. Ground that far below the nearest high ground sinks into blue shadow, so a gorge reads as a gorge
+        if D.get('depth'):
+            deep = np.clip((ndi.maximum_filter(Es, size=int(360 / st)) - Es) * 3 / D['depth'], 0, 1); deep = ndi.gaussian_filter(deep, 3)[..., None]; col = col * (1 - .42 * deep) + np.array([38, 44, 70]) * (.42 * deep)
         lit = (.56 + .6 * SH) * (1 - .12 * np.clip((SL - 30) / 25, 0, 1)) * (1 + .03 * fine)
     if D.get('dunes'):
         # "dunes": [wavelength yd, wind bearing degrees, strength]: dune crests the heights are too coarse to hold, drawn as light and

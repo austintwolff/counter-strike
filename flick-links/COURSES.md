@@ -192,4 +192,12 @@ What a design can say that the two older fantasy courses never needed (all in `t
 | `"ground": "sand"` with `th.ground:'sand'` | whatever is not mown is sand (White Sands, Devil's Golf Course) |
 | `"strew": [rules]` | what grows where, by rule; `"solid": true` makes single trees a ball cannot pass (the giant sequoias) |
 | props `arch`, `floe` | the Gateway Arch from above with its shadow; ice adrift on Iceberg Lake |
+| `"level": true` on a hole | its line runs along a crest narrower than the heights can hold (the fin of Angels Landing, where the trail goes): the ground under its tee, fairways (`fw`) and green is taken as level; all to either side stays cliff |
+| `"under": feet` | ground more than this far below the nearest point of a hole's line is cliff: on a mesa or a fin a ball that comes to rest a thousand feet down could never be got back up |
+| `"depth": feet` | ground that far below the nearest high ground sinks into blue shadow, as on Bright Angel |
+
+A hole may be a par 6 or 7 (Angels Landing is a 7). The server takes pars 3 to 7; the day's three and a three-hole match
+count anything over 5 as their long hole. The house pro (`tools/rate_courses.js`) plays a hole that turns hard along its
+line rather than at the flag; `node tools/rate_courses.js --trace <id> <hole>` shows one play shot by shot, which is the
+quickest way to find out why a hole rates badly.
 

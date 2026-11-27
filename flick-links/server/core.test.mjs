@@ -23,6 +23,7 @@ const holes = ['gr5', 'lp6', 'hk2'], pars = [4, 3, 5];
 assert.equal((await stranger('POST', '/round', { day: today, holes, pars, scores: [4, 3, 5] })).error, 'no_player');
 assert.equal((await sam('POST', '/round', { day: '2020-01-01', holes, pars, scores: [4, 3, 5] })).error, 'day');
 assert.equal((await sam('POST', '/round', { day: today, holes, pars, scores: [0, 3, 5] })).error, 'scores');
+assert.equal((await sam('POST', '/round', { day: today, holes, pars: [3, 4, 8], scores: [4, 3, 5] })).error, 'scores', 'no hole is a par 8');
 assert.equal((await sam('POST', '/round', { day: today, holes: ['gr5', 'gr5', 'hk2'], pars, scores: [4, 3, 5] })).error, 'holes');
 assert.ok((await austin('POST', '/round', { day: yest, holes, pars, scores: [4, 3, 6] })).ok);  // +1
 assert.ok((await sam('POST', '/round', { day: yest, holes, pars, scores: [3, 2, 4] })).ok);     // -3, hat trick, wins the day
@@ -99,6 +100,8 @@ assert.ok(ps.trophies.some(t => t.id === 'far') && !ps.trophies.some(t => t.id =
 const pc = (await pro('POST', '/club', { name: 'Pros', nick: 'Pro' })).code, cr = (await pro('GET', '/state?day=' + today + '&club=' + pc)).club;
 const rp = r => r && r.tot - r.par;
 assert.deepEqual([cr.records.out.yd, cr.records.out.nick, cr.records.out.k], [160, 'Pro', 'lp5'], 'the longest hole-out: putts do not count');
+// a par 7 (Angels Landing) is a hole like any other; a par 8 is not
+assert.equal((await pro('POST', '/log', { rounds: [{ ...full('roundpar7', 'np', par => par, 9), holes: H18('np', par => par).slice(0, 9).map((h, i) => i === 8 ? { ...h, par: 7, s: 6 } : h) }, { ...full('roundpar8', 'np', par => par, 9), holes: H18('np', par => par).slice(0, 9).map((h, i) => i === 8 ? { ...h, par: 8, s: 6 } : h) }] })).saved, 1);
 await pro('POST', '/log', { rounds: [{ ...full('roundab1', 'ba', par => par, 18), kind: 'daily', holes: H18('ba', par => par).slice(0, 3).map((h, i) => i === 1 ? { ...h, s: 1, hf: 660, chip: 1 } : i === 2 ? { ...h, hf: 480, chip: 1 } : h) }] });
 { const s2 = (await pro('GET', '/state?day=' + today + '&club=' + pc)); assert.equal(s2.club.records.out.yd, 220, 'beaten by an ace from 220'); assert.equal(s2.club.records.out.k, 'ba2'); assert.equal(s2.me.stats.trophies.find(t => t.id === 'far2').n, 1); assert.equal(s2.me.stats.trophies.find(t => t.id === 'far').n, 3, 'the 220 counts for the hundred as well'); }
 assert.deepEqual([rp(cr.records.courses.jc.f), rp(cr.records.courses.jc.a), rp(cr.records.courses.jc.b)], [-9, -9, -9], 'each nine birdied in a different round');

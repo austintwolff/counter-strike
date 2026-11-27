@@ -35,7 +35,7 @@ function newMatchCard(){const c=C.club;if(!c)return;const others=c.standings.fil
 <p class="err" id="formErr" role="alert"></p>
 <div class="row"><button class="btn" type="submit">Send challenge</button><button class="btn ghost" type="button" data-act="tab" data-t="matches">Back</button></div></form>`);matchLens()}
 // three holes of a course for a short match: a par three, a four and a five where it has them, in playing order
-function threeOf(cid){const ids=courseIds(cid,'a'),pick=[],rnd=a=>a[Math.floor(Math.random()*a.length)];for(const par of[3,4,5]){const c=ids.filter(i=>INFO(i).par===par);if(c.length)pick.push(rnd(c))}
+function threeOf(cid){const ids=courseIds(cid,'a'),pick=[],rnd=a=>a[Math.floor(Math.random()*a.length)];for(const par of[3,4,5]){const c=ids.filter(i=>par===5?INFO(i).par>=5:INFO(i).par===par);if(c.length)pick.push(rnd(c))}
   while(pick.length<3)pick.push(rnd(ids.filter(i=>!pick.includes(i))));return pick.sort((a,b)=>INFO(a).n-INFO(b).n)}
 async function sendMatch(){const cid=$('mCourse').value,len=$('mLen').value,ids=len==='3'?threeOf(cid):courseIds(cid,len),btn=$('matchForm').querySelector('[type=submit]');btn.disabled=true;
   try{const j=await Net.call('POST','/match/new',{club:C.club.code,to:$('mTo').value,part:len==='3'?null:len,live:$('mLive').value==='1',holes:ids.map(i=>({k:holeKey(INFO(i)),par:INFO(i).par}))});if(!j.ok)throw j;await refresh();matchCard(j.match.id,j.match)}

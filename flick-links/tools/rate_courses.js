@@ -28,16 +28,28 @@ const DAYS = 16, CORE = path.join(__dirname, '..', 'server', 'core.js');
       while (S.round.scores[0] == null && n++ < 24) { const h = f.cur(), B = S.ball, dx = h.pin.x - B.x, dy = h.pin.y - B.y, d = Math.hypot(dx, dy) || 1e-6, a0 = Math.atan2(dy, dx);
         if (S.club.putt) { S.mark = { x: h.pin.x + dx / d * Math.min(.6, d * .1), y: h.pin.y + dy / d * Math.min(.6, d * .1) }; f.fire(1, { x: dx / d, y: dy / d }, 0, null, 0, 1); }
         else { let best = null; const list = S.clubs.filter(c => !c.putt).flatMap(c => c.style != null ? f.CHIPS : [c]);
-          for (const c of list) for (const off of [0, -.07, .07, -.15, .15, -.26, .26, -.4, .4]) { const a = a0 + off, tries = [1];
+          // how much of the hole is left from a point, measured along its line
+          const R = h.route.pts, cum = [0]; for (let i = 1; i < R.length; i++) cum[i] = cum[i - 1] + Math.hypot(R[i].x - R[i - 1].x, R[i].y - R[i - 1].y); const total = cum[cum.length - 1];
+          const near = q => { let bi = 0, bd = 1e9; for (let i = 0; i < R.length; i++) { const dd = Math.hypot(R[i].x - q.x, R[i].y - q.y); if (dd < bd) { bd = dd; bi = i; } } return { s: cum[bi], off: bd }; }, here = near(B).s;
+          // A hole that doubles back (the way round is over a third longer than the way across, and still a quarter longer from
+          // where the ball lies) is played along its line until the turn is behind: on Angels Landing the flag is across a thousand feet of air from most of the hole.
+          const along = () => { for (const c of list) for (let s = here + 50; s <= Math.min(total, here + 520); s += 15) { let i = cum.findIndex(v => v >= s); if (i < 0) i = R.length - 1; const a = Math.atan2(R[i].y - B.y, R[i].x - B.x);
+              for (const pw of [1, .94, .88, .82, .76, .7, .62, .54]) { const r = fate(h, B, c, pw, a); if (!r) continue; const e = near(r.E), cost = total - e.s + e.off + (COST[r.lie] == null ? 7 : COST[r.lie]); if (!best || cost < best.cost) best = { cost, c, pw, a }; } } };
+          if (d > 150 && total > Math.hypot(h.pin.x - h.tee.x, h.pin.y - h.tee.y) * 1.35 && total - here > d * 1.25) along();
+          else for (const c of list) for (const off of [0, -.07, .07, -.15, .15, -.26, .26, -.4, .4]) { const a = a0 + off, tries = [1];
             // the swing that should stop by the flag on this line, if the club can get there: found by halving
             { const far = fate(h, B, c, 1, a); if (far && Math.hypot(far.E.x - B.x, far.E.y - B.y) > d) { let lo = .12, hi = 1; for (let i = 0; i < 9; i++) { const m = (lo + hi) / 2, r = fate(h, B, c, m, a); (!r || Math.hypot(r.E.x - B.x, r.E.y - B.y) < d) ? lo = m : hi = m; } tries.push(hi); } }
             for (const pw of [...tries, .88, .76]) { const r = fate(h, B, c, pw, a); if (!r) continue; const cost = r.left + (COST[r.lie] == null ? 7 : COST[r.lie]) + Math.abs(off) * 6; if (!best || cost < best.cost) best = { cost, c, pw, a }; } }
+          if (!best) along(); // nowhere safe on any line near the flag's: play along the hole instead
           if (!best) best = { c: S.club, pw: Math.min(1, d / (S.club.carry * (1 + S.club.roll))), a: a0 }; // nowhere safe: straight at it
+          if (window.__trace) __trace.push('shot ' + (S.strokes + 1) + ' from ' + S.lie + ', ' + Math.round(d) + ' to the pin: ' + best.c.name + ' at ' + Math.round(best.pw * 100) + '%' + (best.cost == null ? ' (nowhere safe)' : ''));
           S.club = best.c; f.fire(best.pw, { x: Math.cos(best.a), y: Math.sin(best.a) }, 0, null, 0, 1); }
         let k = 0; while (S.mode === 'flight' && k++ < 200000) f.stepBall(f.STEP);
         if (S.round.scores[0] == null) while (Q.length) Q.shift()(); // a penalty drop, taken at once
         if (S.mode !== 'ready' && S.round.scores[0] == null) break; }
       Q.length = 0; return S.round.scores[0] == null ? null : S.round.scores[0]; }; });
+  // node tools/rate_courses.js --trace <id> <hole number>: one play of one hole, shot by shot
+  if (process.argv[2] === '--trace') { console.log((await p.evaluate(([cid, n]) => { const f = __fl, id = f.courseIds(cid, 'a').find(i => f.INFO(i).n === n); window.__trace = []; const s = playHole(id, '2031-01-03'); return __trace.concat('score ' + s).join('\n'); }, [process.argv[3], +process.argv[4]]))); await b.close(); return; }
   const table = {}, t0 = Date.now();
   for (const c of courses) { if (only.length && !only.includes(c.id)) continue;
     const r = await p.evaluate(([cid, days]) => { const f = __fl, ids = f.courseIds(cid, 'a'), out = []; for (const id of ids) { const sc = []; for (let d = 0; d < days; d++) { const s = playHole(id, '2031-0' + (1 + d % 9) + '-' + String(3 + d * 2).padStart(2, '0')); if (s != null) sc.push(s); } out.push({ par: f.INFO(id).par, k: f.INFO(id).k, n: sc.length, mean: sc.reduce((a, b) => a + b, 0) / (sc.length || 1) }); } return out; }, [c.id, DAYS]);

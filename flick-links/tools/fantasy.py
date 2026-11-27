@@ -539,17 +539,19 @@ def build(path, probe=None):
         #   "rock": 0 to 1                                  how much of the photograph's detail shows through painted "strata"
         Fn = D['fine']; Pz = np.load(os.path.join(CACHE, D['terrain'] + '.photo.npz')); kf = int(Pz['k']); fs_ = st / kf; RF = Pz['rgb'][i0 * kf:i1 * kf, j0 * kf:j1 * kf].astype(np.float32)
         up = lambda a_, o_=1: ndi.zoom(np.asarray(a_, np.float32), kf, order=o_, mode='nearest', grid_mode=True)
-        br_ = Fn.get('brush', 2)
-        if br_:
-            # each cell takes the average of whichever of the four squares cornered on it is the most even: edges stay sharp and
-            # everything between them goes flat, like a dab of paint
-            n_ = br_ + 1; Lr = RF.mean(2); mL = ndi.uniform_filter(Lr, n_, mode='nearest'); vL = ndi.uniform_filter(Lr * Lr, n_, mode='nearest') - mL * mL; mC = [ndi.uniform_filter(RF[..., c], n_, mode='nearest') for c in range(3)]; h_ = br_ // 2
-            best = None; PF = np.zeros_like(RF)
+        # "paint": [cells, passes]: the photograph turned into paint. Each cell takes the average of whichever of the four squares
+        # cornered on it is the most even, so edges stay where they are and everything between them goes flat; done twice over a
+        # wide square nothing of the photograph's grain is left, only its shapes and colours. Raw photograph under painted turf is
+        # two kinds of picture at once, and magnified on a phone it is a blur: the ground of a hole is always painted.
+        br_, passes_ = (list(Fn.get('paint', [Fn.get('brush', 2), 1])) + [1])[:2]; PF = RF
+        for _ in range(passes_ if br_ else 0):
+            n_ = br_ + 1; Lr = PF.mean(2); mL = ndi.uniform_filter(Lr, n_, mode='nearest'); vL = ndi.uniform_filter(Lr * Lr, n_, mode='nearest') - mL * mL; mC = [ndi.uniform_filter(PF[..., c], n_, mode='nearest') for c in range(3)]; h_ = br_ // 2
+            best = None; Pn = np.zeros_like(PF)
             for dy_ in (-h_, h_):
                 for dx_ in (-h_, h_):
                     v_ = np.roll(vL, (dy_, dx_), (0, 1)); take = v_ < best if best is not None else np.ones(v_.shape, bool); best = np.where(take, v_, best) if best is not None else v_
-                    for c in range(3): PF[..., c] = np.where(take, np.roll(mC[c], (dy_, dx_), (0, 1)), PF[..., c])
-        else: PF = RF
+                    for c in range(3): Pn[..., c] = np.where(take, np.roll(mC[c], (dy_, dx_), (0, 1)), Pn[..., c])
+            PF = Pn
         Wf = up(W) > .5
         # "even": [cells, levels]: ground that is nearly one tone over that many cells is smoothed to it, and anything that differs
         # by much more than "levels" is left sharp. It takes out the photograph's grain and the squares its compression leaves in

@@ -94,7 +94,7 @@ function drawScenery(h){const th=h.th,G=h.geo,z=RZ,now=0,tG=clamp((z-3)/8,0,1),t
       for(const da of[-.6,0,.6]){ctx.moveTo(r.x,r.y);ctx.lineTo(r.x+Math.cos(r.a+da)*1.1*r.s,r.y+Math.sin(r.a+da)*1.1*r.s)}ctx.stroke();ctx.fillStyle='#6b4a2a';disc(r.x+Math.cos(r.a)*1.15*r.s,r.y+Math.sin(r.a)*1.15*r.s,.24*r.s)}
     for(const q of G.pebbles)if(vis(q)){ctx.fillStyle='rgba(20,24,16,.35)';disc(q.x+.12,q.y+.14,q.r);ctx.fillStyle='#bdb8a8';disc(q.x,q.y,q.r);ctx.fillStyle='#e4e0d3';disc(q.x-q.r*.25,q.y-q.r*.28,q.r*.5)}}
   // beaches lie over the water's edge: the map's coastline is the high-water mark and the sand runs out past it
-  if(!th.real)for(const s of G.beach)if(seen(s)){ctx.fillStyle='#dccfa6';ctx.fill(s.path);texFill(s.path,'grain',.5,.11);inner(s.path,0,0,'#c2b388',.45,4);inner(s.path,0,0,'#f3ecd2',.35,1.2)}
+  if(clear==null)for(const s of G.beach)if(seen(s)){ctx.fillStyle=th.sand||'#dccfa6';ctx.fill(s.path);texFill(s.path,'grain',.5,.11);inner(s.path,0,0,'#c2b388',.45,4);inner(s.path,0,0,'#f3ecd2',.35,1.2)}
   // white water, where the creek really falls
   ctx.lineCap='round';for(const f of G.falls)if(seen2(f)){ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=f.w*1.15;ctx.stroke(f.path);ctx.setLineDash([.9,1.5]);ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=f.w*.8;ctx.stroke(f.path);ctx.setLineDash([])}
   for(const q of G.props||[])if(vis(q))drawProp(q);

@@ -95,7 +95,7 @@ const COURSES=[
  th:{fade:[290,350],shoal:1,out:'native',floor:'#a8a698',rough:'#7f9a5c',fair:'#63ad4e',stripe:.8,outer:'#a8a698',woods:'#2f4a2c',mix:[['pine',1]],marker:'#f4f4ec',bloom:'bloomGold',blooms:0,bridge:'wood',cart:false,clumps:0,houses:true,wet:false,lilies:false,
   collar:.5,sand:'#e9e2cf',wat:{water:'#2b6fa2',deep:'#174f86',shallow:'#7cc4d8',rim:'#215f8f'},cliff:'rgba(30,34,46,.13)',ledgeLo:'rgba(18,22,34,.3)',ledgeHi:'rgba(255,255,255,.24)'},
  /*NP:BEGIN*/
- holes:[["Sand Beach",4,448,9,53,"Acadia"],["Fort Jefferson",4,433,5,1,"Dry Tortugas"],["Sahale Arm",5,839,13,822,"North Cascades"],["The Door",4,444,11,79,"Badlands"],["Santa Elena",5,633,7,-124,"Big Bend"],["Gypsum",4,386,15,0,"White Sands"],["Grand View",5,586,3,36,"Canyonlands"],["Thor's Hammer",3,339,17,400,"Bryce Canyon"],["Angels Landing",7,1172,1,263,"Zion"]],
+ holes:[["Sand Beach",4,448,9,53,"Acadia"],["Fort Jefferson",4,433,5,1,"Dry Tortugas"],["Sahale Arm",5,750,13,594,"North Cascades"],["The Door",4,444,11,79,"Badlands"],["Santa Elena",5,633,7,-124,"Big Bend"],["Gypsum",4,386,15,0,"White Sands"],["Grand View",5,586,3,36,"Canyonlands"],["Thor's Hammer",3,339,17,400,"Bryce Canyon"],["Angels Landing",7,1172,1,263,"Zion"]],
  more:[["Oxbow Bend",5,627,8,5,"Grand Teton"],["Grand Prismatic",4,476,12,-3,"Yellowstone"],["Iceberg Lake",3,229,16,-17,"Glacier"],["Wizard Island",4,458,14,54,"Crater Lake"],["Painted Dunes",4,639,10,561,"Lassen Volcanic"],["Ruby Beach",4,497,14,-146,"Olympic"],["Crescent Meadow",5,611,6,-36,"Sequoia"],["Firefall",3,773,2,3172,"Yosemite"],["Kilauea Iki",5,603,4,439,"Hawaii Volcanoes"]]
  /*NP:END*/}];
 // Every hole of every course in one list; a round is a set of indexes into it. A course's first nine is `holes`, drawn from

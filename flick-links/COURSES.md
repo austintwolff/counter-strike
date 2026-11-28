@@ -209,6 +209,7 @@ What a design can say that the two older fantasy courses never needed (all in `t
 | `"woods": [polygons]`; `"woods": true` on a plant rule | forest said by hand (a ball in it is lost), and plants kept inside it |
 | `"snow_yields": true` | the fairway is laid through late snow instead of stopping at it; the snow stays beside it (Sahale Arm) |
 | `"level": true` on a hole | its line runs along a crest narrower than the heights can hold (the fin of Angels Landing, where the trail goes): the ground under its tee, fairways (`fw`) and green is taken as level; all to either side stays cliff |
+| `"heights": false` | the hole is played as level ground: no heights go to the game, so a club flies its ordinary distance and the landing mark is where the ball comes down. For a hole along a knife-edge (Angels Landing, Sahale Arm), where the real heights fall away a thousand feet a few yards either side of the line and the reckoned flight jumped by a hundred yards with a hair's turn of the aim. Lay such a hole out so that no carry over the drop is more than about 160 yards |
 | `"under": feet` | ground more than this far below the nearest point of a hole's line is cliff: on a mesa or a fin a ball that comes to rest a thousand feet down could never be got back up |
 | `"depth": feet` | ground that far below the nearest high ground sinks into blue shadow, as on Bright Angel |
 | `th.fade: [from, gone]` with a larger `pad` | the hole is seen wider than the usual 94 to 165 yards from its line. `pad` must be at least `gone + 30`. The whole National Parks course uses it |

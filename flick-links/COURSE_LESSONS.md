@@ -164,6 +164,11 @@ Rules of thumb that came out of this:
 - The picture fades from 94 yards off the line and is gone by 165; a ball past about 150 is off the map and replayed.
   Anything that matters to play must sit inside that.
 - The pin must be on a green and the tee on a tee: `check_course.js` verifies the first.
+- **A hole along a knife-edge is played as level ground** (`"heights": false`). Over real heights the landing mark on
+  Angels Landing and Sahale Arm jumped about and the ball came down somewhere else; the owner called both almost
+  impossible, twice. Keep every forced carry on such a hole to about 160 yards, and its fairways wide.
+- **The camera faces where the club in hand comes down** along the hole's line, not always 250 yards on. A lay-up that
+  has to be swung across the screen is sliced.
 - **A club's reach is reckoned the way the camera faces**, not toward the pin (`aimPt` in `src/40-game.js`). On Angels
   Landing the pin is across a thousand feet of air from most of the hole: reckoned toward it every club "reached" twice as
   far, the camera drew back to 600 yards and the owner called the hole impossible. On a hole that turns away from its pin

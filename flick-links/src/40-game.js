@@ -117,11 +117,15 @@ const toPin=()=>{const h=cur(),b=S.ball,d=hyp(h.pin.x-b.x,h.pin.y-b.y)||1;return
 // camera faces. A club's reach is reckoned the same way. Reckoned toward the pin it went wrong wherever the hole turns away from
 // it over a drop: on Angels Landing the pin is across a thousand feet of air from most of the hole, every club "reached" twice as
 // far, and the camera drew back until the fairway was a thread.
-const aimPt=()=>{const h=cur(),b=S.ball;return hyp(b.x-h.pin.x,b.y-h.pin.y)<=285?h.pin:rAt(h.route,Math.min(h.total,rProj(h.route,b)+250))};
-const toAim=()=>{const t=aimPt(),b=S.ball,d=hyp(t.x-b.x,t.y-b.y);return d>1?{x:(t.x-b.x)/d,y:(t.y-b.y)/d}:toPin()};
-function reachOf(c){if(c.putt)return markDist();const u=toAim();return flightCarry(cur(),S.ball,u.x,u.y,c.carry*lieMult(S.lie,c),c.loft)+c.carry*lieMult(S.lie,c)*c.roll}
+// The line is taken as far on as the club in hand goes on the level (250 yards at most, which is what it always was for the long
+// clubs): with a shorter club the camera turns to where that club comes down. Facing 250 yards on whatever the club, a lay-up on a
+// hole that bends hard had to be swung across the screen, and a swing across the screen is a slice.
+const lookOf=c=>c&&!c.putt?clamp(c.carry*lieMult(S.lie,c)*(1+c.roll),60,250):250;
+const aimPt=c=>{const h=cur(),b=S.ball;return hyp(b.x-h.pin.x,b.y-h.pin.y)<=285?h.pin:rAt(h.route,Math.min(h.total,rProj(h.route,b)+lookOf(c)))};
+const toAim=c=>{const t=aimPt(c),b=S.ball,d=hyp(t.x-b.x,t.y-b.y);return d>1?{x:(t.x-b.x)/d,y:(t.y-b.y)/d}:toPin()};
+function reachOf(c){if(c.putt)return markDist();const u=toAim(c);return flightCarry(cur(),S.ball,u.x,u.y,c.carry*lieMult(S.lie,c),c.loft)+c.carry*lieMult(S.lie,c)*c.roll}
 function aimCam(){const h=cur(),b=S.ball,d=hyp(b.x-h.pin.x,b.y-h.pin.y);
-  const t=aimPt();
+  const t=aimPt(S.club);
   const view=S.club.putt?clamp(Math.max(d,markDist())*1.3,7,70):clamp(Math.min(d*1.18,reachOf(S.club)*1.15),7,960); // far enough back that the pin, or as far as the club goes, clears the plates even off Glacier Point
   camT.x=b.x;camT.y=b.y;camT.ay=.74;camT.s=H*.6/view;if(d>.02)camT.r=-Math.PI/2-Math.atan2(t.y-b.y,t.x-b.x)}
 function updateCam(dt){

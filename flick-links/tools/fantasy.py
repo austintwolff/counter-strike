@@ -344,7 +344,7 @@ def build(path, probe=None):
             if not placed: notes.append('hole %d: a bunker near %s had no clean ground and was left out' % (n, [round(v) for v in c]))
             if placed and G['bunker'][-1].geom_type != 'Polygon': G['bunker'][-1] = max(G['bunker'][-1].geoms, key=lambda q: q.area)
         # the card, the fall from tee to green, and which way the green really tilts
-        gi, gj = int((end[1] - ys[0]) / st), int((end[0] - xs[0]) / st); gxv, gyv = gx[gi, gj], gy[gi, gj]; m = math.hypot(gxv, gyv); sm = min(.34, .16 + math.degrees(math.atan(m)) * .012)  # a green is built flatter than the ground it sits on, but falls the same way
+        gi, gj = int((end[1] - ys[0]) / st), int((end[0] - xs[0]) / st); gxv, gyv = gx[gi, gj], gy[gi, gj]; m = math.hypot(gxv, gyv); sm = min(.34, .16 + math.degrees(math.atan(m)) * .012) if D.get('heights') is not False else .14  # a green is built flatter than the ground it sits on, but falls the same way (and one on a made shelf, on a hole played as level, only gently)
         tilt[n] = [round(-gxv / (m or 1) * sm, 3), round(-gyv / (m or 1) * sm, 3)]; drop = round((T.at(*L[0]) - T.at(*end)) * 3) if D.get('flat') is None else int(round((E[int((L[0][1] - ys[0]) / st), int((L[0][0] - xs[0]) / st)] - E[gi, gj]) * 3))
         card[n] = {'par': par, 'yd': int(round(total)), 'hcp': h.get('hcp'), 'drop': drop, 'name': h.get('name', '')}; lines[n] = flat(h['line'])
         mine[n] = {k: list(range(was[k], len(G[k]))) for k in G}
@@ -653,8 +653,13 @@ def build(path, probe=None):
     # heights, coarse, for the flight of the ball: one byte a cell
     es = 4; Eg = Es[::es, ::es]; lo, hi = float(Eg.min()), float(Eg.max()); q = np.round((Eg - lo) / max(hi - lo, 1e-6) * 255).astype(np.uint8)
     out['elev'] = {'x0': round(float(xs[0]), 1), 'y0': round(float(ys[0]), 1), 'step': st * es, 'w': int(q.shape[1]), 'h': int(q.shape[0]), 'lo': round(lo, 2), 'k': round((hi - lo) / 255, 4), 'z': base64.b64encode(q.tobytes()).decode()}
+    # "heights": false: the hole is played as level ground. Along a knife-edge (the fin of Angels Landing, the crest of Sahale Arm)
+    # the heights fall away a thousand feet a few yards either side of the line, so the flight of a ball reckoned over them changed
+    # by a hundred yards with a hair's turn of the aim: the landing mark jumped about and the ball came down somewhere else.
+    # The cliffs are still cliffs (they are shapes, not heights), and the card still says how far the hole falls.
+    if D.get('heights') is False: out.pop('elev'); out['elev'] = None
     s = json.dumps(out, separators=(',', ':')); open(os.path.join(DATA, cid + '.json'), 'w').write(s)
-    print(cid, '%d KB' % (len(s) // 1024), {k: len(out[k]) for k in ('fair', 'green', 'tee', 'bunker', 'water', 'void', 'snow', 'streams', 'falls', 'paths', 'building', 'scatter', 'ledges', 'props')}, 'ledge points %d' % sum(len(l) // 2 for l in out['ledges']), 'relief %d KB' % (len(out['relief']['src']) // 1024), im.size, 'elev %d KB' % (len(out['elev']['z']) // 1024))
+    print(cid, '%d KB' % (len(s) // 1024), {k: len(out[k]) for k in ('fair', 'green', 'tee', 'bunker', 'water', 'void', 'snow', 'streams', 'falls', 'paths', 'building', 'scatter', 'ledges', 'props')}, 'ledge points %d' % sum(len(l) // 2 for l in out['ledges']), 'relief %d KB' % (len(out['relief']['src']) // 1024), im.size, 'elev %d KB' % (len(out['elev']['z']) // 1024 if out['elev'] else 0))
     for n, c in sorted(card.items()): print('  %2d %-22s par %d  %4d yd  %s' % (n, c['name'], c['par'], c['yd'], ('drops %d ft' % c['drop']) if c['drop'] > 0 else ('climbs %d ft' % -c['drop'])))
     print('  holes:[' + ','.join("[%s,%d,%d,%d,%d]" % (json.dumps(c['name']), c['par'], c['yd'], c['hcp'] or 0, c['drop']) for n, c in sorted(card.items())) + ']')
     print('  total', sum(c['yd'] for c in card.values()), 'yd, par', sum(c['par'] for c in card.values())); [print('  NOTE', x) for x in notes]
